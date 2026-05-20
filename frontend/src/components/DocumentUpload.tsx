@@ -3,13 +3,14 @@ import type { Category } from '../types';
 
 interface DocumentUploadProps {
   categories: Category[];
-  onUpload: (file: File, categoryId: string) => Promise<void>;
+  onUpload: (file: File, categoryId: string, onProgress?: (pct: number) => void) => Promise<void>;
 }
 
 export default function DocumentUpload({ categories, onUpload }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [message, setMessage] = useState('');
+  const [progress, setProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -23,8 +24,9 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
     if (!file || !categoryId) return;
     setUploading(true);
     setMessage('');
+    setProgress(0);
     try {
-      await onUpload(file, categoryId);
+      await onUpload(file, categoryId, setProgress);
       setMessage(`"${file.name}" 上传成功`);
       if (fileRef.current) fileRef.current.value = '';
     } catch (err) {
@@ -48,11 +50,16 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
           <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
         </svg>
-        {uploading ? '上传中...' : '上传文档'}
+        {uploading ? `上传中 ${progress}%` : '上传文档'}
         <input ref={fileRef} type="file" className="hidden"
           accept=".pdf,.docx,.txt,.md,.pptx"
           onChange={handleUpload} disabled={uploading} />
       </label>
+      {uploading && (
+        <div className="w-24 h-1.5 bg-[#161b22] rounded-full overflow-hidden">
+          <div className="h-full bg-[#1f6feb] rounded-full transition-all duration-150" style={{ width: `${progress}%` }} />
+        </div>
+      )}
       {message && (
         <span className={`text-xs font-mono ${message.includes('失败') ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
           {message}

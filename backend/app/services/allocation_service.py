@@ -3,6 +3,7 @@ import re
 from openai import OpenAI
 
 from ..config import settings
+from .rag_service import search_knowledge_base
 
 _client = OpenAI(
     api_key=settings.deepseek_api_key,
@@ -16,6 +17,8 @@ ALLOCATION_PROMPT = """You are a senior wealth management advisor. Generate a co
 
 【Available Products】
 {products}
+
+{kb_context}
 
 Based on the client's risk tolerance, investment experience, wealth scale, and financial goals, generate THREE allocation plans at different risk levels. Each plan must reference specific client details and product characteristics.
 
@@ -61,7 +64,21 @@ def generate_allocation_plan(client_data: dict, products: list[dict]) -> dict:
     client_json = json.dumps(client_data, ensure_ascii=False, indent=2)
     products_json = json.dumps(products, ensure_ascii=False, indent=2)
 
-    prompt = ALLOCATION_PROMPT.format(client_data=client_json, products=products_json)
+    # Build search query from client profile and product types
+    sd = client_data.get("structured_data") or {}
+    ap = client_data.get("ai_profile") or {}
+    search_parts = [
+        sd.get("risk_preference", ""),
+        sd.get("goals", ""),
+        sd.get("assets", ""),
+        ap.get("product_recommendations", ""),
+    ]
+    product_types = list({p.get("type", "") for p in products if p.get("type")})
+    search_query = " ".join(v for v in search_parts if v and v != "未知") + " " + " ".join(product_types)
+    search_query = search_query.strip() or "资产配置 理财产品推荐"
+    kb_context = search_knowledge_base(search_query)
+
+    prompt = ALLOCATION_PROMPT.format(client_data=client_json, products=products_json, kb_context=kb_context)
 
     response = _client.chat.completions.create(
         model=settings.llm_model,

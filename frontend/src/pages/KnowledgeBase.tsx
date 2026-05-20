@@ -22,8 +22,8 @@ export default function KnowledgeBase() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleUpload = async (file: File, categoryId: string) => {
-    await uploadDocument(file, categoryId);
+  const handleUpload = async (file: File, categoryId: string, onProgress?: (pct: number) => void) => {
+    await uploadDocument(file, categoryId, onProgress);
     loadData();
   };
 

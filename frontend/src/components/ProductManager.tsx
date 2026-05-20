@@ -19,6 +19,8 @@ export default function ProductManager() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '' });
   const [importError, setImportError] = useState('');
+  const [importProgress, setImportProgress] = useState(0);
+  const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -65,14 +67,17 @@ export default function ProductManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportError('');
+    setImportProgress(0);
+    setImporting(true);
     try {
-      await importProductsCsv(file);
+      await importProductsCsv(file, setImportProgress);
       setShowCsvModal(false);
       if (fileRef.current) fileRef.current.value = '';
       load();
     } catch (err: any) {
       setImportError(err.message);
     }
+    setImporting(false);
   };
 
   const getRiskLabel = (level: number): { text: string; color: string } => {
@@ -273,8 +278,16 @@ export default function ProductManager() {
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-[#e6edf3] mb-2">CSV 批量导入</h3>
             <p className="text-xs text-[#8b949e] mb-3">列: name,type,risk_level,expected_return,min_investment,description,issuer,target_tags,lock_period</p>
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileChange}
-              className="block w-full text-xs text-[#e6edf3] file:mr-2 file:py-1 file:px-3 file:text-xs file:rounded file:border-0 file:bg-[#1f6feb] file:text-white hover:file:bg-[#388bfd]" />
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileChange} disabled={importing}
+              className="block w-full text-xs text-[#e6edf3] file:mr-2 file:py-1 file:px-3 file:text-xs file:rounded file:border-0 file:bg-[#1f6feb] file:text-white hover:file:bg-[#388bfd] disabled:opacity-50" />
+            {importing && (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 h-1.5 bg-[#0d1117] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#1f6feb] rounded-full transition-all duration-150" style={{ width: `${importProgress}%` }} />
+                </div>
+                <span className="text-[10px] text-[#6e7681] font-mono">{importProgress}%</span>
+              </div>
+            )}
             {importError && <p className="text-xs text-[#f85149] mt-2">{importError}</p>}
             <div className="flex gap-2 justify-end mt-3">
               <button onClick={() => { setShowCsvModal(false); setImportError(''); }} className="btn btn-secondary text-xs">关闭</button>

@@ -3,6 +3,7 @@ import re
 from openai import OpenAI
 
 from ..config import settings
+from .rag_service import search_knowledge_base
 
 _client = OpenAI(
     api_key=settings.deepseek_api_key,
@@ -13,6 +14,8 @@ ANALYSIS_PROMPT = """You are a professional customer analyst for financial sales
 
 Customer description:
 {raw_text}
+
+{kb_context}
 
 Return ONLY valid JSON, no other text. **CRITICAL: You MUST include the "scores" field with all 6 dimensions. Each dimension MUST have a "value" (integer 1-10) and "reasoning" (string). This is mandatory — do NOT omit the scores.**
 
@@ -97,7 +100,8 @@ Rules:
 
 
 def analyze_customer(raw_text: str) -> dict:
-    prompt = ANALYSIS_PROMPT.format(raw_text=raw_text)
+    kb_context = search_knowledge_base(raw_text)
+    prompt = ANALYSIS_PROMPT.format(raw_text=raw_text, kb_context=kb_context)
 
     response = _client.chat.completions.create(
         model=settings.llm_model,
@@ -142,6 +146,8 @@ You have the following comprehensive client analysis to work with:
 【Dimensional Scores (1-10)】
 {scores}
 
+{kb_context}
+
 Based on ALL the above information, generate a comprehensive pre-sales preparation report. Return ONLY valid JSON, no other text. Use this exact structure:
 
 {{
@@ -166,10 +172,22 @@ def generate_presales_prep(customer_data: dict) -> dict:
     ai_profile = json.dumps(customer_data.get("ai_profile") or {}, ensure_ascii=False, indent=2)
     scores = json.dumps(customer_data.get("scores") or {}, ensure_ascii=False, indent=2)
 
+    # Build search query from key customer fields
+    sd = customer_data.get("structured_data") or {}
+    search_parts = [
+        sd.get("occupation", ""),
+        sd.get("risk_preference", ""),
+        sd.get("goals", ""),
+        sd.get("investment_experience", ""),
+    ]
+    search_query = " ".join(v for v in search_parts if v and v != "未知") or "销售话术 客户沟通"
+    kb_context = search_knowledge_base(search_query)
+
     prompt = PRESALES_PREP_PROMPT.format(
         structured_data=structured_data,
         ai_profile=ai_profile,
         scores=scores,
+        kb_context=kb_context,
     )
 
     response = _client.chat.completions.create(
