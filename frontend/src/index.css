@@ -234,4 +234,7 @@
   .pdf-export .border-\[\#30363d\] {
     border-color: #d0d7de !important;
   }
+  .pdf-export .pdf-hide {
+    display: none !important;
+  }
 }

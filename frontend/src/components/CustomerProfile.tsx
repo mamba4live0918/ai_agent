@@ -128,46 +128,78 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
     const el = reportRef.current;
     if (!el) return;
 
-    // Force AI analysis view for export (hide KYC grid if active)
     const wasKyc = showKyc;
-    if (wasKyc) setShowKyc(false);
-    await new Promise(r => setTimeout(r, 50));
 
-    // Apply light theme for PDF
+    // Phase 1: Force AI analysis view, apply light theme, show all panels
+    if (wasKyc) setShowKyc(false);
+    await new Promise(r => setTimeout(r, 80));
     el.classList.add('pdf-export');
 
-    // Show all tab panels
     const panels = el.querySelectorAll<HTMLElement>('[data-tab-panel]');
     const prevDisplay: string[] = [];
     panels.forEach(p => {
       prevDisplay.push(p.style.display);
       p.style.display = 'block';
     });
-
-    const tabLabels = ['客户分析', '售前准备', '配置方案'];
     await new Promise(r => setTimeout(r, 150));
 
     try {
+      // Phase 2: Capture all sections with showKyc = false (AI analysis visible)
+      const sectionEls = Array.from(el.querySelectorAll<HTMLElement>('[data-pdf-section]'));
+      interface SectionCapture { label: string; canvas: HTMLCanvasElement; }
+      const captures: SectionCapture[] = [];
+
+      for (const secEl of sectionEls) {
+        if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
+        const label = secEl.getAttribute('data-pdf-section') || '';
+        const canvas = await html2canvas(secEl, {
+          backgroundColor: '#ffffff',
+          scale: 3,
+          logging: false,
+        });
+        captures.push({ label, canvas });
+      }
+
+      // Phase 3: If high-value customer AND has AI profile, capture KYC grid too
+      // (KYC is hidden behind toggle when AI profile exists)
+      const hasAiProfile = apSections.length > 0;
+      if (isHighValue && hasAiProfile) {
+        setShowKyc(true);
+        await new Promise(r => setTimeout(r, 100));
+        panels.forEach(p => { p.style.display = 'block'; });
+        await new Promise(r => setTimeout(r, 150));
+
+        const kycEls = Array.from(el.querySelectorAll<HTMLElement>('[data-pdf-section]'))
+          .filter(s => s.getAttribute('data-pdf-section') === 'KYC 九宫格');
+
+        // Insert KYC right after AI 分析报告 in the section order
+        const aiAnalysisIndex = captures.findIndex(c => c.label === 'AI 分析报告');
+        const insertAt = aiAnalysisIndex >= 0 ? aiAnalysisIndex + 1 : captures.length;
+
+        for (let k = 0; k < kycEls.length; k++) {
+          const secEl = kycEls[k];
+          if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
+          const canvas = await html2canvas(secEl, {
+            backgroundColor: '#ffffff',
+            scale: 3,
+            logging: false,
+          });
+          captures.splice(insertAt + k, 0, { label: 'KYC 九宫格', canvas });
+        }
+      }
+
+      // Phase 4: Build PDF from captured section canvases
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
       const imgWidth = pageWidth - margin * 2;
       const maxImgHeight = pageHeight - margin * 2;
-      const headerH = 8; // mm for tab title
+      const headerH = 8;
 
       let firstPage = true;
 
-      for (let i = 0; i < panels.length; i++) {
-        const panel = panels[i];
-        if (!panel.children.length) continue;
-
-        const canvas = await html2canvas(panel, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          logging: false,
-        });
-
+      for (const { label, canvas } of captures) {
         const scaleFactor = imgWidth / canvas.width;
         const contentMaxH = maxImgHeight - headerH;
 
@@ -178,17 +210,15 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           if (!firstPage) pdf.addPage();
           firstPage = false;
 
-          // Tab title header (only on first slice of each tab)
           if (srcY === 0) {
             pdf.setFontSize(11);
             pdf.setTextColor(31, 35, 40);
-            pdf.text(tabLabels[i], margin, margin + 5);
+            pdf.text(label, margin, margin + 5);
             pdf.setDrawColor(208, 215, 222);
             pdf.line(margin, margin + 6.5, pageWidth - margin, margin + 6.5);
           }
 
           const imgY = srcY === 0 ? margin + headerH : margin;
-          const availableH = srcY === 0 ? contentMaxH : maxImgHeight;
 
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = canvas.width;
@@ -196,10 +226,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           const ctx = sliceCanvas.getContext('2d')!;
           ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
 
-          const sliceData = sliceCanvas.toDataURL('image/png');
-          const slicePdfHeight = (sliceHeight * imgWidth) / canvas.width;
-          pdf.addImage(sliceData, 'PNG', margin, imgY, imgWidth, slicePdfHeight);
-
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, imgY, imgWidth, (sliceHeight * imgWidth) / canvas.width);
           srcY += sliceHeight;
         }
       }
@@ -210,9 +237,9 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
       panels.forEach((p, i) => {
         p.style.display = prevDisplay[i];
       });
-      if (wasKyc) setShowKyc(true);
+      setShowKyc(wasKyc);
     }
-  }, [localCustomer.name, showKyc]);
+  }, [localCustomer.name, showKyc, isHighValue, apSections.length]);
 
   const sectionBlock = (title: string, content: string, color: string) => (
     <div key={title} className="bg-[#0d1117] border border-[#21262d] rounded-md p-3.5">
@@ -241,7 +268,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             </p>
           </div>
         </div>
-        <button onClick={handleExportPDF} className="btn btn-secondary text-xs">
+        <button onClick={handleExportPDF} className="btn btn-secondary text-xs pdf-hide">
           <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
             <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Zm-1 7v3a.5.5 0 0 1-1 0V9h-.5a.5.5 0 0 1 0-1h2a.5.5 0 0 1 0 1H9Zm-2-5V2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0Z"/>
           </svg>
@@ -272,7 +299,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
             {fields.length > 0 && (
-              <div>
+              <div data-pdf-section="基本信息">
                 <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {fields.map(([label, value]) => (
@@ -286,7 +313,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             )}
 
             {dimensions.length > 0 && (
-              <div className="space-y-4">
+              <div data-pdf-section="评分总览" className="space-y-4">
                 <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">
                   评分总览
                   <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
@@ -327,14 +354,14 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                   </h4>
                   <div className="flex items-center gap-2">
                     {'id' in localCustomer && (
-                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#484f58] transition-colors disabled:opacity-50">
+                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#484f58] transition-colors disabled:opacity-50 pdf-hide">
                         {regenerating ? '生成中...' : '⟳ 重新生成'}
                       </button>
                     )}
                     {isHighValue && (
                       <button
                         onClick={() => setShowKyc(!showKyc)}
-                        className={`text-[10px] px-2 py-1 rounded border transition-colors ${
+                        className={`text-[10px] px-2 py-1 rounded border transition-colors pdf-hide ${
                           showKyc
                             ? 'border-[#d29922]/40 text-[#d29922] bg-[#d29922]/10'
                             : 'border-[#30363d] text-[#8b949e] hover:text-[#d29922] hover:border-[#d29922]/30'
@@ -346,9 +373,11 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                   </div>
                 </div>
                 {showKyc ? (
-                  <KycGrid customer={localCustomer as Customer} />
+                  <div data-pdf-section="KYC 九宫格">
+                    <KycGrid customer={localCustomer as Customer} />
+                  </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div data-pdf-section="AI 分析报告" className="space-y-2">
                     {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
                   </div>
                 )}
@@ -357,7 +386,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {/* Show KYC toggle even when no AI profile, but customer is high value */}
             {apSections.length === 0 && isHighValue && (
-              <div>
+              <div data-pdf-section="KYC 九宫格">
                 <div className="flex items-center justify-between mb-2.5">
                   <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">KYC 九宫格</h4>
                   {'id' in localCustomer && (
@@ -382,14 +411,14 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         <div data-tab-panel style={{ display: activeTab === 'presales' ? 'block' : 'none' }}>
           <div className="space-y-5">
             {hasPrepData ? (
-              <>
+              <div data-pdf-section="售前准备报告">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
                     售前准备报告
                     <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
                   </h4>
                   {onPresalesPrep && (
-                    <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs">
+                    <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs pdf-hide">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
                         <path d="M7.25 4.75a.75.75 0 0 1 1.5 0v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5Z"/>
@@ -401,7 +430,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                 <div className="space-y-2">
                   {ppSections.map(([title, content, color]) => sectionBlock(title, content, color))}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <svg className="w-10 h-10 text-[#21262d] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
@@ -423,7 +452,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
         {/* Tab 3: 配置方案 */}
         <div data-tab-panel style={{ display: activeTab === 'allocation' ? 'block' : 'none' }}>
-          <div className="space-y-5">
+          <div data-pdf-section="资产配置方案" className="space-y-5">
             <ProductManager />
             {'structured_data' in localCustomer && (
               <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
