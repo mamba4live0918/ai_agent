@@ -10,6 +10,7 @@ class CustomerCreate(BaseModel):
     ai_profile: dict | None = None
     scores: dict | None = None
     presales_prep: dict | None = None
+    allocation_plan: dict | None = None
 
 
 class CustomerAnalyzeRequest(BaseModel):
@@ -31,10 +32,16 @@ class CustomerResponse(BaseModel):
     ai_profile: dict | None = None
     scores: dict | None = None
     presales_prep: dict | None = None
+    allocation_plan: dict | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AllocationPlanSave(BaseModel):
+    user_plan: dict
+    total_investable: int | None = None
 
 
 class CustomerListResponse(BaseModel):

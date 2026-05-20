@@ -1,16 +1,20 @@
+import copy
 import math
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..database import get_db
 from ..models.customer import Customer
+from ..models.product import Product
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
-    CustomerResponse, CustomerListResponse,
+    CustomerResponse, CustomerListResponse, AllocationPlanSave,
 )
 from ..services.customer_service import analyze_customer, generate_presales_prep
+from ..services.allocation_service import generate_allocation_plan
 
 router = APIRouter()
 
@@ -47,6 +51,7 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
         ai_profile=data.ai_profile,
         scores=data.scores,
         presales_prep=data.presales_prep,
+        allocation_plan=data.allocation_plan,
     )
     db.add(customer)
     db.commit()
@@ -83,6 +88,8 @@ def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = 
         customer.scores = data.scores
     if data.presales_prep is not None:
         customer.presales_prep = data.presales_prep
+    if data.allocation_plan is not None:
+        customer.allocation_plan = data.allocation_plan
     db.commit()
     db.refresh(customer)
     return CustomerResponse.model_validate(customer)
@@ -101,6 +108,70 @@ def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db)):
     }
     result = generate_presales_prep(customer_data)
     customer.presales_prep = result
+    db.commit()
+    db.refresh(customer)
+    return CustomerResponse.model_validate(customer)
+
+
+@router.post("/{customer_id}/allocation-plan", response_model=CustomerResponse)
+def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db)):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    products = db.query(Product).all()
+    if not products:
+        raise HTTPException(status_code=400, detail="No products in library — add products first")
+
+    products_data = [
+        {
+            "id": str(p.id),
+            "name": p.name,
+            "type": p.type,
+            "risk_level": p.risk_level,
+            "expected_return": p.expected_return,
+            "min_investment": p.min_investment,
+            "description": p.description or "",
+            "lock_period": p.lock_period or "",
+        }
+        for p in products
+    ]
+
+    client_data = {
+        "structured_data": customer.structured_data or {},
+        "ai_profile": customer.ai_profile or {},
+        "scores": customer.scores or {},
+    }
+
+    result = generate_allocation_plan(client_data, products_data)
+    ai_plan = result
+    allocation_plan = {
+        "ai_plan": copy.deepcopy(ai_plan),
+        "user_plan": copy.deepcopy(ai_plan),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+    customer.allocation_plan = allocation_plan
+    db.commit()
+    db.refresh(customer)
+    return CustomerResponse.model_validate(customer)
+
+
+@router.put("/{customer_id}/allocation-plan", response_model=CustomerResponse)
+def save_allocation_plan(
+    customer_id: uuid.UUID,
+    data: AllocationPlanSave,
+    db: Session = Depends(get_db),
+):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    if not customer.allocation_plan:
+        raise HTTPException(status_code=400, detail="No allocation plan exists — generate one first")
+
+    customer.allocation_plan["user_plan"] = data.user_plan
+    if data.total_investable is not None:
+        customer.allocation_plan["total_investable"] = data.total_investable
     db.commit()
     db.refresh(customer)
     return CustomerResponse.model_validate(customer)
