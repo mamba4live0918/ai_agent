@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Category } from '../types';
 
 interface DocumentUploadProps {
@@ -8,9 +8,15 @@ interface DocumentUploadProps {
 
 export default function DocumentUpload({ categories, onUpload }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
+  const [categoryId, setCategoryId] = useState('');
   const [message, setMessage] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!categoryId && categories.length > 0) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -28,30 +34,29 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">上传文档</h3>
-      <div className="flex gap-3 items-center">
-        <select
-          value={categoryId}
-          onChange={e => setCategoryId(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-        >
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-          ))}
-        </select>
-        <label className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-          uploading ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
-        }`}>
-          {uploading ? '上传中...' : '选择文件'}
-          <input ref={fileRef} type="file" className="hidden"
-            accept=".pdf,.docx,.txt,.md,.pptx"
-            onChange={handleUpload} disabled={uploading} />
-        </label>
-        <span className="text-xs text-gray-500">支持 PDF, DOCX, TXT, MD, PPTX</span>
-      </div>
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <select
+        value={categoryId}
+        onChange={e => setCategoryId(e.target.value)}
+        className="h-[32px] bg-[#0d1117] border border-[#30363d] rounded-md px-2.5 text-xs text-[#e6edf3] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
+      >
+        {categories.map(cat => (
+          <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+        ))}
+      </select>
+      <label className={`btn btn-secondary text-xs h-[32px] ${uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
+        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+        </svg>
+        {uploading ? '上传中...' : '上传文档'}
+        <input ref={fileRef} type="file" className="hidden"
+          accept=".pdf,.docx,.txt,.md,.pptx"
+          onChange={handleUpload} disabled={uploading} />
+      </label>
       {message && (
-        <p className={`mt-2 text-sm ${message.includes('失败') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>
+        <span className={`text-xs font-mono ${message.includes('失败') ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
+          {message}
+        </span>
       )}
     </div>
   );
