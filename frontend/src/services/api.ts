@@ -48,6 +48,8 @@ export const createCustomer = (data: { name: string; raw_input?: string; structu
   request<import('../types').Customer>('/customers', { method: 'POST', body: JSON.stringify(data) });
 export const analyzeCustomer = (rawText: string) =>
   request<import('../types').CustomerProfile>('/customers/analyze', { method: 'POST', body: JSON.stringify({ raw_text: rawText }) });
+export const generatePresalesPrep = (id: string) =>
+  request<import('../types').Customer>(`/customers/${id}/presales-prep`, { method: 'POST' });
 export const updateCustomer = (id: string, data: { name: string; raw_input?: string; structured_data?: Record<string, unknown>; ai_profile?: Record<string, unknown>; scores?: Record<string, unknown> }) =>
   request<import('../types').Customer>(`/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteCustomer = (id: string) =>

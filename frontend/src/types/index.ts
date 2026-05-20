@@ -31,6 +31,7 @@ export interface Customer {
   structured_data: Record<string, unknown> | null;
   ai_profile: Record<string, unknown> | null;
   scores: Record<string, { value: number; reasoning: string }> | null;
+  presales_prep: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }

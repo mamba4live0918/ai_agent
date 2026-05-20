@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { Customer, CustomerProfile as CustomerProfileType, ScoreDimension } from '../types';
@@ -6,6 +6,7 @@ import CustomerRadar from './CustomerRadar';
 
 interface Props {
   customer: Customer | CustomerProfileType;
+  onPresalesPrep?: () => Promise<void>;
 }
 
 const DIMENSION_META: Record<string, { label: string; color: string }> = {
@@ -37,8 +38,9 @@ function getScoreColor(v: number): string {
   return '#f85149';
 }
 
-export default function CustomerProfile({ customer }: Props) {
+export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
+  const [prepLoading, setPrepLoading] = useState(false);
 
   const sd = customer.structured_data || {};
 
@@ -66,6 +68,27 @@ export default function CustomerProfile({ customer }: Props) {
   ] as [string, string, string][]).filter(([, v]) => v && v !== '未知');
 
   const dimensions = parseScores(customer.scores);
+
+  const pp = customer.presales_prep || {};
+  const ppSections = ([
+    ['客户生命周期分析', pp.lifecycle_analysis || '', '#58a6ff'],
+    ['潜在难点与顾虑', pp.potential_difficulties || '', '#f85149'],
+    ['应对话术', pp.response_scripts || '', '#3fb950'],
+    ['心态准备', pp.mindset_preparation || '', '#a371f7'],
+    ['维护动作与跟进', pp.maintenance_actions || '', '#d29922'],
+  ] as [string, string, string][]).filter(([, v]) => v);
+
+  const hasPrepData = ppSections.length > 0;
+
+  const handlePrep = async () => {
+    if (!onPresalesPrep) return;
+    setPrepLoading(true);
+    try {
+      await onPresalesPrep();
+    } finally {
+      setPrepLoading(false);
+    }
+  };
 
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
@@ -125,12 +148,23 @@ export default function CustomerProfile({ customer }: Props) {
             </p>
           </div>
         </div>
-        <button onClick={handleExportPDF} className="btn btn-secondary text-xs">
-          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-            <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Zm-1 7v3a.5.5 0 0 1-1 0V9h-.5a.5.5 0 0 1 0-1h2a.5.5 0 0 1 0 1H9Zm-2-5V2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0Z"/>
-          </svg>
-          导出 PDF
-        </button>
+        <div className="flex items-center gap-2">
+          {onPresalesPrep && !hasPrepData && (
+            <button onClick={handlePrep} disabled={prepLoading} className="btn btn-primary text-xs">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
+                <path d="M5.5 5.5a.75.75 0 0 1 1.5 0v.75h.75a.75.75 0 0 1 0 1.5H7v.75a.75.75 0 0 1-1.5 0v-.75h-.75a.75.75 0 0 1 0-1.5h.75v-.75Z"/>
+              </svg>
+              {prepLoading ? '生成中...' : '售前准备'}
+            </button>
+          )}
+          <button onClick={handleExportPDF} className="btn btn-secondary text-xs">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Zm-1 7v3a.5.5 0 0 1-1 0V9h-.5a.5.5 0 0 1 0-1h2a.5.5 0 0 1 0 1H9Zm-2-5V2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0Z"/>
+            </svg>
+            导出 PDF
+          </button>
+        </div>
       </div>
 
       {/* PDF export wrapper */}
@@ -206,9 +240,30 @@ export default function CustomerProfile({ customer }: Props) {
             </div>
           </div>
         )}
+
+        {/* Presales prep sections */}
+        {hasPrepData && (
+          <div>
+            <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">
+              售前准备报告
+              <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+            </h4>
+            <div className="space-y-2">
+              {ppSections.map(([title, content, color]) => (
+                <div key={title} className="bg-[#0d1117] border border-[#21262d] rounded-md p-3.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <h5 className="text-xs font-semibold text-[#e6edf3]">{title}</h5>
+                  </div>
+                  <p className="text-sm text-[#8b949e] leading-relaxed whitespace-pre-wrap">{content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {fields.length === 0 && apSections.length === 0 && dimensions.length === 0 && (
+      {fields.length === 0 && apSections.length === 0 && dimensions.length === 0 && ppSections.length === 0 && (
         <div className="text-center py-6">
           <p className="text-sm text-[#484f58]">暂无分析数据</p>
         </div>

@@ -46,4 +46,30 @@
 - **方案**: html2canvas 截取完整 DOM → 按 A4 页面高度切片 → 每个 slice 绘制到独立 Canvas → jsPDF 逐页添加
 - **不选方案**: jsPDF `addImage` 的 source position 参数直接裁剪 — API 复杂、跨浏览器兼容性差、调试困难
 
+## 2026-05-20 — 售前准备（Pre-Sales Preparation）
+
+### 设计思路
+
+复用客户已有的 `structured_data` + `ai_profile` + `scores` 作为输入上下文，AI 生成 5 部分售前策略报告。
+
+### Prompt 策略
+
+- 输入：三组完整 JSON 数据（结构化字段 + 6段分析 + 6维评分）
+- 输出：`lifecycle_analysis` / `potential_difficulties` / `response_scripts` / `mindset_preparation` / `maintenance_actions`
+- 要求每段 4-6 句，必须引用客户具体数据，禁止泛泛而谈
+- 应对话术需包含真实销售场景用语
+
+### API 设计
+
+- `POST /api/customers/{id}/presales-prep` — 生成并保存到 `presales_prep` JSONB 字段
+- 返回完整 Customer 对象（前端直接 setState）
+- 无请求体，纯后端生成
+
+### UI 集成
+
+- "售前准备"按钮在 CustomerProfile 头部，与"导出 PDF"并列
+- 生成后报告渲染在 AI 分析报告下方（5 板块，同款彩色圆点样式）
+- 报告内容在 `reportRef` 内，PDF 导出自动包含
+- 按钮仅在有 AI 画像但无售前报告时显示（避免重复生成）
+
 

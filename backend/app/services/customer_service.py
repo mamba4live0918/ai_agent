@@ -127,3 +127,78 @@ def analyze_customer(raw_text: str) -> dict:
         }
 
     return result
+
+
+PRESALES_PREP_PROMPT = """You are a senior sales coach preparing a financial salesperson for an upcoming client engagement.
+
+You have the following comprehensive client analysis to work with:
+
+【Client Structured Data】
+{structured_data}
+
+【AI Profile Analysis】
+{ai_profile}
+
+【Dimensional Scores (1-10)】
+{scores}
+
+Based on ALL the above information, generate a comprehensive pre-sales preparation report. Return ONLY valid JSON, no other text. Use this exact structure:
+
+{{
+    "lifecycle_analysis": "客户生命周期阶段分析(4-6句)：判断客户当前处于哪个销售阶段（关系建立期/需求挖掘期/方案推荐期/促成成交期/售后维护期/深度开发期），说明判断依据，描述该阶段的关键特征和销售重点",
+    "potential_difficulties": "潜在难点与客户顾虑(4-6句)：基于客户画像和评分，预判销售过程中可能遇到的阻力——客户可能的异议、担忧、决策障碍。每一条都要结合客户的具体情况",
+    "response_scripts": "应对话术(4-6句)：针对上述潜在难点，给出具体的话术建议。包括开场切入方式、关键问题的提问方法、异议处理的回应模板。语言要自然，符合真实销售场景",
+    "mindset_preparation": "销售人员心态准备(4-6句)：这次销售应该保持什么样的心态？需要特别注意哪些沟通陷阱？如何在专业性和亲和力之间平衡？结合客户性格特点给出具体心态建议",
+    "maintenance_actions": "维护动作与跟进节奏(4-6句)：分阶段列出具体的跟进行动计划——今天沟通后立即做什么、本周内做什么、一个月内做什么。包括需要准备的材料、需要协调的团队资源、推荐的沟通频率"
+}}
+
+Rules:
+- All text in Chinese
+- Each section MUST be 4-6 sentences, specific and actionable
+- Reference specific details from the client's profile (age, occupation, assets, risk preference, scores, etc.)
+- Do NOT give generic advice — tailor every section to THIS specific client
+- For response_scripts, include actual phrases the salesperson can say"""
+
+
+def generate_presales_prep(customer_data: dict) -> dict:
+    """Generate a pre-sales preparation report based on existing customer analysis."""
+    structured_data = json.dumps(customer_data.get("structured_data") or {}, ensure_ascii=False, indent=2)
+    ai_profile = json.dumps(customer_data.get("ai_profile") or {}, ensure_ascii=False, indent=2)
+    scores = json.dumps(customer_data.get("scores") or {}, ensure_ascii=False, indent=2)
+
+    prompt = PRESALES_PREP_PROMPT.format(
+        structured_data=structured_data,
+        ai_profile=ai_profile,
+        scores=scores,
+    )
+
+    response = _client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=4000,
+    )
+
+    content = response.choices[0].message.content
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
+    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+    if json_match:
+        content = json_match.group(1)
+
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        result = {
+            "lifecycle_analysis": content,
+            "potential_difficulties": "JSON解析失败",
+            "response_scripts": "JSON解析失败",
+            "mindset_preparation": "JSON解析失败",
+            "maintenance_actions": "JSON解析失败",
+            "error": "JSON parse failed, raw response returned",
+        }
+
+    return result

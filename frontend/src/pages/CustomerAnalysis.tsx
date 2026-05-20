@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getCustomers, deleteCustomer, getCustomer } from '../services/api';
+import { getCustomers, deleteCustomer, getCustomer, generatePresalesPrep } from '../services/api';
 import type { Customer } from '../types';
 import CustomerForm from '../components/CustomerForm';
 import CustomerProfile from '../components/CustomerProfile';
@@ -29,6 +29,12 @@ export default function CustomerAnalysis() {
     if (id === selectedId) { setSelectedId(null); setSelectedCustomer(null); }
     await deleteCustomer(id);
     loadData();
+  };
+
+  const handlePresalesPrep = async () => {
+    if (!selectedId) return;
+    const updated = await generatePresalesPrep(selectedId);
+    setSelectedCustomer(updated);
   };
 
   return (
@@ -111,7 +117,7 @@ export default function CustomerAnalysis() {
         <div className="col-span-7 animate-in" style={{ animationDelay: '150ms' }}>
           {selectedCustomer ? (
             <div className="card p-6">
-              <CustomerProfile customer={selectedCustomer} />
+              <CustomerProfile customer={selectedCustomer} onPresalesPrep={handlePresalesPrep} />
               {selectedCustomer.raw_input && (
                 <>
                   <div className="hr" />

@@ -9,6 +9,7 @@ class CustomerCreate(BaseModel):
     structured_data: dict | None = None
     ai_profile: dict | None = None
     scores: dict | None = None
+    presales_prep: dict | None = None
 
 
 class CustomerAnalyzeRequest(BaseModel):
@@ -29,6 +30,7 @@ class CustomerResponse(BaseModel):
     structured_data: dict | None = None
     ai_profile: dict | None = None
     scores: dict | None = None
+    presales_prep: dict | None = None
     created_at: datetime
     updated_at: datetime
 
