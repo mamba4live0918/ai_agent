@@ -39,11 +39,12 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 - `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除）
 - `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案
-- `routers/product.py` — 产品库 CRUD + CSV 批量导入
+- `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
 - `routers/chat.py` — 知识库 RAG 问答
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
+- `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
 
@@ -54,7 +55,15 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `pages/Dashboard.tsx` — 首页仪表盘
 - `components/CustomerProfile.tsx` — 客户详情（3 Tab：分析/售前准备/配置方案）
 - `components/AllocationPlan.tsx` — 3 套配置方案对比 + 手动调整 + 图表
-- `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页）
+- `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页 + 净值刷新）
+- `components/ProductNavChart.tsx` — 产品净值走势图（基于 Recharts）
+
+### 基金净值数据
+
+- 基金产品填入 `fund_code` 后，创建/导入时自动从东方财富 API 拉取近 12 个月真实净值
+- `POST /api/products/{id}/refresh-nav` 手动刷新，`GET /api/products/{id}` 超过 4 小时自动刷新
+- 前端展开产品卡片时检测净值是否过期（>4h），过期自动调用后端刷新
+- 非基金产品（保险/信托/理财）无公开净值数据，显示"未获得实时数据"提示
 
 ### 知识库优先生成（KB-First）
 
@@ -89,9 +98,6 @@ curl http://localhost:11434/api/tags
 
 # 验证后端
 curl http://localhost:8000/api/health
-
-# 初始化产品种子数据（首次运行或重置时）
-cd backend && python seed_products.py
 ```
 
 ## 关键约束

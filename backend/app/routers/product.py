@@ -67,10 +67,12 @@ def list_products(
 def create_product(data: ProductCreate, db: Session = Depends(get_db)):
     nav_history = None
     source = "manual"
+    nav_updated_at = None
     if data.fund_code:
         nav_history = fetch_fund_nav(data.fund_code)
         if nav_history:
             source = "eastmoney"
+            nav_updated_at = datetime.utcnow()
 
     product = Product(
         name=data.name,
@@ -85,6 +87,7 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
         fund_code=data.fund_code,
         nav_history=nav_history,
         source=source,
+        nav_updated_at=nav_updated_at,
     )
     db.add(product)
     db.commit()
@@ -141,6 +144,7 @@ def update_product(product_id: uuid.UUID, data: ProductCreate, db: Session = Dep
         if nav:
             product.nav_history = nav
             product.source = "eastmoney"
+            product.nav_updated_at = datetime.utcnow()
     db.commit()
     db.refresh(product)
     return ProductResponse.model_validate(product)
@@ -176,10 +180,12 @@ async def import_products_csv(file: UploadFile = File(...), db: Session = Depend
             fund_code = row.get("fund_code", "").strip() or None
             nav_history = None
             source = "manual"
+            nav_updated_at = None
             if fund_code:
                 nav_history = fetch_fund_nav(fund_code)
                 if nav_history:
                     source = "eastmoney"
+                    nav_updated_at = datetime.utcnow()
 
             product = Product(
                 name=row["name"].strip(),
@@ -194,6 +200,7 @@ async def import_products_csv(file: UploadFile = File(...), db: Session = Depend
                 fund_code=fund_code,
                 nav_history=nav_history,
                 source=source,
+                nav_updated_at=nav_updated_at,
             )
             db.add(product)
             db.flush()
