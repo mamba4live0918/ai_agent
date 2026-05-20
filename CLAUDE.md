@@ -26,44 +26,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 当前状态
 
-`main.py` 是目前的原型代码 — 一个基于 RAG 的文档问答系统（LangChain + ChromaDB + DeepSeek + Gradio）。它是技术验证的一部分，后续会按功能模块拆分为正式项目结构。
+项目已拆分为正式的前后端架构。`main.py` 是早期的 RAG 原型（Gradio），保留作为技术参考。
+
+### 项目结构
+
+```
+backend/     FastAPI (port 8000)
+frontend/    React 19 + TypeScript + Vite (port 5173)
+```
+
+### 后端模块
+
+- `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除）
+- `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案
+- `routers/product.py` — 产品库 CRUD + CSV 批量导入
+- `routers/chat.py` — 知识库 RAG 问答
+- `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
+- `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
+- `services/rag_service.py` — Chat 问答 + KB 检索工具函数
+- `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
+- `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
+
+### 前端模块
+
+- `pages/KnowledgeBase.tsx` — 知识库管理（分类筛选 + 文档上传 + RAG 对话）
+- `pages/CustomerAnalysis.tsx` — 客户列表 + 搜索 + 新建/删除
+- `pages/Dashboard.tsx` — 首页仪表盘
+- `components/CustomerProfile.tsx` — 客户详情（3 Tab：分析/售前准备/配置方案）
+- `components/AllocationPlan.tsx` — 3 套配置方案对比 + 手动调整 + 图表
+- `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页）
+
+### 知识库优先生成（KB-First）
+
+所有 LLM 生成（客户分析、售前准备、资产配置）在调用 DeepSeek 前会先从 ChromaDB 检索相关知识库内容，注入 prompt 优先参考。检索失败或无匹配时静默回退到纯 LLM 生成。
 
 ## 技术栈
 
-- **Python 3.11**（虚拟环境 `.venv/`）
-- **LangChain**: 文档加载、文本分割、ChromaDB 封装
-- **ChromaDB**: 本地向量存储 (`./chroma_db/`)
-- **Ollama**: 本地 Embedding 模型 (`nomic-embed-text`)
-- **DeepSeek API**: 推理 LLM (`deepseek-reasoner`)，通过 OpenAI 兼容客户端调用 `https://api.deepseek.com`
-- **Gradio**: Chat UI（原型阶段）
+- **后端**: Python 3.11 + FastAPI + SQLAlchemy + PostgreSQL
+- **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
+- **向量存储**: ChromaDB（本地持久化）
+- **Embedding**: Ollama `nomic-embed-text`
+- **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
+- **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
-## 命令
+## 启动命令
+
+**4 个服务缺一不可：**
+
+| # | 服务 | 命令 | 端口 |
+|---|------|------|------|
+| 1 | PostgreSQL | 系统服务，需保持运行 | 5432 |
+| 2 | Ollama | `ollama serve`（或系统托盘启动） | 11434 |
+| 3 | Backend | `cd backend && uvicorn app.main:app --port 8000 --reload` | 8000 |
+| 4 | Frontend | `cd frontend && npm run dev` | 5173 |
 
 ```bash
 # 激活虚拟环境
 source .venv/Scripts/activate
 
-# 运行当前原型
-python main.py
+# 验证 Ollama（需要 nomic-embed-text 模型）
+curl http://localhost:11434/api/tags
 
-# 安装依赖
-pip install <package>
+# 验证后端
+curl http://localhost:8000/api/health
+
+# 初始化产品种子数据（首次运行或重置时）
+cd backend && python seed_products.py
 ```
-
-## 架构说明
-
-当前 `main.py` (~390行) 的管道流程：
-1. 配置：从环境变量读取 `DEEPSEEK_API_KEY`，设置模型名称和目录路径
-2. 文档加载：遍历 `./documents/`，按扩展名选择 LangChain loader（PDF/DOCX/TXT/MD/PPTX），附加来源元数据
-3. 文本分割：`RecursiveCharacterTextSplitter`，chunk_size=2000，chunk_overlap=400
-4. 向量存储：每次启动删除并重建 `./chroma_db/`，通过 `OllamaEmbeddings` 嵌入
-5. 检索：`vectorstore.as_retriever()` 检索 top-8 chunk
-6. LLM 查询：构建含对话历史（最近3轮）和检索上下文的 prompt，调用 DeepSeek，移除 `{const think}` 标签
-7. Gradio UI：`gr.ChatInterface` 连接 `ask_question()` 函数
 
 ## 关键约束
 
-- 对话历史仅在内存中，重启丢失。ChromaDB 每次启动从 `./documents/` 重建
-- 本地需运行 Ollama 并已拉取 `nomic-embed-text` 模型
-- 必须设置 `DEEPSEEK_API_KEY` 环境变量，否则启动报错
-- DeepSeek reasoner 响应需后处理移除 `{const think}...{/const think}` 块
+- Ollama 必须运行且已拉取 `nomic-embed-text`，否则知识库上传和 RAG 问答全部崩溃
+- PostgreSQL 需提前创建 `ai_agent` 数据库
+- DeepSeek API Key 通过环境变量或 `.env` 文件配置
+- 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
+- Embedding 分批：每批 4 个 chunk，避免 `nomic-embed-text` 的 8192 token 上下文溢出
+- 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）

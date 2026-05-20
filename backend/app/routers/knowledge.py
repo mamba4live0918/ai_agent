@@ -11,7 +11,7 @@ from ..schemas.knowledge import (
     CategoryCreate, CategoryResponse,
     DocumentResponse, DocumentListResponse,
 )
-from ..services.embedding_service import index_document
+from ..services.embedding_service import index_document, delete_from_chroma
 from ..utils.document_loader import get_content_preview, load_single_document
 
 router = APIRouter()
@@ -137,7 +137,9 @@ def delete_document(doc_id: uuid.UUID, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    filename = os.path.basename(doc.file_path)
     if os.path.exists(doc.file_path):
         os.remove(doc.file_path)
     db.delete(doc)
     db.commit()
+    delete_from_chroma(filename)

@@ -1,6 +1,6 @@
 # AI 销售助手 — 陪跑助手 + 仿真培训
 
-AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路，包含知识库 RAG 问答、客户画像分析、资产配置建议等核心功能。
+AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路。核心功能：知识库 RAG 问答 + KB 优先生成、客户画像分析（6 维评分+雷达图）、售前准备报告（5 板块）、资产配置方案（3 套风险等级+手动调整）。
 
 ## 技术栈
 
@@ -12,7 +12,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Ollama (`nomic-embed-text`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
-| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 |
+| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 
 ## 项目结构
 
@@ -25,43 +25,52 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   ├── database.py          # SQLAlchemy engine + session
 │   │   ├── models/              # ORM 模型
 │   │   │   ├── knowledge.py     # Category, Document
-│   │   │   └── customer.py      # Customer
+│   │   │   ├── customer.py      # Customer (含 presales_prep, allocation_plan JSONB)
+│   │   │   └── product.py       # Product (含 nav_history JSONB)
 │   │   ├── schemas/             # Pydantic 请求/响应
 │   │   ├── routers/             # API 路由
-│   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传
-│   │   │   ├── customer.py      # 客户 CRUD + AI 分析
+│   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传/删除（含 ChromaDB 清理）
+│   │   │   ├── customer.py      # 客户 CRUD + AI 分析 + 售前准备 + 配置方案
+│   │   │   ├── product.py       # 产品库 CRUD + CSV 批量导入
 │   │   │   └── chat.py          # RAG 问答
 │   │   ├── services/
-│   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理
-│   │   │   ├── embedding_service.py  # ChromaDB 索引
-│   │   │   └── customer_service.py   # 客户 AI 画像生成
+│   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
+│   │   │   ├── embedding_service.py  # ChromaDB 索引（分批嵌入，中文友好分割）
+│   │   │   ├── customer_service.py   # 客户 AI 画像 + 售前准备生成（KB 优先）
+│   │   │   └── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
 │   │   └── utils/
-│   │       └── document_loader.py    # LangChain 文档加载
+│   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
 │   ├── alembic/                 # 数据库迁移
+│   ├── seed_products.py         # 25 个金融产品种子数据
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
 │   │   ├── App.tsx              # 路由配置
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx    # 首页统计
-│   │   │   ├── KnowledgeBase.tsx    # 知识库浏览/搜索/上传
-│   │   │   └── CustomerAnalysis.tsx # 客户分析与画像
+│   │   │   ├── KnowledgeBase.tsx    # 知识库（分类筛选 + 上传 + RAG 对话）
+│   │   │   └── CustomerAnalysis.tsx # 客户列表（搜索 + 分页 + CRUD）
 │   │   ├── components/
 │   │   │   ├── Layout.tsx       # GitHub 风格侧边栏布局
 │   │   │   ├── ChatPanel.tsx    # RAG 问答面板
-│   │   │   ├── CustomerForm.tsx # 客户录入 (自由文本/表单)
-│   │   │   ├── CustomerProfile.tsx   # AI 画像展示
+│   │   │   ├── CustomerForm.tsx # 客户录入（自由文本/表单）
+│   │   │   ├── CustomerProfile.tsx   # 客户详情（3 Tab：分析/售前准备/配置方案）
+│   │   │   ├── CustomerRadar.tsx     # 6 维评分雷达图
+│   │   │   ├── AllocationPlan.tsx    # 3 套配置方案 + 手动调整 + 图表
+│   │   │   ├── ProductManager.tsx    # 产品库管理（CRUD + CSV 导入 + 分页）
+│   │   │   ├── ProductNavChart.tsx   # 产品净值走势图
 │   │   │   ├── CategoryNav.tsx  # 分类导航
-│   │   │   ├── DocumentUpload.tsx    # 文档上传
+│   │   │   ├── DocumentUpload.tsx    # 文档上传（带进度条）
 │   │   │   └── SearchBar.tsx    # 搜索栏
-│   │   ├── services/api.ts      # API 调用封装
+│   │   ├── services/api.ts      # API 调用封装（含上传进度跟踪）
 │   │   └── types/index.ts       # TypeScript 类型定义
 │   ├── tailwind.config.js       # GitHub Primer 暗色主题配置
 │   └── package.json
-├── documents/                   # 原始文档 (原型用)
-├── main.py                      # 原始 Gradio RAG 原型 (保留参考)
+├── documents/                   # 原始文档（原型用）
+├── main.py                      # 原始 Gradio RAG 原型（保留参考）
 ├── .env.example                 # 环境变量模板
-└── CLAUDE.md                    # 项目开发指南
+├── CLAUDE.md                    # 项目开发指南
+└── README.md
 ```
 
 ## 快速开始
@@ -69,9 +78,10 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 ### 前置条件
 
 - **Python 3.11** + 虚拟环境
-- **PostgreSQL** (默认 `localhost:5432`，数据库 `ai_agent`)
-- **Ollama** (已拉取 `nomic-embed-text` 模型)
+- **PostgreSQL**（默认 `localhost:5432`，数据库 `ai_agent`）
+- **Ollama**（需运行并已拉取 `nomic-embed-text` 模型）
 - **Node.js** 18+
+- **4 个服务缺一不可**：PostgreSQL → Ollama → Backend → Frontend
 
 ### 1. 环境配置
 
@@ -112,6 +122,11 @@ npm run dev
 首次启动后，后端会自动创建 4 个知识分类：
 - 财经法税 / 沟通技巧 / 行业知识 / 销售案例
 
+可选：初始化 25 个金融产品种子数据（保险/基金/理财/信托/结构化/其他）：
+```bash
+cd backend && python seed_products.py
+```
+
 ## API 端点
 
 ### 知识库
@@ -120,19 +135,32 @@ npm run dev
 | GET | `/api/knowledge/categories` | 分类列表 (含文档数) |
 | POST | `/api/knowledge/categories` | 创建分类 |
 | GET | `/api/knowledge/documents` | 文档列表 `?category_id=&q=` |
-| POST | `/api/knowledge/documents` | 上传文档 (multipart) |
+| POST | `/api/knowledge/documents` | 上传文档（multipart，支持 PDF/DOCX/TXT/MD/PPTX） |
 | GET | `/api/knowledge/documents/{id}` | 文档详情 |
-| DELETE | `/api/knowledge/documents/{id}` | 删除文档 |
+| DELETE | `/api/knowledge/documents/{id}` | 删除文档（同步清理 ChromaDB 向量） |
 
 ### 客户分析
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/customers` | 客户列表 `?q=` |
+| GET | `/api/customers` | 客户列表 `?q=&page=&page_size=` (分页) |
 | POST | `/api/customers` | 创建客户 |
-| POST | `/api/customers/analyze` | AI 分析预览 (不保存) |
+| POST | `/api/customers/analyze` | AI 分析预览（不保存） |
 | GET | `/api/customers/{id}` | 客户详情 + AI 画像 |
 | PUT | `/api/customers/{id}` | 更新客户 |
 | DELETE | `/api/customers/{id}` | 删除客户 |
+| POST | `/api/customers/{id}/presales-prep` | 生成售前准备报告 |
+| POST | `/api/customers/{id}/allocation-plan` | 生成资产配置方案（3 套） |
+| PUT | `/api/customers/{id}/allocation-plan` | 保存手动调整的配置方案 |
+
+### 产品库
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/products` | 产品列表 `?type=&risk_level=&q=&page=&page_size=` |
+| POST | `/api/products` | 创建产品 |
+| GET | `/api/products/{id}` | 产品详情（含净值走势） |
+| PUT | `/api/products/{id}` | 更新产品 |
+| DELETE | `/api/products/{id}` | 删除产品 |
+| POST | `/api/products/batch` | CSV 批量导入 |
 
 ### RAG 问答
 | 方法 | 路径 | 说明 |
@@ -142,18 +170,44 @@ npm run dev
 ## 核心功能
 
 **知识库**
-- 分类浏览 (财经法税/沟通技巧/行业知识/销售案例)
-- 文档上传自动索引到 ChromaDB (PDF/DOCX/TXT/MD/PPTX)
-- 全文搜索 + RAG 智能问答 (上下文感知，跨文档推理)
+- 分类浏览（财经法税/沟通技巧/行业知识/销售案例）
+- 文档上传自动索引到 ChromaDB（PDF/DOCX/TXT/MD/PPTX），带上传进度条
+- 全文搜索 + RAG 智能问答（上下文感知，跨文档推理）
+- 删除文档同步清理 ChromaDB 向量
+
+**知识库优先生成（KB-First）**
+- 所有 AI 生成（客户分析/售前准备/资产配置）调用 LLM 前先检索知识库
+- 匹配到相关文档 → 注入 prompt 优先参考
+- 无匹配或检索失败 → 静默回退纯 LLM 生成
 
 **客户分析**
 - 自由文本导入：粘贴客户描述 → DeepSeek 提取结构化画像
 - 表单录入：手动填写客户基本信息
-- AI 生成：客户画像、财务需求分析、沟通建议、风险提示、产品推荐、跟进建议
+- AI 6 维评分（财富规模/风险承受力/投资经验/需求紧迫度/客户潜力/沟通难度），基于 Rubric 客观打分
+- 雷达图可视化（Recharts）+ 评分进度条卡片
+- AI 深度分析报告：6 大板块各 4-6 句详细分析
+- 一键导出 PDF（含雷达图 + 完整分析报告，自动分页）
+
+**售前准备**
+- 基于已有客户画像，AI 一键生成售前策略报告
+- 5 大板块：生命周期分析 / 潜在难点 / 应对话术 / 心态准备 / 维护动作
+- 报告保存到客户档案，支持 PDF 导出
+
+**资产配置方案**
+- 基于客户画像和产品库，AI 生成 3 套配置方案（保守型/稳健型/进取型）
+- 堆叠柱状图可视化各方案产品配比
+- 支持手动调整配比（滑块 + 数值输入），实时校验总和 100%
+- 方案切换（AI 方案 / 用户方案）对比
+
+**产品库**
+- 25 个金融产品种子数据（保险/基金/理财/信托/结构化/其他，R1-R5）
+- 产品 CRUD + CSV 批量导入（带进度条）
+- 分页列表 + 类型/风险筛选 + 搜索
+- 展开查看净值走势图（12 个月模拟 NAV）
 
 **Dashboard**
-- 文档/客户统计
-- 系统组件健康状态 (FastAPI/PostgreSQL/DeepSeek/ChromaDB)
+- 文档/客户/产品统计
+- 系统组件健康状态
 
 ## License
 

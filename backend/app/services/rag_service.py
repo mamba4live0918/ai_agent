@@ -92,3 +92,20 @@ def chat(message: str, conversation_id: str | None = None) -> dict:
     result = query_llm(message, context, conversation_id)
     result["sources"] = sources
     return result
+
+
+def search_knowledge_base(query: str, k: int = 5) -> str:
+    """Search KB for relevant content. Returns formatted prompt-ready string or empty string on failure."""
+    try:
+        context, _ = retrieve_context(query, k=k)
+        if not context.strip():
+            return ""
+        return f"""
+【知识库匹配内容】
+以下是从知识库中检索到的相关文档内容，请优先参考这些材料进行分析和生成。
+如果内容与当前场景不相关，则基于你的专业知识生成。
+
+{context}
+"""
+    except Exception:
+        return ""

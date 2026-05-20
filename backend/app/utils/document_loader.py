@@ -2,8 +2,7 @@ import os
 from langchain_community.document_loaders import (
     PyMuPDFLoader,
     TextLoader,
-    UnstructuredWordDocumentLoader,
-    UnstructuredMarkdownLoader,
+    Docx2txtLoader,
     UnstructuredPowerPointLoader,
 )
 
@@ -11,8 +10,8 @@ from langchain_community.document_loaders import (
 EXTENSION_LOADERS = {
     ".pdf": PyMuPDFLoader,
     ".txt": TextLoader,
-    ".docx": UnstructuredWordDocumentLoader,
-    ".md": UnstructuredMarkdownLoader,
+    ".docx": Docx2txtLoader,
+    ".md": TextLoader,
     ".pptx": UnstructuredPowerPointLoader,
 }
 
@@ -24,7 +23,7 @@ def load_single_document(filepath: str) -> list:
     if loader_cls is None:
         raise ValueError(f"Unsupported file type: {ext}")
 
-    if ext == ".txt":
+    if ext in (".txt", ".md"):
         loader = loader_cls(filepath, encoding="utf-8")
     else:
         loader = loader_cls(filepath)

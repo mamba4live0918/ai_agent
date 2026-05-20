@@ -22,8 +22,8 @@ export default function KnowledgeBase() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleUpload = async (file: File, categoryId: string) => {
-    await uploadDocument(file, categoryId);
+  const handleUpload = async (file: File, categoryId: string, onProgress?: (pct: number) => void) => {
+    await uploadDocument(file, categoryId, onProgress);
     loadData();
   };
 
@@ -51,9 +51,9 @@ export default function KnowledgeBase() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 animate-in" style={{ animationDelay: '0ms' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-6 animate-in" style={{ animationDelay: '0ms' }}>
         <div>
           <h2 className="text-xl font-bold text-[#e6edf3]">知识库</h2>
           <p className="text-sm text-[#8b949e] mt-1">浏览和搜索销售辅助文档，支持 RAG 智能问答</p>
@@ -74,7 +74,7 @@ export default function KnowledgeBase() {
 
       <div className="space-y-4">
         {/* Upload + Search row */}
-        <div className="flex gap-3 animate-in" style={{ animationDelay: '80ms' }}>
+        <div className="flex flex-col sm:flex-row gap-3 animate-in" style={{ animationDelay: '80ms' }}>
           <div className="flex-1">
             <SearchBar value={search} onChange={setSearch} placeholder="搜索文档标题、内容..." />
           </div>
