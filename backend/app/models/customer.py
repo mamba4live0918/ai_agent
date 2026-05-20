@@ -17,5 +17,6 @@ class Customer(Base):
     ai_profile: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     scores: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     presales_prep: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    allocation_plan: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
