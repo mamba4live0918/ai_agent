@@ -2,13 +2,16 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { Customer, CustomerProfile as CustomerProfileType, ScoreDimension } from '../types';
+import { regenerateProfile, updateCustomer } from '../services/api';
 import CustomerRadar from './CustomerRadar';
 import ProductManager from './ProductManager';
 import AllocationPlan from './AllocationPlan';
+import KycGrid from './KycGrid';
 
 interface Props {
   customer: Customer | CustomerProfileType;
   onPresalesPrep?: () => Promise<void>;
+  onRefresh?: (updated: Customer) => void;
 }
 
 type TabKey = 'analysis' | 'presales' | 'allocation';
@@ -54,20 +57,28 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const [prepLoading, setPrepLoading] = useState(false);
   const [localCustomer, setLocalCustomer] = useState(customer);
   useEffect(() => { setLocalCustomer(customer); }, [customer]);
+  const [showKyc, setShowKyc] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
+
+  const scores = localCustomer.scores as Record<string, { value: number } | undefined> | null;
+  const wealthScale = scores?.wealth_scale?.value ?? 0;
+  const isHighValue = wealthScale >= 7;
 
   const sd = localCustomer.structured_data || {};
 
-  const fields = ([
-    ['年龄', String(sd.age ?? '')],
-    ['性别', String(sd.gender ?? '')],
-    ['职业', String(sd.occupation ?? '')],
-    ['收入水平', String(sd.income_level ?? '')],
-    ['资产状况', String(sd.assets ?? '')],
-    ['风险偏好', String(sd.risk_preference ?? '')],
-    ['投资经验', String(sd.investment_experience ?? '')],
-    ['家庭状况', String(sd.family_status ?? '')],
-    ['理财目标', String(sd.goals ?? '')],
-  ] as [string, string][]).filter(([, v]) => v && v !== '未知');
+  const FIELD_KEYS: Record<string, string> = {
+    '年龄': 'age', '性别': 'gender', '职业': 'occupation',
+    '收入水平': 'income_level', '资产状况': 'assets', '风险偏好': 'risk_preference',
+    '投资经验': 'investment_experience', '家庭状况': 'family_status', '理财目标': 'goals',
+  };
+
+  const fields = (Object.entries(FIELD_KEYS) as [string, string][]).map(([label, key]) => {
+    const stored = String((sd as Record<string, unknown>)[key] ?? '');
+    const raw = stored && stored !== '未知' ? stored : '';
+    return [label, raw, key] as [string, string, string];
+  });
 
   const ap = localCustomer.ai_profile as Record<string, string> | null || {};
 
@@ -92,7 +103,41 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   ] as [string, string, string][]).filter(([, v]) => v);
 
   const hasPrepData = ppSections.length > 0;
-  const hasAnyData = fields.length > 0 || apSections.length > 0 || dimensions.length > 0;
+  const hasAnyData = fields.some(([, val]) => !!val) || apSections.length > 0 || dimensions.length > 0;
+
+  const handleFieldEdit = (key: string, value: string) => {
+    setFieldEdits(prev => ({ ...prev, [key]: value }));
+  };
+
+  const saveFieldEdits = async () => {
+    if (!('id' in localCustomer)) return;
+    const updatedSD = { ...(localCustomer.structured_data || {}) };
+    for (const [key, val] of Object.entries(fieldEdits)) {
+      updatedSD[key] = val || null;
+    }
+    try {
+      const updated = await updateCustomer((localCustomer as Customer).id, {
+        name: localCustomer.name,
+        structured_data: updatedSD,
+      });
+      setLocalCustomer(updated);
+      setEditingField(null);
+      setFieldEdits({});
+    } catch { /* silently skip */ }
+  };
+
+  const handleRegenerate = async () => {
+    if (!('id' in localCustomer)) return;
+    setRegenerating(true);
+    try {
+      const updated = await regenerateProfile(
+        (localCustomer as Customer).id,
+        (localCustomer.structured_data as Record<string, unknown>) || undefined,
+      );
+      setLocalCustomer(updated);
+    } catch { /* silently skip */ }
+    finally { setRegenerating(false); }
+  };
 
   const handlePrep = async () => {
     if (!onPresalesPrep) return;
@@ -109,61 +154,106 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
     const el = reportRef.current;
     if (!el) return;
 
-    // Temporarily show all tab panels for full export
+    const wasKyc = showKyc;
+
+    // Phase 1: Force AI analysis view, apply light theme, show all panels
+    if (wasKyc) setShowKyc(false);
+    await new Promise(r => setTimeout(r, 80));
+    el.classList.add('pdf-export');
+
     const panels = el.querySelectorAll<HTMLElement>('[data-tab-panel]');
     const prevDisplay: string[] = [];
     panels.forEach(p => {
       prevDisplay.push(p.style.display);
       p.style.display = 'block';
     });
-
-    // Small delay to let browser apply display changes
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 150));
 
     try {
-      const canvas = await html2canvas(el, {
-        backgroundColor: '#0d1117',
-        scale: 2,
-        logging: false,
-      });
+      // Phase 2: Capture all sections with showKyc = false (AI analysis visible)
+      const sectionEls = Array.from(el.querySelectorAll<HTMLElement>('[data-pdf-section]'));
+      interface SectionCapture { label: string; canvas: HTMLCanvasElement; }
+      const captures: SectionCapture[] = [];
 
+      for (const secEl of sectionEls) {
+        if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
+        const label = secEl.getAttribute('data-pdf-section') || '';
+        const canvas = await html2canvas(secEl, {
+          backgroundColor: '#ffffff',
+          scale: 3,
+          logging: false,
+        });
+        captures.push({ label, canvas });
+      }
+
+      // Phase 3: If high-value customer AND has AI profile, capture KYC grid too
+      // (KYC is hidden behind toggle when AI profile exists)
+      const hasAiProfile = apSections.length > 0;
+      if (isHighValue && hasAiProfile) {
+        setShowKyc(true);
+        await new Promise(r => setTimeout(r, 100));
+        panels.forEach(p => { p.style.display = 'block'; });
+        await new Promise(r => setTimeout(r, 150));
+
+        const kycEls = Array.from(el.querySelectorAll<HTMLElement>('[data-pdf-section]'))
+          .filter(s => s.getAttribute('data-pdf-section') === 'KYC 九宫格');
+
+        // Insert KYC right after AI 分析报告 in the section order
+        const aiAnalysisIndex = captures.findIndex(c => c.label === 'AI 分析报告');
+        const insertAt = aiAnalysisIndex >= 0 ? aiAnalysisIndex + 1 : captures.length;
+
+        for (let k = 0; k < kycEls.length; k++) {
+          const secEl = kycEls[k];
+          if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
+          const canvas = await html2canvas(secEl, {
+            backgroundColor: '#ffffff',
+            scale: 3,
+            logging: false,
+          });
+          captures.splice(insertAt + k, 0, { label: 'KYC 九宫格', canvas });
+        }
+      }
+
+      // Phase 4: Build PDF from captured section canvases
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
       const imgWidth = pageWidth - margin * 2;
       const maxImgHeight = pageHeight - margin * 2;
-      const scaleFactor = imgWidth / canvas.width;
 
-      let srcY = 0;
       let firstPage = true;
 
-      while (srcY < canvas.height) {
-        const sliceHeight = Math.min(canvas.height - srcY, Math.round(maxImgHeight / scaleFactor));
+      for (const { canvas } of captures) {
+        const scaleFactor = imgWidth / canvas.width;
 
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
+        let srcY = 0;
+        while (srcY < canvas.height) {
+          const sliceHeight = Math.min(canvas.height - srcY, Math.round(maxImgHeight / scaleFactor));
 
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceHeight;
-        const ctx = sliceCanvas.getContext('2d')!;
-        ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
 
-        const sliceData = sliceCanvas.toDataURL('image/png');
-        const slicePdfHeight = (sliceHeight * imgWidth) / canvas.width;
-        pdf.addImage(sliceData, 'PNG', margin, margin, imgWidth, slicePdfHeight);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceHeight;
+          const ctx = sliceCanvas.getContext('2d')!;
+          ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
 
-        srcY += sliceHeight;
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, (sliceHeight * imgWidth) / canvas.width);
+          srcY += sliceHeight;
+        }
       }
 
       pdf.save(`客户分析_${localCustomer.name}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
+      el.classList.remove('pdf-export');
       panels.forEach((p, i) => {
         p.style.display = prevDisplay[i];
       });
+      setShowKyc(wasKyc);
     }
-  }, [localCustomer.name]);
+  }, [localCustomer.name, showKyc, isHighValue, apSections.length]);
 
   const sectionBlock = (title: string, content: string, color: string) => (
     <div key={title} className="bg-[#0d1117] border border-[#21262d] rounded-md p-3.5">
@@ -192,7 +282,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             </p>
           </div>
         </div>
-        <button onClick={handleExportPDF} className="btn btn-secondary text-xs">
+        <button onClick={handleExportPDF} className="btn btn-secondary text-xs pdf-hide">
           <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
             <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Zm-1 7v3a.5.5 0 0 1-1 0V9h-.5a.5.5 0 0 1 0-1h2a.5.5 0 0 1 0 1H9Zm-2-5V2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0Z"/>
           </svg>
@@ -222,22 +312,64 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab 1: 客户分析 */}
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            {fields.length > 0 && (
-              <div>
-                <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {fields.map(([label, value]) => (
-                    <div key={label} className="bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2">
-                      <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-0.5">{label}</div>
-                      <div className="text-sm text-[#e6edf3] font-medium">{value}</div>
+            {/* Basic info always shows 9-grid */}
+            <div data-pdf-section="基本信息">
+              <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {fields.map(([label, value, key]) => {
+                  const displayValue = fieldEdits[key] !== undefined ? fieldEdits[key] : value;
+                  const isEmpty = !displayValue;
+                  const isEditing = editingField === key;
+
+                  return (
+                    <div
+                      key={key}
+                      className={`relative rounded-md border p-2.5 min-h-[72px] flex flex-col ${
+                        isEmpty ? 'border-[#30363d]/50 bg-[#161b22]/50' : 'border-[#21262d] bg-[#0d1117]'
+                      }`}
+                    >
+                      <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">{label}</div>
+                      {isEditing ? (
+                        <textarea
+                          className="flex-1 w-full bg-[#161b22] border border-[#30363d] rounded p-1.5 text-xs text-[#e6edf3] resize-none focus:outline-none focus:border-[#58a6ff]"
+                          value={fieldEdits[key] || ''}
+                          onChange={e => handleFieldEdit(key, e.target.value)}
+                          rows={2}
+                        />
+                      ) : !isEmpty ? (
+                        <p className="text-sm text-[#e6edf3] font-medium flex-1">{displayValue}</p>
+                      ) : (
+                        <p className="text-sm text-[#30363d] flex-1">—</p>
+                      )}
+
+                      <div className="flex items-center justify-end mt-1">
+                        {isEditing ? (
+                          <button
+                            onClick={() => saveFieldEdits()}
+                            className="text-[10px] px-2 py-0.5 rounded bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+                          >
+                            保存
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setFieldEdits(prev => ({ ...prev, [key]: displayValue }));
+                              setEditingField(key);
+                            }}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors pdf-hide"
+                          >
+                            ✎
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
 
             {dimensions.length > 0 && (
-              <div className="space-y-4">
+              <div data-pdf-section="评分总览" className="space-y-4">
                 <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">
                   评分总览
                   <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
@@ -271,13 +403,55 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {apSections.length > 0 && (
               <div>
-                <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">
-                  AI 分析报告
-                  <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
-                </h4>
-                <div className="space-y-2">
-                  {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
+                    AI 分析报告
+                    <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {'id' in localCustomer && (
+                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#484f58] transition-colors disabled:opacity-50 pdf-hide">
+                        {regenerating ? '生成中...' : '⟳ 重新生成'}
+                      </button>
+                    )}
+                    {isHighValue && (
+                      <button
+                        onClick={() => setShowKyc(!showKyc)}
+                        className={`text-[10px] px-2 py-1 rounded border transition-colors pdf-hide ${
+                          showKyc
+                            ? 'border-[#d29922]/40 text-[#d29922] bg-[#d29922]/10'
+                            : 'border-[#30363d] text-[#8b949e] hover:text-[#d29922] hover:border-[#d29922]/30'
+                        }`}
+                      >
+                        {showKyc ? '回到 AI 分析' : 'KYC 九宫格'}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {showKyc ? (
+                  <div data-pdf-section="KYC 九宫格">
+                    <KycGrid customer={localCustomer as Customer} />
+                  </div>
+                ) : (
+                  <div data-pdf-section="AI 分析报告" className="space-y-2">
+                    {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show KYC toggle even when no AI profile, but customer is high value */}
+            {apSections.length === 0 && isHighValue && (
+              <div data-pdf-section="KYC 九宫格">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">KYC 九宫格</h4>
+                  {'id' in localCustomer && (
+                    <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors disabled:opacity-50">
+                      {regenerating ? '生成中...' : '⟳ 先生成 AI 分析'}
+                    </button>
+                  )}
+                </div>
+                <KycGrid customer={localCustomer as Customer} />
               </div>
             )}
 
@@ -293,14 +467,14 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         <div data-tab-panel style={{ display: activeTab === 'presales' ? 'block' : 'none' }}>
           <div className="space-y-5">
             {hasPrepData ? (
-              <>
+              <div data-pdf-section="售前准备报告">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
                     售前准备报告
                     <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
                   </h4>
                   {onPresalesPrep && (
-                    <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs">
+                    <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs pdf-hide">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
                         <path d="M7.25 4.75a.75.75 0 0 1 1.5 0v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5Z"/>
@@ -312,7 +486,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                 <div className="space-y-2">
                   {ppSections.map(([title, content, color]) => sectionBlock(title, content, color))}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <svg className="w-10 h-10 text-[#21262d] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
@@ -335,9 +509,18 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab 3: 配置方案 */}
         <div data-tab-panel style={{ display: activeTab === 'allocation' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            <ProductManager />
+            <div className="pdf-hide">
+              <ProductManager />
+            </div>
             {'structured_data' in localCustomer && (
-              <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+              (localCustomer as Customer).allocation_plan ? (
+                <div data-pdf-section="资产配置方案">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">资产配置方案</h4>
+                  <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+                </div>
+              ) : (
+                <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+              )
             )}
           </div>
         </div>

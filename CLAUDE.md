@@ -38,7 +38,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 ### 后端模块
 
 - `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除）
-- `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案
+- `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案 + 画像重新生成
 - `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
 - `routers/chat.py` — 知识库 RAG 问答
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
@@ -57,6 +57,15 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/AllocationPlan.tsx` — 3 套配置方案对比 + 手动调整 + 图表
 - `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页 + 净值刷新）
 - `components/ProductNavChart.tsx` — 产品净值走势图（基于 Recharts）
+- `components/KycGrid.tsx` — 华兴银行高客 KYC 九宫格（严格数据映射 + 手动补填）
+
+### KYC 九宫格
+
+- 高净值客户（wealth_scale ≥ 7，资产约 >500 万）自动显示切换入口
+- 严格从 `structured_data` + `ai_profile` 映射 9 个格子，不增添信息
+- 信息缺失格子橙色标记 + 编辑角标，用户可手动补充
+- 一键切换：AI 分析报告 ↔ KYC 九宫格
+- `POST /api/customers/{id}/regenerate-profile` 重新生成 AI 画像
 
 ### 基金净值数据
 

@@ -17,6 +17,8 @@ Customer description:
 
 {kb_context}
 
+{manual_context}
+
 Return ONLY valid JSON, no other text. **CRITICAL: You MUST include the "scores" field with all 6 dimensions. Each dimension MUST have a "value" (integer 1-10) and "reasoning" (string). This is mandatory — do NOT omit the scores.**
 
 Use this exact structure:
@@ -99,9 +101,32 @@ Rules:
 - If a dimension cannot be scored from available info, fill with a moderate value (4-6) and note "信息不足，基于有限信息推断" in reasoning"""
 
 
-def analyze_customer(raw_text: str) -> dict:
+def analyze_customer(raw_text: str, edited_structured_data: dict | None = None) -> dict:
     kb_context = search_knowledge_base(raw_text)
-    prompt = ANALYSIS_PROMPT.format(raw_text=raw_text, kb_context=kb_context)
+
+    # Build manual context from edited structured_data
+    manual_context = ""
+    if edited_structured_data:
+        parts = []
+        for key, label in [
+            ("age", "年龄"), ("gender", "性别"), ("occupation", "职业"),
+            ("income_level", "收入水平"), ("assets", "资产状况"),
+            ("risk_preference", "风险偏好"), ("investment_experience", "投资经验"),
+            ("family_status", "家庭状况"), ("goals", "理财目标"),
+        ]:
+            val = edited_structured_data.get(key)
+            if val and val != "未知" and val != "":
+                parts.append(f"- {label}：{val}")
+        if parts:
+            manual_context = "\n".join([
+                "",
+                "【人工补充信息（最高优先级）】",
+                "以下信息来自销售人员手动填写，请严格采用这些数据，不要用 AI 重新推断或覆盖：",
+                *parts,
+                "对于未列出的字段，继续从原始客户描述中提取。",
+            ])
+
+    prompt = ANALYSIS_PROMPT.format(raw_text=raw_text, kb_context=kb_context, manual_context=manual_context)
 
     response = _client.chat.completions.create(
         model=settings.llm_model,

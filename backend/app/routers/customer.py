@@ -12,6 +12,7 @@ from ..models.product import Product
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
     CustomerResponse, CustomerListResponse, AllocationPlanSave,
+    RegenerateProfileRequest,
 )
 from ..services.customer_service import analyze_customer, generate_presales_prep
 from ..services.allocation_service import generate_allocation_plan
@@ -63,6 +64,30 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
 def analyze_customer_text(data: CustomerAnalyzeRequest):
     result = analyze_customer(data.raw_text)
     return CustomerAnalyzeResponse(**result)
+
+
+@router.post("/{customer_id}/regenerate-profile", response_model=CustomerResponse)
+def regenerate_customer_profile(
+    customer_id: uuid.UUID,
+    data: RegenerateProfileRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    if not customer.raw_input:
+        raise HTTPException(status_code=400, detail="Customer has no raw_input to re-analyze")
+
+    edited_sd = data.structured_data if data else None
+    merged_sd = {**(customer.structured_data or {}), **(edited_sd or {})}
+    result = analyze_customer(customer.raw_input, edited_structured_data=merged_sd)
+    customer.name = result.get("name", customer.name)
+    customer.structured_data = result.get("structured_data", customer.structured_data)
+    customer.ai_profile = result.get("ai_profile", customer.ai_profile)
+    customer.scores = result.get("scores", customer.scores)
+    db.commit()
+    db.refresh(customer)
+    return CustomerResponse.model_validate(customer)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
