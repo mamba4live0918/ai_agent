@@ -128,7 +128,15 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
     const el = reportRef.current;
     if (!el) return;
 
-    // Temporarily show all tab panels for full export
+    // Force AI analysis view for export (hide KYC grid if active)
+    const wasKyc = showKyc;
+    if (wasKyc) setShowKyc(false);
+    await new Promise(r => setTimeout(r, 50));
+
+    // Apply light theme for PDF
+    el.classList.add('pdf-export');
+
+    // Show all tab panels
     const panels = el.querySelectorAll<HTMLElement>('[data-tab-panel]');
     const prevDisplay: string[] = [];
     panels.forEach(p => {
@@ -136,53 +144,75 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
       p.style.display = 'block';
     });
 
-    // Small delay to let browser apply display changes
-    await new Promise(r => setTimeout(r, 100));
+    const tabLabels = ['客户分析', '售前准备', '配置方案'];
+    await new Promise(r => setTimeout(r, 150));
 
     try {
-      const canvas = await html2canvas(el, {
-        backgroundColor: '#0d1117',
-        scale: 2,
-        logging: false,
-      });
-
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
       const imgWidth = pageWidth - margin * 2;
       const maxImgHeight = pageHeight - margin * 2;
-      const scaleFactor = imgWidth / canvas.width;
+      const headerH = 8; // mm for tab title
 
-      let srcY = 0;
       let firstPage = true;
 
-      while (srcY < canvas.height) {
-        const sliceHeight = Math.min(canvas.height - srcY, Math.round(maxImgHeight / scaleFactor));
+      for (let i = 0; i < panels.length; i++) {
+        const panel = panels[i];
+        if (!panel.children.length) continue;
 
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
+        const canvas = await html2canvas(panel, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: false,
+        });
 
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceHeight;
-        const ctx = sliceCanvas.getContext('2d')!;
-        ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+        const scaleFactor = imgWidth / canvas.width;
+        const contentMaxH = maxImgHeight - headerH;
 
-        const sliceData = sliceCanvas.toDataURL('image/png');
-        const slicePdfHeight = (sliceHeight * imgWidth) / canvas.width;
-        pdf.addImage(sliceData, 'PNG', margin, margin, imgWidth, slicePdfHeight);
+        let srcY = 0;
+        while (srcY < canvas.height) {
+          const sliceHeight = Math.min(canvas.height - srcY, Math.round(contentMaxH / scaleFactor));
 
-        srcY += sliceHeight;
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+
+          // Tab title header (only on first slice of each tab)
+          if (srcY === 0) {
+            pdf.setFontSize(11);
+            pdf.setTextColor(31, 35, 40);
+            pdf.text(tabLabels[i], margin, margin + 5);
+            pdf.setDrawColor(208, 215, 222);
+            pdf.line(margin, margin + 6.5, pageWidth - margin, margin + 6.5);
+          }
+
+          const imgY = srcY === 0 ? margin + headerH : margin;
+          const availableH = srcY === 0 ? contentMaxH : maxImgHeight;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceHeight;
+          const ctx = sliceCanvas.getContext('2d')!;
+          ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+
+          const sliceData = sliceCanvas.toDataURL('image/png');
+          const slicePdfHeight = (sliceHeight * imgWidth) / canvas.width;
+          pdf.addImage(sliceData, 'PNG', margin, imgY, imgWidth, slicePdfHeight);
+
+          srcY += sliceHeight;
+        }
       }
 
       pdf.save(`客户分析_${localCustomer.name}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
+      el.classList.remove('pdf-export');
       panels.forEach((p, i) => {
         p.style.display = prevDisplay[i];
       });
+      if (wasKyc) setShowKyc(true);
     }
-  }, [localCustomer.name]);
+  }, [localCustomer.name, showKyc]);
 
   const sectionBlock = (title: string, content: string, color: string) => (
     <div key={title} className="bg-[#0d1117] border border-[#21262d] rounded-md p-3.5">
