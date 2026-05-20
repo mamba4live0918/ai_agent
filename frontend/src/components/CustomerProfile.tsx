@@ -41,6 +41,7 @@ function getScoreColor(v: number): string {
 export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [prepLoading, setPrepLoading] = useState(false);
+  const [showPrep, setShowPrep] = useState(true);
 
   const sd = customer.structured_data || {};
 
@@ -85,6 +86,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
     setPrepLoading(true);
     try {
       await onPresalesPrep();
+      setShowPrep(true);
     } finally {
       setPrepLoading(false);
     }
@@ -134,7 +136,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   return (
     <div className="space-y-5">
       {/* Header + Export */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f6feb] to-[#58a6ff] flex items-center justify-center flex-shrink-0 shadow-glow-green">
             <span className="text-sm font-bold text-white">{customer.name.charAt(0)}</span>
@@ -158,6 +160,29 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
               {prepLoading ? '生成中...' : '售前准备'}
             </button>
           )}
+          {onPresalesPrep && hasPrepData && (
+            <>
+              <button
+                onClick={() => setShowPrep(!showPrep)}
+                className="btn btn-secondary text-xs"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  {showPrep
+                    ? <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+                    : <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75Z"/>
+                  }
+                </svg>
+                {showPrep ? '收起报告' : '展开报告'}
+              </button>
+              <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
+                  <path d="M7.25 4.75a.75.75 0 0 1 1.5 0v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5Z"/>
+                </svg>
+                {prepLoading ? '生成中...' : '重新生成'}
+              </button>
+            </>
+          )}
           <button onClick={handleExportPDF} className="btn btn-secondary text-xs">
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
               <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Zm-1 7v3a.5.5 0 0 1-1 0V9h-.5a.5.5 0 0 1 0-1h2a.5.5 0 0 1 0 1H9Zm-2-5V2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0Z"/>
@@ -173,7 +198,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {fields.length > 0 && (
           <div>
             <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {fields.map(([label, value]) => (
                 <div key={label} className="bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2">
                   <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-0.5">{label}</div>
@@ -193,7 +218,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             </h4>
 
             {/* Score cards */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {dimensions.map(d => (
                 <div key={d.key} className="bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2.5">
                   <div className="flex items-center justify-between mb-1">
@@ -242,7 +267,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         )}
 
         {/* Presales prep sections */}
-        {hasPrepData && (
+        {hasPrepData && showPrep && (
           <div>
             <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">
               售前准备报告

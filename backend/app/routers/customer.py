@@ -1,3 +1,4 @@
+import math
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -17,17 +18,23 @@ router = APIRouter()
 @router.get("", response_model=CustomerListResponse)
 def list_customers(
     q: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     query = db.query(Customer)
     if q:
         query = query.filter(Customer.name.ilike(f"%{q}%"))
-    query = query.order_by(Customer.updated_at.desc())
     total = query.count()
-    items = query.all()
+    total_pages = max(1, math.ceil(total / page_size))
+    offset = (page - 1) * page_size
+    items = query.order_by(Customer.updated_at.desc()).offset(offset).limit(page_size).all()
     return CustomerListResponse(
         items=[CustomerResponse.model_validate(item) for item in items],
         total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
     )
 
 

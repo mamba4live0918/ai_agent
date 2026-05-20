@@ -40,8 +40,13 @@ export const deleteDocument = (id: string) =>
   request<void>(`/knowledge/documents/${id}`, { method: 'DELETE' });
 
 // Customers
-export const getCustomers = (q?: string) =>
-  request<import('../types').CustomerList>(`/customers${q ? `?q=${q}` : ''}`);
+export const getCustomers = (q?: string, page = 1, pageSize = 10) => {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  return request<import('../types').CustomerList>(`/customers?${params}`);
+};
 export const getCustomer = (id: string) =>
   request<import('../types').Customer>(`/customers/${id}`);
 export const createCustomer = (data: { name: string; raw_input?: string; structured_data?: Record<string, unknown>; ai_profile?: Record<string, unknown>; scores?: Record<string, unknown> }) =>

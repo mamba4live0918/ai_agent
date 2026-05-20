@@ -6,7 +6,7 @@
 - [x] DeepSeek API 集成
 - [x] Ollama Embedding (`nomic-embed-text`)
 - [x] GitHub 风格前端 UI (Tailwind CSS)
-- [ ] 移动端适配
+- [x] 移动端适配 (响应式侧边栏 + 全页面断点适配 + 客户列表分页)
 - [ ] 用户登录/权限系统
 
 ## 陪跑助手

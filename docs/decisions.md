@@ -72,4 +72,52 @@
 - 报告内容在 `reportRef` 内，PDF 导出自动包含
 - 按钮仅在有 AI 画像但无售前报告时显示（避免重复生成）
 
+## 2026-05-20 — 移动端响应式适配
+
+### 策略
+
+Mobile-first + Tailwind 断点递增（`sm:` 640px、`lg:` 1024px），覆盖全部 13 个前端文件。
+
+### Layout 组件
+
+- 侧边栏：`fixed lg:static`，`-translate-x-full lg:translate-x-0` — 移动端 off-canvas，桌面端固定
+- 移动端汉堡菜单 + 半透明遮罩（`bg-black/60`），点击遮罩或导航链接关闭
+- 主内容区 `pt-12 lg:pt-0` 避开移动端固定顶栏
+
+### 关键组件适配
+
+| 组件 | 移动端 → 桌面端 |
+|------|----------------|
+| Dashboard 统计卡片 | `grid-cols-1 → sm:grid-cols-2` |
+| Dashboard 系统状态 | `grid-cols-2 → sm:grid-cols-4` |
+| KnowledgeBase 头部 | `flex-col → sm:flex-row` |
+| CustomerAnalysis 列表/详情 | `col-span-12` 堆叠 → `lg:col-span-5/7` 分栏 |
+| CustomerAnalysis 移动端详情 | 内联在选中卡片下方（`lg:hidden`），桌面端右侧面板 |
+| CustomerProfile 信息/评分 | `grid-cols-1 → sm:2 → lg:3` |
+| CustomerForm 表单 | `grid-cols-1 → sm:grid-cols-2` |
+| 删除按钮 | 移动端常显，桌面端 `lg:opacity-0 lg:group-hover:opacity-100` |
+| ChatPanel 高度 | `h-[380px] → sm:h-[480px]` |
+| 客户卡片点击 | 首次点击展开报告，再次点击收起（toggle） |
+
+### 售前准备报告交互
+
+- 生成后支持"收起报告/展开报告"切换（`showPrep` state）
+- 支持"重新生成"（客户信息更新后可刷新报告）
+- 重新生成自动展开显示
+
+## 2026-05-20 — 客户列表分页
+
+### 后端
+
+- `GET /api/customers` 新增 `page`（默认1）/ `page_size`（默认10，上限100）查询参数
+- SQL: `offset((page-1) * page_size).limit(page_size)`
+- 响应新增 `page`, `page_size`, `total_pages` 三个字段
+
+### 前端
+
+- 分页栏：`«` / 页码按钮（省略号算法，当前页±1显示） / `»` + "2/5 页" + 跳转输入框
+- 搜索时自动重置到第1页
+- 切换页面时清除已选客户
+- 跳转输入框限制仅数字，Enter 跳转
+
 

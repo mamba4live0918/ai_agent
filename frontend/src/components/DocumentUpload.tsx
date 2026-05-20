@@ -34,7 +34,7 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
   };
 
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
+    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
       <select
         value={categoryId}
         onChange={e => setCategoryId(e.target.value)}

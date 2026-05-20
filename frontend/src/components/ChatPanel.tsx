@@ -40,7 +40,7 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="card flex flex-col" style={{ height: '480px' }}>
+    <div className="card flex flex-col h-[380px] sm:h-[480px]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#21262d] bg-[#0d1117] rounded-t-md">
         <span className="w-2 h-2 rounded-full bg-[#3fb950]" />

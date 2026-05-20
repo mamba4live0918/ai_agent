@@ -15,7 +15,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
       {/* Header */}
       <div className="mb-10 animate-in" style={{ animationDelay: '0ms' }}>
         <div className="flex items-center gap-3 mb-3">
@@ -32,7 +32,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4 mb-8 animate-in" style={{ animationDelay: '80ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 animate-in" style={{ animationDelay: '80ms' }}>
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-[#8b949e] uppercase tracking-wider">知识库文档</span>
@@ -61,7 +61,7 @@ export default function Dashboard() {
       </div>
 
       {/* Module cards */}
-      <div className="grid grid-cols-2 gap-4 animate-in" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in" style={{ animationDelay: '150ms' }}>
         <Link to="/knowledge" className="card card-hover p-6 group transition-colors duration-150">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-[#1f2937] border border-[#30363d] flex items-center justify-center group-hover:border-[#58a6ff]/40 transition-colors">
@@ -109,7 +109,7 @@ export default function Dashboard() {
           </svg>
           <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">系统组件状态</span>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { name: 'FastAPI', status: 'online', accent: 'green' },
             { name: 'PostgreSQL', status: 'online', accent: 'green' },

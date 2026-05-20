@@ -114,7 +114,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
         </div>
       ) : (
         <div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-xs font-medium text-[#8b949e] mb-1">姓名</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}

@@ -12,7 +12,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Ollama (`nomic-embed-text`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
-| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts |
+| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 
 ## 项目结构
 
@@ -127,7 +127,7 @@ npm run dev
 ### 客户分析
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/customers` | 客户列表 `?q=` |
+| GET | `/api/customers` | 客户列表 `?q=&page=&page_size=` (分页) |
 | POST | `/api/customers` | 创建客户 |
 | POST | `/api/customers/analyze` | AI 分析预览 (不保存) |
 | GET | `/api/customers/{id}` | 客户详情 + AI 画像 |
