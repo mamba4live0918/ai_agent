@@ -70,7 +70,7 @@ def generate_allocation_plan(client_data: dict, products: list[dict]) -> dict:
             {"role": "user", "content": prompt},
         ],
         temperature=0.3,
-        max_tokens=6000,
+        max_tokens=8000,
     )
 
     content = response.choices[0].message.content
@@ -80,9 +80,28 @@ def generate_allocation_plan(client_data: dict, products: list[dict]) -> dict:
     if json_match:
         content = json_match.group(1)
 
+    # Remove BOM and control characters that break JSON
+    content = content.replace("﻿", "")
+
     try:
         result = json.loads(content)
-    except json.JSONDecodeError:
-        result = {"error": "JSON parse failed", "raw": content}
+    except json.JSONDecodeError as e:
+        # Try to repair truncated JSON
+        if "Unterminated string" in str(e) or "Expecting" in str(e) or "end of file" in str(e):
+            # Strip the unterminated line and close all open structures
+            lines = content.split("\n")
+            # Remove the last line (the one with unterminated string)
+            repaired = "\n".join(lines[:-1]).rstrip().rstrip(",")
+            # Close remaining open allocations array and plan objects
+            # Count current brace/bracket depth
+            depth_brackets = repaired.count("[") - repaired.count("]")
+            depth_braces = repaired.count("{") - repaired.count("}")
+            repaired += "]" * depth_brackets + "}" * depth_braces
+            try:
+                result = json.loads(repaired)
+            except json.JSONDecodeError:
+                result = {"error": "JSON parse failed (truncated)", "raw": content}
+        else:
+            result = {"error": "JSON parse failed", "raw": content}
 
     return result

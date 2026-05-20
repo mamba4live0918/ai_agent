@@ -145,7 +145,19 @@ def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db)
 
     result = generate_allocation_plan(client_data, products_data)
     ai_plan = result
+
+    # Enrich allocations with product_name from the DB product lookup
+    product_name_map = {str(p.id): p.name for p in products}
+    if "error" not in ai_plan:
+        for plan_key in ("conservative", "balanced", "aggressive"):
+            plan = ai_plan.get(plan_key)
+            if plan and "allocations" in plan:
+                for alloc in plan["allocations"]:
+                    pid = alloc.get("product_id", "")
+                    alloc["product_name"] = product_name_map.get(pid, "未知产品")
+
     allocation_plan = {
+        "total_investable": ai_plan.get("total_investable") if isinstance(ai_plan, dict) else None,
         "ai_plan": copy.deepcopy(ai_plan),
         "user_plan": copy.deepcopy(ai_plan),
         "generated_at": datetime.utcnow().isoformat(),
