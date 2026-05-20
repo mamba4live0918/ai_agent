@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine, Base
-from .routers import knowledge, customer, chat
+from .routers import knowledge, customer, chat, product
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +19,7 @@ app.add_middleware(
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(customer.router, prefix="/api/customers", tags=["customers"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(product.router, prefix="/api/products", tags=["products"])
 
 
 @app.get("/api/health")
