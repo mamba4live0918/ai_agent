@@ -60,6 +60,42 @@ export const updateCustomer = (id: string, data: { name: string; raw_input?: str
 export const deleteCustomer = (id: string) =>
   request<void>(`/customers/${id}`, { method: 'DELETE' });
 
+// Products
+export const getProducts = (type?: string, riskLevel?: number, q?: string, page = 1, pageSize = 10) => {
+  const params = new URLSearchParams();
+  if (type) params.set('type', type);
+  if (riskLevel !== undefined) params.set('risk_level', String(riskLevel));
+  if (q) params.set('q', q);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  return request<import('../types').ProductList>(`/products?${params}`);
+};
+export const getProduct = (id: string) =>
+  request<import('../types').Product>(`/products/${id}`);
+export const createProduct = (data: Record<string, unknown>) =>
+  request<import('../types').Product>('/products', { method: 'POST', body: JSON.stringify(data) });
+export const importProductsCsv = (file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  return fetch(`${BASE}/products/batch`, { method: 'POST', body: form }).then(r => {
+    if (!r.ok) throw new Error('Import failed');
+    return r.json() as Promise<import('../types').ProductList>;
+  });
+};
+export const updateProduct = (id: string, data: Record<string, unknown>) =>
+  request<import('../types').Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteProduct = (id: string) =>
+  request<void>(`/products/${id}`, { method: 'DELETE' });
+
+// Allocation
+export const generateAllocationPlan = (id: string) =>
+  request<import('../types').Customer>(`/customers/${id}/allocation-plan`, { method: 'POST' });
+export const saveAllocationPlan = (id: string, userPlan: Record<string, unknown>, totalInvestable?: number) =>
+  request<import('../types').Customer>(`/customers/${id}/allocation-plan`, {
+    method: 'PUT',
+    body: JSON.stringify({ user_plan: userPlan, total_investable: totalInvestable }),
+  });
+
 // Chat
 export const sendMessage = (message: string, conversationId?: string) =>
   request<import('../types').ChatResponse>('/chat', {
