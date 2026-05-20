@@ -14,6 +14,7 @@ class ProductCreate(BaseModel):
     issuer: Optional[str] = None
     target_tags: Optional[list[str]] = None
     lock_period: Optional[str] = None
+    fund_code: Optional[str] = None
 
 
 class ProductBatchImport(BaseModel):
@@ -31,6 +32,7 @@ class ProductResponse(BaseModel):
     issuer: str | None = None
     target_tags: list[str] | None = None
     lock_period: str | None = None
+    fund_code: str | None = None
     nav_history: list | None = None
     source: str
     created_at: datetime

@@ -30,6 +30,7 @@ class Product(Base):
     issuer: Mapped[str | None] = mapped_column(String(200), nullable=True)
     target_tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     lock_period: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    fund_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     nav_history: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="simulated")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

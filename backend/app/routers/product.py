@@ -1,7 +1,5 @@
 import math
 import uuid
-from datetime import datetime, timedelta
-import random
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
@@ -11,25 +9,9 @@ import io
 from ..database import get_db
 from ..models.product import Product
 from ..schemas.product import ProductCreate, ProductResponse, ProductListResponse
+from ..services.fund_service import fetch_fund_nav
 
 router = APIRouter()
-
-
-def _generate_nav_history(expected_return: float) -> list[dict]:
-    nav = 1.0
-    history = []
-    base_date = datetime.utcnow().replace(day=1) - timedelta(days=365)
-    monthly_return = expected_return / 100 / 12
-    for i in range(12):
-        noise = random.uniform(-0.04, 0.04)
-        nav *= (1 + monthly_return + noise)
-        month_date = base_date + timedelta(days=32 * i)
-        history.append({
-            "date": month_date.replace(day=1).strftime("%Y-%m-%d"),
-            "nav": round(nav, 4),
-            "return_rate": round((nav - 1.0) * 100, 2),
-        })
-    return history
 
 
 @router.get("", response_model=ProductListResponse)
@@ -63,6 +45,13 @@ def list_products(
 
 @router.post("", response_model=ProductResponse, status_code=201)
 def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+    nav_history = None
+    source = "manual"
+    if data.fund_code:
+        nav_history = fetch_fund_nav(data.fund_code)
+        if nav_history:
+            source = "eastmoney"
+
     product = Product(
         name=data.name,
         type=data.type,
@@ -73,7 +62,9 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
         issuer=data.issuer,
         target_tags=data.target_tags,
         lock_period=data.lock_period,
-        nav_history=_generate_nav_history(data.expected_return),
+        fund_code=data.fund_code,
+        nav_history=nav_history,
+        source=source,
     )
     db.add(product)
     db.commit()
@@ -103,6 +94,12 @@ def update_product(product_id: uuid.UUID, data: ProductCreate, db: Session = Dep
     product.issuer = data.issuer
     product.target_tags = data.target_tags
     product.lock_period = data.lock_period
+    product.fund_code = data.fund_code
+    if data.fund_code:
+        nav = fetch_fund_nav(data.fund_code)
+        if nav:
+            product.nav_history = nav
+            product.source = "eastmoney"
     db.commit()
     db.refresh(product)
     return ProductResponse.model_validate(product)
@@ -135,6 +132,14 @@ async def import_products_csv(file: UploadFile = File(...), db: Session = Depend
     products = []
     for row_num, row in enumerate(reader, start=1):
         try:
+            fund_code = row.get("fund_code", "").strip() or None
+            nav_history = None
+            source = "manual"
+            if fund_code:
+                nav_history = fetch_fund_nav(fund_code)
+                if nav_history:
+                    source = "eastmoney"
+
             product = Product(
                 name=row["name"].strip(),
                 type=row["type"].strip(),
@@ -145,7 +150,9 @@ async def import_products_csv(file: UploadFile = File(...), db: Session = Depend
                 issuer=row.get("issuer", "").strip() or None,
                 target_tags=[t.strip() for t in row.get("target_tags", "").split(",") if t.strip()] if row.get("target_tags", "").strip() else None,
                 lock_period=row.get("lock_period", "").strip() or None,
-                nav_history=_generate_nav_history(float(row["expected_return"])),
+                fund_code=fund_code,
+                nav_history=nav_history,
+                source=source,
             )
             db.add(product)
             db.flush()

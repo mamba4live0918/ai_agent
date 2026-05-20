@@ -77,6 +77,7 @@ export interface Product {
   issuer: string | null;
   target_tags: string[] | null;
   lock_period: string | null;
+  fund_code: string | null;
   nav_history: NavPoint[] | null;
   source: string;
   created_at: string;

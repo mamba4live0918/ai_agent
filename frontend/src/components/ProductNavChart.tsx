@@ -3,11 +3,25 @@ import type { NavPoint } from '../types';
 
 interface Props {
   data: NavPoint[];
+  source?: string;
+  productType?: string;
 }
 
-export default function ProductNavChart({ data }: Props) {
+export default function ProductNavChart({ data, source, productType }: Props) {
   if (!data || data.length === 0) {
-    return <p className="text-xs text-[#484f58] text-center py-4">暂无走势数据</p>;
+    const isFund = productType === '基金';
+    const msg = isFund
+      ? '未获取到实时净值数据，请检查基金代码'
+      : '此类产品暂无公开净值数据';
+    return (
+      <div className="text-center py-5">
+        <svg className="w-6 h-6 text-[#30363d] mx-auto mb-1.5" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm7.25-3.25v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm0 6.5a.75.75 0 0 0 1.5 0v-.25a.75.75 0 0 0-1.5 0v.25Z"/>
+        </svg>
+        <p className="text-xs text-[#484f58]">{msg}</p>
+        {source === 'eastmoney' && <p className="text-[10px] text-[#21262d] mt-0.5">数据来源：东方财富</p>}
+      </div>
+    );
   }
 
   const chartData = data.map(p => ({

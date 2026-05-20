@@ -17,7 +17,7 @@ export default function ProductManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '' });
+  const [form, setForm] = useState({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '', fund_code: '' });
   const [importError, setImportError] = useState('');
   const [importProgress, setImportProgress] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -57,9 +57,10 @@ export default function ProductManager() {
       issuer: form.issuer || null,
       target_tags: form.target_tags ? form.target_tags.split(',').map(t => t.trim()).filter(Boolean) : null,
       lock_period: form.lock_period || null,
+      fund_code: form.fund_code || null,
     });
     setShowAddModal(false);
-    setForm({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '' });
+    setForm({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '', fund_code: '' });
     load();
   };
 
@@ -193,7 +194,7 @@ export default function ProductManager() {
                   {p.nav_history && p.nav_history.length > 0 && (
                     <div>
                       <p className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">近12个月净值走势</p>
-                      <ProductNavChart data={p.nav_history} />
+                      <ProductNavChart data={p.nav_history!} source={p.source} productType={p.type} />
                     </div>
                   )}
                 </div>
@@ -253,6 +254,11 @@ export default function ProductManager() {
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-xs text-[#e6edf3] focus:border-[#58a6ff] outline-none" placeholder="如: T+1、30天、1年" />
               </div>
               <div>
+                <label className="text-[10px] text-[#6e7681] uppercase tracking-wider block mb-1">基金代码 (仅基金类)</label>
+                <input value={form.fund_code} onChange={e => setForm({ ...form, fund_code: e.target.value })}
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-xs text-[#e6edf3] focus:border-[#58a6ff] outline-none" placeholder="如: 005827，填后自动拉取真实净值" />
+              </div>
+              <div>
                 <label className="text-[10px] text-[#6e7681] uppercase tracking-wider block mb-1">适合人群标签 (逗号分隔)</label>
                 <input value={form.target_tags} onChange={e => setForm({ ...form, target_tags: e.target.value })}
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-xs text-[#e6edf3] focus:border-[#58a6ff] outline-none" placeholder="如: 保守,稳健,长期投资" />
@@ -277,7 +283,7 @@ export default function ProductManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => { setShowCsvModal(false); setImportError(''); }}>
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-[#e6edf3] mb-2">CSV 批量导入</h3>
-            <p className="text-xs text-[#8b949e] mb-3">列: name,type,risk_level,expected_return,min_investment,description,issuer,target_tags,lock_period</p>
+            <p className="text-xs text-[#8b949e] mb-3">列: name,type,risk_level,expected_return,min_investment,description,issuer,target_tags,lock_period,fund_code</p>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileChange} disabled={importing}
               className="block w-full text-xs text-[#e6edf3] file:mr-2 file:py-1 file:px-3 file:text-xs file:rounded file:border-0 file:bg-[#1f6feb] file:text-white hover:file:bg-[#388bfd] disabled:opacity-50" />
             {importing && (
