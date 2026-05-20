@@ -148,6 +148,7 @@ npm run dev
 | POST | `/api/customers/{id}/presales-prep` | 生成售前准备报告 |
 | POST | `/api/customers/{id}/allocation-plan` | 生成资产配置方案（3 套） |
 | PUT | `/api/customers/{id}/allocation-plan` | 保存手动调整的配置方案 |
+| POST | `/api/customers/{id}/regenerate-profile` | 重新生成 AI 画像 |
 
 ### 产品库
 | 方法 | 路径 | 说明 |
@@ -205,8 +206,15 @@ npm run dev
 - 净值每 4 小时自动刷新 / 展开卡片时智能检测刷新
 - 非基金产品显示"未获得实时数据"提示
 
+**KYC 九宫格**
+- 高净值客户（资产 >500 万）自动显示华兴银行 KYC 九宫格
+- 严格基于已有数据映射，不 AI 虚构，缺失字段编辑角标提示手动补充
+- AI 分析报告 ↔ KYC 九宫格一键切换
+- AI 画像支持重新生成（`regenerate-profile`）
+
 **Dashboard**
-- 文档/客户/产品统计
+- 文档/客户/产品 三项统计 + 3 大功能模块快捷入口
+- 独立产品库页面（`/products`），侧边栏导航
 - 系统组件健康状态
 
 ## License
