@@ -195,30 +195,18 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
       const margin = 12;
       const imgWidth = pageWidth - margin * 2;
       const maxImgHeight = pageHeight - margin * 2;
-      const headerH = 8;
 
       let firstPage = true;
 
-      for (const { label, canvas } of captures) {
+      for (const { canvas } of captures) {
         const scaleFactor = imgWidth / canvas.width;
-        const contentMaxH = maxImgHeight - headerH;
 
         let srcY = 0;
         while (srcY < canvas.height) {
-          const sliceHeight = Math.min(canvas.height - srcY, Math.round(contentMaxH / scaleFactor));
+          const sliceHeight = Math.min(canvas.height - srcY, Math.round(maxImgHeight / scaleFactor));
 
           if (!firstPage) pdf.addPage();
           firstPage = false;
-
-          if (srcY === 0) {
-            pdf.setFontSize(11);
-            pdf.setTextColor(31, 35, 40);
-            pdf.text(label, margin, margin + 5);
-            pdf.setDrawColor(208, 215, 222);
-            pdf.line(margin, margin + 6.5, pageWidth - margin, margin + 6.5);
-          }
-
-          const imgY = srcY === 0 ? margin + headerH : margin;
 
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = canvas.width;
@@ -226,7 +214,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           const ctx = sliceCanvas.getContext('2d')!;
           ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
 
-          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, imgY, imgWidth, (sliceHeight * imgWidth) / canvas.width);
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, (sliceHeight * imgWidth) / canvas.width);
           srcY += sliceHeight;
         }
       }
@@ -452,10 +440,19 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
         {/* Tab 3: 配置方案 */}
         <div data-tab-panel style={{ display: activeTab === 'allocation' ? 'block' : 'none' }}>
-          <div data-pdf-section="资产配置方案" className="space-y-5">
-            <ProductManager />
+          <div className="space-y-5">
+            <div className="pdf-hide">
+              <ProductManager />
+            </div>
             {'structured_data' in localCustomer && (
-              <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+              (localCustomer as Customer).allocation_plan ? (
+                <div data-pdf-section="资产配置方案">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">资产配置方案</h4>
+                  <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+                </div>
+              ) : (
+                <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
+              )
             )}
           </div>
         </div>

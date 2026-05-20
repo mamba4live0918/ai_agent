@@ -41,7 +41,7 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
   if (!plan) return <p className="text-sm text-[#484f58] text-center py-4">方案数据缺失</p>;
 
   const chartData = plan.allocations.map(a => ({
-    name: a.product_name.length > 8 ? a.product_name.slice(0, 8) + '...' : a.product_name,
+    name: a.product_name.length > 20 ? a.product_name.slice(0, 20) + '...' : a.product_name,
     fullName: a.product_name,
     ratio: Math.round(a.ratio * 100),
     amount: a.amount,
