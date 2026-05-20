@@ -30,8 +30,17 @@ export interface Customer {
   raw_input: string | null;
   structured_data: Record<string, unknown> | null;
   ai_profile: Record<string, unknown> | null;
+  scores: Record<string, { value: number; reasoning: string }> | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ScoreDimension {
+  key: string;
+  label: string;
+  value: number;
+  reasoning: string;
+  color: string;
 }
 
 export interface CustomerList {
@@ -43,6 +52,7 @@ export interface CustomerProfile {
   name: string;
   structured_data: Record<string, unknown>;
   ai_profile: Record<string, unknown>;
+  scores: Record<string, { value: number; reasoning: string }> | null;
 }
 
 export interface ChatResponse {

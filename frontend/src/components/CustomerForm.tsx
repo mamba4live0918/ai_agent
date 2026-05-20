@@ -33,7 +33,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
   const handleSave = async () => {
     try {
       if (profile) {
-        await createCustomer({ name: profile.name, raw_input: rawText, structured_data: profile.structured_data });
+        await createCustomer({ name: profile.name, raw_input: rawText, structured_data: profile.structured_data, ai_profile: profile.ai_profile, scores: profile.scores });
       } else {
         await createCustomer({
           name: name || '未命名',

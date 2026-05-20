@@ -12,7 +12,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Ollama (`nomic-embed-text`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
-| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 |
+| **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts |
 
 ## 项目结构
 
@@ -149,7 +149,10 @@ npm run dev
 **客户分析**
 - 自由文本导入：粘贴客户描述 → DeepSeek 提取结构化画像
 - 表单录入：手动填写客户基本信息
-- AI 生成：客户画像、财务需求分析、沟通建议、风险提示、产品推荐、跟进建议
+- AI 6 维评分（财富规模/风险承受力/投资经验/需求紧迫度/客户潜力/沟通难度），基于 Rubric 客观打分
+- 雷达图可视化（Recharts）+ 评分进度条卡片
+- AI 深度分析报告：6 大板块各 4-6 句详细分析
+- 一键导出 PDF（含雷达图 + 完整分析报告，自动分页）
 
 **Dashboard**
 - 文档/客户统计

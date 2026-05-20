@@ -37,6 +37,8 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
         name=data.name,
         raw_input=data.raw_input,
         structured_data=data.structured_data,
+        ai_profile=data.ai_profile,
+        scores=data.scores,
     )
     db.add(customer)
     db.commit()
@@ -67,6 +69,10 @@ def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = 
     customer.raw_input = data.raw_input
     if data.structured_data is not None:
         customer.structured_data = data.structured_data
+    if data.ai_profile is not None:
+        customer.ai_profile = data.ai_profile
+    if data.scores is not None:
+        customer.scores = data.scores
     db.commit()
     db.refresh(customer)
     return CustomerResponse.model_validate(customer)

@@ -7,6 +7,8 @@ class CustomerCreate(BaseModel):
     name: str
     raw_input: str | None = None
     structured_data: dict | None = None
+    ai_profile: dict | None = None
+    scores: dict | None = None
 
 
 class CustomerAnalyzeRequest(BaseModel):
@@ -17,6 +19,7 @@ class CustomerAnalyzeResponse(BaseModel):
     name: str
     structured_data: dict
     ai_profile: dict
+    scores: dict | None = None
 
 
 class CustomerResponse(BaseModel):
@@ -25,6 +28,7 @@ class CustomerResponse(BaseModel):
     raw_input: str | None = None
     structured_data: dict | None = None
     ai_profile: dict | None = None
+    scores: dict | None = None
     created_at: datetime
     updated_at: datetime
 
