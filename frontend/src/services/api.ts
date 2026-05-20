@@ -69,6 +69,8 @@ export const generatePresalesPrep = (id: string) =>
   request<import('../types').Customer>(`/customers/${id}/presales-prep`, { method: 'POST' });
 export const updateCustomer = (id: string, data: { name: string; raw_input?: string; structured_data?: Record<string, unknown>; ai_profile?: Record<string, unknown>; scores?: Record<string, unknown> }) =>
   request<import('../types').Customer>(`/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const regenerateProfile = (id: string) =>
+  request<import('../types').Customer>(`/customers/${id}/regenerate-profile`, { method: 'POST' });
 export const deleteCustomer = (id: string) =>
   request<void>(`/customers/${id}`, { method: 'DELETE' });
 

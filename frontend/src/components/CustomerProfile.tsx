@@ -2,13 +2,16 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { Customer, CustomerProfile as CustomerProfileType, ScoreDimension } from '../types';
+import { regenerateProfile } from '../services/api';
 import CustomerRadar from './CustomerRadar';
 import ProductManager from './ProductManager';
 import AllocationPlan from './AllocationPlan';
+import KycGrid from './KycGrid';
 
 interface Props {
   customer: Customer | CustomerProfileType;
   onPresalesPrep?: () => Promise<void>;
+  onRefresh?: (updated: Customer) => void;
 }
 
 type TabKey = 'analysis' | 'presales' | 'allocation';
@@ -54,6 +57,12 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const [prepLoading, setPrepLoading] = useState(false);
   const [localCustomer, setLocalCustomer] = useState(customer);
   useEffect(() => { setLocalCustomer(customer); }, [customer]);
+  const [showKyc, setShowKyc] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const scores = localCustomer.scores as Record<string, { value: number } | undefined> | null;
+  const wealthScale = scores?.wealth_scale?.value ?? 0;
+  const isHighValue = wealthScale >= 7;
 
   const sd = localCustomer.structured_data || {};
 
@@ -93,6 +102,16 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
   const hasPrepData = ppSections.length > 0;
   const hasAnyData = fields.length > 0 || apSections.length > 0 || dimensions.length > 0;
+
+  const handleRegenerate = async () => {
+    if (!('id' in localCustomer)) return;
+    setRegenerating(true);
+    try {
+      const updated = await regenerateProfile((localCustomer as Customer).id);
+      setLocalCustomer(updated);
+    } catch { /* silently skip */ }
+    finally { setRegenerating(false); }
+  };
 
   const handlePrep = async () => {
     if (!onPresalesPrep) return;
@@ -271,13 +290,53 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {apSections.length > 0 && (
               <div>
-                <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">
-                  AI 分析报告
-                  <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
-                </h4>
-                <div className="space-y-2">
-                  {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
+                    AI 分析报告
+                    <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {'id' in localCustomer && (
+                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#484f58] transition-colors disabled:opacity-50">
+                        {regenerating ? '生成中...' : '⟳ 重新生成'}
+                      </button>
+                    )}
+                    {isHighValue && (
+                      <button
+                        onClick={() => setShowKyc(!showKyc)}
+                        className={`text-[10px] px-2 py-1 rounded border transition-colors ${
+                          showKyc
+                            ? 'border-[#d29922]/40 text-[#d29922] bg-[#d29922]/10'
+                            : 'border-[#30363d] text-[#8b949e] hover:text-[#d29922] hover:border-[#d29922]/30'
+                        }`}
+                      >
+                        {showKyc ? '回到 AI 分析' : 'KYC 九宫格'}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {showKyc ? (
+                  <KycGrid customer={localCustomer as Customer} />
+                ) : (
+                  <div className="space-y-2">
+                    {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show KYC toggle even when no AI profile, but customer is high value */}
+            {apSections.length === 0 && isHighValue && (
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">KYC 九宫格</h4>
+                  {'id' in localCustomer && (
+                    <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors disabled:opacity-50">
+                      {regenerating ? '生成中...' : '⟳ 先生成 AI 分析'}
+                    </button>
+                  )}
+                </div>
+                <KycGrid customer={localCustomer as Customer} />
               </div>
             )}
 
