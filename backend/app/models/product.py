@@ -33,5 +33,6 @@ class Product(Base):
     fund_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     nav_history: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="simulated")
+    nav_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

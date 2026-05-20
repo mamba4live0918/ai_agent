@@ -1,5 +1,6 @@
 import math
 import uuid
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
@@ -12,6 +13,25 @@ from ..schemas.product import ProductCreate, ProductResponse, ProductListRespons
 from ..services.fund_service import fetch_fund_nav
 
 router = APIRouter()
+
+NAV_REFRESH_HOURS = 4
+
+
+def _maybe_refresh_nav(product: Product) -> bool:
+    """Re-fetch NAV from East Money if fund_code is set and NAV is older than NAV_REFRESH_HOURS.
+    Returns True if refreshed, False otherwise."""
+    if not product.fund_code:
+        return False
+    now = datetime.utcnow()
+    if product.nav_updated_at and (now - product.nav_updated_at) < timedelta(hours=NAV_REFRESH_HOURS):
+        return False
+    nav_history = fetch_fund_nav(product.fund_code)
+    if nav_history:
+        product.nav_history = nav_history
+        product.source = "eastmoney"
+        product.nav_updated_at = now
+        return True
+    return False
 
 
 @router.get("", response_model=ProductListResponse)
@@ -77,6 +97,27 @@ def get_product(product_id: uuid.UUID, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    refreshed = _maybe_refresh_nav(product)
+    if refreshed:
+        db.commit()
+        db.refresh(product)
+    return ProductResponse.model_validate(product)
+
+
+@router.post("/{product_id}/refresh-nav", response_model=ProductResponse)
+def refresh_product_nav(product_id: uuid.UUID, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if not product.fund_code:
+        raise HTTPException(status_code=400, detail="Product has no fund code")
+    nav_history = fetch_fund_nav(product.fund_code)
+    if nav_history:
+        product.nav_history = nav_history
+        product.source = "eastmoney"
+        product.nav_updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(product)
     return ProductResponse.model_validate(product)
 
 

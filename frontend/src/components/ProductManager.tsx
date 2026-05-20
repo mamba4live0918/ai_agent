@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getProducts, createProduct, importProductsCsv, deleteProduct } from '../services/api';
+import { getProducts, getProduct, createProduct, importProductsCsv, deleteProduct } from '../services/api';
 import type { Product } from '../types';
 import ProductNavChart from './ProductNavChart';
 
@@ -31,7 +31,24 @@ export default function ProductManager() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSearch = (q: string) => { setSearch(q); setPage(1); };
+  const handleExpand = async (p: Product) => {
+    if (expandedId === p.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(p.id);
+    // Auto-refresh NAV if fund product with stale data
+    if (p.fund_code) {
+      const fourHours = 4 * 60 * 60 * 1000;
+      const lastUpdate = p.nav_updated_at ? new Date(p.nav_updated_at).getTime() : 0;
+      if (Date.now() - lastUpdate > fourHours) {
+        try {
+          const fresh = await getProduct(p.id);
+          setProducts(prev => prev.map(item => item.id === p.id ? fresh : item));
+        } catch { /* silently skip refresh errors */ }
+      }
+    }
+  };
 
   const handlePageChange = (p: number) => {
     if (p < 1 || p > totalPages) return;
@@ -168,7 +185,7 @@ export default function ProductManager() {
           return (
             <div key={p.id} className="bg-[#0d1117] border border-[#21262d] rounded-md overflow-hidden">
               <div
-                onClick={() => setExpandedId(expanded ? null : p.id)}
+                onClick={() => handleExpand(p)}
                 className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#161b22] transition-colors"
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: risk.color }} />
@@ -191,12 +208,13 @@ export default function ProductManager() {
                     {p.issuer && <div><span className="text-[#6e7681]">发行机构</span><br/><span className="text-[#e6edf3]">{p.issuer}</span></div>}
                     {p.description && <div className="col-span-2"><span className="text-[#6e7681]">描述</span><br/><span className="text-[#8b949e]">{p.description}</span></div>}
                   </div>
-                  {p.nav_history && p.nav_history.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">近12个月净值走势</p>
-                      <ProductNavChart data={p.nav_history!} source={p.source} productType={p.type} />
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">
+                      近12个月净值走势
+                      {p.nav_updated_at && <span className="ml-2 font-normal lowercase text-[#484f58]">更新于 {new Date(p.nav_updated_at).toLocaleString('zh-CN')}</span>}
+                    </p>
+                    <ProductNavChart data={p.nav_history || []} source={p.source} productType={p.type} />
+                  </div>
                 </div>
               )}
             </div>

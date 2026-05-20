@@ -35,6 +35,7 @@ class ProductResponse(BaseModel):
     fund_code: str | None = None
     nav_history: list | None = None
     source: str
+    nav_updated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

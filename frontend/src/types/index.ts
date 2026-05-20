@@ -80,6 +80,7 @@ export interface Product {
   fund_code: string | null;
   nav_history: NavPoint[] | null;
   source: string;
+  nav_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
