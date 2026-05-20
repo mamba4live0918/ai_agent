@@ -108,6 +108,8 @@ export const importProductsCsv = (file: File, onProgress?: (pct: number) => void
 };
 export const updateProduct = (id: string, data: Record<string, unknown>) =>
   request<import('../types').Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const refreshProductNav = (id: string) =>
+  request<import('../types').Product>(`/products/${id}/refresh-nav`, { method: 'POST' });
 export const deleteProduct = (id: string) =>
   request<void>(`/products/${id}`, { method: 'DELETE' });
 

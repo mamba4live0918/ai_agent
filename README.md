@@ -37,11 +37,11 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
 │   │   │   ├── embedding_service.py  # ChromaDB 索引（分批嵌入，中文友好分割）
 │   │   │   ├── customer_service.py   # 客户 AI 画像 + 售前准备生成（KB 优先）
-│   │   │   └── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
+│   │   │   ├── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
+│   │   │   └── fund_service.py       # 东方财富 API 获取真实基金净值走势
 │   │   └── utils/
 │   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
 │   ├── alembic/                 # 数据库迁移
-│   ├── seed_products.py         # 25 个金融产品种子数据
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -117,15 +117,12 @@ npm run dev
 
 浏览器打开 http://localhost:5173
 
-### 4. 种子数据
+### 4. 初始数据
 
 首次启动后，后端会自动创建 4 个知识分类：
 - 财经法税 / 沟通技巧 / 行业知识 / 销售案例
 
-可选：初始化 25 个金融产品种子数据（保险/基金/理财/信托/结构化/其他）：
-```bash
-cd backend && python seed_products.py
-```
+产品数据通过前端界面手动添加或 CSV 批量导入。基金产品填入基金代码后自动从东方财富拉取真实净值数据。
 
 ## API 端点
 
@@ -161,6 +158,7 @@ cd backend && python seed_products.py
 | PUT | `/api/products/{id}` | 更新产品 |
 | DELETE | `/api/products/{id}` | 删除产品 |
 | POST | `/api/products/batch` | CSV 批量导入 |
+| POST | `/api/products/{id}/refresh-nav` | 刷新基金净值（从东方财富实时拉取） |
 
 ### RAG 问答
 | 方法 | 路径 | 说明 |
@@ -200,10 +198,12 @@ cd backend && python seed_products.py
 - 方案切换（AI 方案 / 用户方案）对比
 
 **产品库**
-- 25 个金融产品种子数据（保险/基金/理财/信托/结构化/其他，R1-R5）
+- 支持多种产品类型：基金、保险、理财、信托、结构化、其他
 - 产品 CRUD + CSV 批量导入（带进度条）
 - 分页列表 + 类型/风险筛选 + 搜索
-- 展开查看净值走势图（12 个月模拟 NAV）
+- 基金填入代码后自动从东方财富拉取近 12 个月真实净值走势
+- 净值每 4 小时自动刷新 / 展开卡片时智能检测刷新
+- 非基金产品显示"未获得实时数据"提示
 
 **Dashboard**
 - 文档/客户/产品统计

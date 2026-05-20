@@ -3,11 +3,18 @@ import type { NavPoint } from '../types';
 
 interface Props {
   data: NavPoint[];
+  source?: string;
+  productType?: string;
 }
 
-export default function ProductNavChart({ data }: Props) {
+export default function ProductNavChart({ data, source, productType }: Props) {
   if (!data || data.length === 0) {
-    return <p className="text-xs text-[#484f58] text-center py-4">暂无走势数据</p>;
+    return (
+      <div className="text-center py-4">
+        <p className="text-sm text-[#f0883e] font-medium">该产品未获得实时数据或实时数据未公开</p>
+        {source === 'eastmoney' && <p className="text-[10px] text-[#484f58] mt-1">数据来源：东方财富</p>}
+      </div>
+    );
   }
 
   const chartData = data.map(p => ({
