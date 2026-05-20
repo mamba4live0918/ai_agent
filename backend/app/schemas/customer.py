@@ -39,6 +39,10 @@ class CustomerResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RegenerateProfileRequest(BaseModel):
+    structured_data: dict | None = None
+
+
 class AllocationPlanSave(BaseModel):
     user_plan: dict
     total_investable: int | None = None
