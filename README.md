@@ -148,7 +148,7 @@ npm run dev
 | POST | `/api/customers/{id}/presales-prep` | 生成售前准备报告 |
 | POST | `/api/customers/{id}/allocation-plan` | 生成资产配置方案（3 套） |
 | PUT | `/api/customers/{id}/allocation-plan` | 保存手动调整的配置方案 |
-| POST | `/api/customers/{id}/regenerate-profile` | 重新生成 AI 画像 |
+| POST | `/api/customers/{id}/regenerate-profile` | 重新生成 AI 画像（可选 `structured_data`，AI 优先采用人工编辑） |
 
 ### 产品库
 | 方法 | 路径 | 说明 |
@@ -206,11 +206,23 @@ npm run dev
 - 净值每 4 小时自动刷新 / 展开卡片时智能检测刷新
 - 非基金产品显示"未获得实时数据"提示
 
+**基本信息九宫格编辑器**
+- 所有客户显示可编辑的 3×3 基本信息九宫格（年龄/性别/职业/收入水平/资产状况/风险偏好/投资经验/家庭状况/理财目标）
+- 每个格子独立编辑保存，信息不足留空不强制
+- 重新生成时人工编辑数据随请求发送，AI 标注为最高优先级，严格采用不再推断
+- `PUT /api/customers/{id}` 保存编辑，`POST /api/customers/{id}/regenerate-profile` 支持 `structured_data` 入参
+
 **KYC 九宫格**
 - 高净值客户（资产 >500 万）自动显示华兴银行 KYC 九宫格
 - 严格基于已有数据映射，不 AI 虚构，缺失字段编辑角标提示手动补充
 - AI 分析报告 ↔ KYC 九宫格一键切换
 - AI 画像支持重新生成（`regenerate-profile`）
+
+**PDF 导出**
+- html2canvas (scale:3) + jsPDF，浅色主题，中文渲染清晰
+- 按内容区块分块捕获，不分页切断段落或图表
+- 操作按钮自动隐藏，高净值客户 KYC 九宫格自动包含
+- 未生成内容不会出现
 
 **Dashboard**
 - 文档/客户/产品 三项统计 + 3 大功能模块快捷入口

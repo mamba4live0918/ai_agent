@@ -74,6 +74,23 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - 前端展开产品卡片时检测净值是否过期（>4h），过期自动调用后端刷新
 - 非基金产品（保险/信托/理财）无公开净值数据，显示"未获得实时数据"提示
 
+### 基本信息九宫格编辑器
+
+- 所有客户（非仅高净值）在客户分析页显示可编辑的 3×3 基本信息九宫格
+- 9 个字段：年龄、性别、职业、收入水平、资产状况、风险偏好、投资经验、家庭状况、理财目标
+- 每个格子可独立编辑（✎ 按钮），保存到 `structured_data`
+- 信息不足的格子留空显示 "—"，不强制补填
+- 重新生成时，人工编辑的 `structured_data` 随请求发给 AI，prompt 中标注为"最高优先级"，AI 严格采用不再推断
+- 端点：`PUT /api/customers/{id}` 保存编辑，`POST /api/customers/{id}/regenerate-profile` 可携带 `structured_data`
+
+### PDF 导出
+
+- html2canvas (scale:3) + jsPDF，自动切换浅色主题（`.pdf-export`）
+- 按 `data-pdf-section` 分块捕获，避免分页切断内容
+- 操作按钮（导出/编辑/重新生成/KYC 切换）通过 `.pdf-hide` 在 PDF 中隐藏
+- 高净值客户 PDF 自动包含 KYC 九宫格（插入在 AI 分析之后）
+- 未生成的内容（如未生成的配置方案）不会出现在 PDF 中
+
 ### 知识库优先生成（KB-First）
 
 所有 LLM 生成（客户分析、售前准备、资产配置）在调用 DeepSeek 前会先从 ChromaDB 检索相关知识库内容，注入 prompt 优先参考。检索失败或无匹配时静默回退到纯 LLM 生成。
