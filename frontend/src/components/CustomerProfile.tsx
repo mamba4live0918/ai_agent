@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { Customer, CustomerProfile as CustomerProfileType, ScoreDimension } from '../types';
-import { regenerateProfile } from '../services/api';
+import { regenerateProfile, updateCustomer } from '../services/api';
 import CustomerRadar from './CustomerRadar';
 import ProductManager from './ProductManager';
 import AllocationPlan from './AllocationPlan';
@@ -59,6 +59,8 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   useEffect(() => { setLocalCustomer(customer); }, [customer]);
   const [showKyc, setShowKyc] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
 
   const scores = localCustomer.scores as Record<string, { value: number } | undefined> | null;
   const wealthScale = scores?.wealth_scale?.value ?? 0;
@@ -66,17 +68,17 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
   const sd = localCustomer.structured_data || {};
 
-  const fields = ([
-    ['年龄', String(sd.age ?? '')],
-    ['性别', String(sd.gender ?? '')],
-    ['职业', String(sd.occupation ?? '')],
-    ['收入水平', String(sd.income_level ?? '')],
-    ['资产状况', String(sd.assets ?? '')],
-    ['风险偏好', String(sd.risk_preference ?? '')],
-    ['投资经验', String(sd.investment_experience ?? '')],
-    ['家庭状况', String(sd.family_status ?? '')],
-    ['理财目标', String(sd.goals ?? '')],
-  ] as [string, string][]).filter(([, v]) => v && v !== '未知');
+  const FIELD_KEYS: Record<string, string> = {
+    '年龄': 'age', '性别': 'gender', '职业': 'occupation',
+    '收入水平': 'income_level', '资产状况': 'assets', '风险偏好': 'risk_preference',
+    '投资经验': 'investment_experience', '家庭状况': 'family_status', '理财目标': 'goals',
+  };
+
+  const fields = (Object.entries(FIELD_KEYS) as [string, string][]).map(([label, key]) => {
+    const stored = String((sd as Record<string, unknown>)[key] ?? '');
+    const raw = stored && stored !== '未知' ? stored : '';
+    return [label, raw, key] as [string, string, string];
+  });
 
   const ap = localCustomer.ai_profile as Record<string, string> | null || {};
 
@@ -101,13 +103,37 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   ] as [string, string, string][]).filter(([, v]) => v);
 
   const hasPrepData = ppSections.length > 0;
-  const hasAnyData = fields.length > 0 || apSections.length > 0 || dimensions.length > 0;
+  const hasAnyData = fields.some(([, val]) => !!val) || apSections.length > 0 || dimensions.length > 0;
+
+  const handleFieldEdit = (key: string, value: string) => {
+    setFieldEdits(prev => ({ ...prev, [key]: value }));
+  };
+
+  const saveFieldEdits = async () => {
+    if (!('id' in localCustomer)) return;
+    const updatedSD = { ...(localCustomer.structured_data || {}) };
+    for (const [key, val] of Object.entries(fieldEdits)) {
+      updatedSD[key] = val || null;
+    }
+    try {
+      const updated = await updateCustomer((localCustomer as Customer).id, {
+        name: localCustomer.name,
+        structured_data: updatedSD,
+      });
+      setLocalCustomer(updated);
+      setEditingField(null);
+      setFieldEdits({});
+    } catch { /* silently skip */ }
+  };
 
   const handleRegenerate = async () => {
     if (!('id' in localCustomer)) return;
     setRegenerating(true);
     try {
-      const updated = await regenerateProfile((localCustomer as Customer).id);
+      const updated = await regenerateProfile(
+        (localCustomer as Customer).id,
+        (localCustomer.structured_data as Record<string, unknown>) || undefined,
+      );
       setLocalCustomer(updated);
     } catch { /* silently skip */ }
     finally { setRegenerating(false); }
@@ -286,19 +312,61 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab 1: 客户分析 */}
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            {fields.length > 0 && (
-              <div data-pdf-section="基本信息">
-                <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {fields.map(([label, value]) => (
-                    <div key={label} className="bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2">
-                      <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-0.5">{label}</div>
-                      <div className="text-sm text-[#e6edf3] font-medium">{value}</div>
+            {/* Basic info always shows 9-grid */}
+            <div data-pdf-section="基本信息">
+              <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {fields.map(([label, value, key]) => {
+                  const displayValue = fieldEdits[key] !== undefined ? fieldEdits[key] : value;
+                  const isEmpty = !displayValue;
+                  const isEditing = editingField === key;
+
+                  return (
+                    <div
+                      key={key}
+                      className={`relative rounded-md border p-2.5 min-h-[72px] flex flex-col ${
+                        isEmpty ? 'border-[#30363d]/50 bg-[#161b22]/50' : 'border-[#21262d] bg-[#0d1117]'
+                      }`}
+                    >
+                      <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">{label}</div>
+                      {isEditing ? (
+                        <textarea
+                          className="flex-1 w-full bg-[#161b22] border border-[#30363d] rounded p-1.5 text-xs text-[#e6edf3] resize-none focus:outline-none focus:border-[#58a6ff]"
+                          value={fieldEdits[key] || ''}
+                          onChange={e => handleFieldEdit(key, e.target.value)}
+                          rows={2}
+                        />
+                      ) : !isEmpty ? (
+                        <p className="text-sm text-[#e6edf3] font-medium flex-1">{displayValue}</p>
+                      ) : (
+                        <p className="text-sm text-[#30363d] flex-1">—</p>
+                      )}
+
+                      <div className="flex items-center justify-end mt-1">
+                        {isEditing ? (
+                          <button
+                            onClick={() => saveFieldEdits()}
+                            className="text-[10px] px-2 py-0.5 rounded bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+                          >
+                            保存
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setFieldEdits(prev => ({ ...prev, [key]: displayValue }));
+                              setEditingField(key);
+                            }}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors pdf-hide"
+                          >
+                            ✎
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
 
             {dimensions.length > 0 && (
               <div data-pdf-section="评分总览" className="space-y-4">
