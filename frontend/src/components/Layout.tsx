@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { user, isInstructor, logout } = useAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const close = useCallback(() => setSidebarOpen(false), []);
 
@@ -72,6 +75,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           仿真培训
         </NavLink>
 
+        {isInstructor && (
+          <>
+            <div className="pt-4 mt-4 border-t border-[#21262d]">
+              <p className="px-3 py-1 text-[11px] font-semibold text-[#484f58] uppercase tracking-wider">
+                讲师
+              </p>
+            </div>
+            <NavLink to="/instructor" className={linkClass} onClick={close}>
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M0 2.5A1.5 1.5 0 0 1 1.5 1h11A1.5 1.5 0 0 1 14 2.5v10.528c0 .3-.05.654-.238.972h.004a.75.75 0 0 1-.732.486H1.966a.75.75 0 0 1-.733-.486h-.005A1.87 1.87 0 0 1 1 13V2.5h-.001A1.5 1.5 0 0 1 0 2.5ZM1.966 13h.034ZM3 3.5v7h9v-7H3Zm1.5 1.5h2v2h-2V5Zm3.5 0h2v1.5H8V5Zm0 2.5h2v2H8v-2Zm-3.5 0h2v2h-2v-2Z"/>
+              </svg>
+              讲师端口
+            </NavLink>
+          </>
+        )}
+
         <div className="pt-4 mt-4 border-t border-[#21262d]">
           <p className="px-3 py-1 text-[11px] font-semibold text-[#484f58] uppercase tracking-wider">
             状态
@@ -87,8 +106,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-[#21262d]">
+      {/* Footer with user info */}
+      <div className="px-4 py-3 border-t border-[#21262d] space-y-2">
+        {user && (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[#1f6feb] flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-[#e6edf3] font-medium truncate">{user.username}</div>
+              <div className="text-[10px] text-[#8b949e]">
+                {user.role === 'admin' ? '管理员' : user.role === 'instructor' ? '讲师' : '销售'}
+              </div>
+            </div>
+            <button
+              onClick={() => { logout(); navigate('/login'); }}
+              className="p-1.5 text-[#484f58] hover:text-[#f85149] transition-colors rounded-md hover:bg-[#21262d]"
+              title="退出登录"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M6.75 2.75a.75.75 0 0 0 0-1.5h-3A1.75 1.75 0 0 0 2 3v10c0 .966.784 1.75 1.75 1.75h3a.75.75 0 0 0 0-1.5h-3a.25.25 0 0 1-.25-.25V3a.25.25 0 0 1 .25-.25h3Zm4.47.22a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 0 1-1.06-1.06L14.44 8 11.22 4.78a.75.75 0 0 1 0-1.06Z"/>
+              </svg>
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between text-[11px] text-[#484f58]">
           <span>v0.1.0 · 文字版</span>
           <span className="font-mono text-[10px] text-[#3fb950]">● online</span>

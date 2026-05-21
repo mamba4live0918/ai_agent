@@ -1,10 +1,23 @@
 const BASE = 'http://localhost:8000/api';
 
+function getToken(): string | null {
+  return localStorage.getItem('token');
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options?.headers },
     ...options,
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Request failed: ${res.status}`);
@@ -12,6 +25,43 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   if (res.status === 204) return undefined as T;
   return res.json();
 }
+
+// ─── Auth ───
+export const loginUser = (data: import('../types').LoginRequest) =>
+  request<import('../types').TokenResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
+
+export const registerUser = (data: import('../types').RegisterRequest) =>
+  request<import('../types').TokenResponse>('/auth/register', { method: 'POST', body: JSON.stringify(data) });
+
+export const getCurrentUser = () =>
+  request<import('../types').User>('/auth/me');
+
+// ─── Instructor ───
+export const getInstructorOverview = () =>
+  request<import('../types').TrainingStatsOverview>('/instructor/statistics/overview');
+
+export const getInstructorPerUserStats = () =>
+  request<import('../types').PerUserStats[]>('/instructor/statistics/per-user');
+
+export const getInstructorTrends = (granularity: 'weekly' | 'monthly' = 'weekly') =>
+  request<import('../types').TrainingTrendPoint[]>(`/instructor/statistics/trends?granularity=${granularity}`);
+
+export const exportReport = async (): Promise<void> => {
+  const token = getToken();
+  const res = await fetch(`${BASE}/instructor/reports/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Export failed');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `training_report_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
 
 // Categories
 export const getCategories = () => request<import('../types').Category[]>('/knowledge/categories');
@@ -40,11 +90,14 @@ export const uploadDocument = (file: File, categoryId: string, onProgress?: (pct
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
+        if (xhr.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         reject(new Error('Upload failed'));
       }
     });
     xhr.addEventListener('error', () => reject(new Error('Upload failed')));
     xhr.open('POST', `${BASE}/knowledge/documents`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.send(form);
   });
 };
@@ -103,11 +156,14 @@ export const importProductsCsv = (file: File, onProgress?: (pct: number) => void
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
+        if (xhr.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         reject(new Error('Import failed'));
       }
     });
     xhr.addEventListener('error', () => reject(new Error('Import failed')));
     xhr.open('POST', `${BASE}/products/batch`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.send(form);
   });
 };

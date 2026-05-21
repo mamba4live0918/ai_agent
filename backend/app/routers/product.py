@@ -9,6 +9,8 @@ import io
 
 from ..database import get_db
 from ..models.product import Product
+from ..models.user import User
+from ..utils.auth import get_current_user, apply_document_filter
 from ..schemas.product import ProductCreate, ProductResponse, ProductListResponse
 from ..services.fund_service import fetch_fund_nav
 
@@ -42,8 +44,9 @@ def list_products(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Product)
+    query = apply_document_filter(db.query(Product), Product, current_user)
     if type:
         query = query.filter(Product.type == type)
     if risk_level is not None:
@@ -64,7 +67,7 @@ def list_products(
 
 
 @router.post("", response_model=ProductResponse, status_code=201)
-def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+def create_product(data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     nav_history = None
     source = "manual"
     nav_updated_at = None
@@ -88,6 +91,7 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
         nav_history=nav_history,
         source=source,
         nav_updated_at=nav_updated_at,
+        user_id=None if current_user.role == "admin" else current_user.id,
     )
     db.add(product)
     db.commit()
@@ -96,8 +100,8 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
-def get_product(product_id: uuid.UUID, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def get_product(product_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    product = apply_document_filter(db.query(Product), Product, current_user).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     refreshed = _maybe_refresh_nav(product)
@@ -108,8 +112,8 @@ def get_product(product_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{product_id}/refresh-nav", response_model=ProductResponse)
-def refresh_product_nav(product_id: uuid.UUID, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def refresh_product_nav(product_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    product = apply_document_filter(db.query(Product), Product, current_user).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     if not product.fund_code:
@@ -125,8 +129,8 @@ def refresh_product_nav(product_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
-def update_product(product_id: uuid.UUID, data: ProductCreate, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def update_product(product_id: uuid.UUID, data: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    product = apply_document_filter(db.query(Product), Product, current_user).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     product.name = data.name
@@ -151,8 +155,8 @@ def update_product(product_id: uuid.UUID, data: ProductCreate, db: Session = Dep
 
 
 @router.delete("/{product_id}", status_code=204)
-def delete_product(product_id: uuid.UUID, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def delete_product(product_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    product = apply_document_filter(db.query(Product), Product, current_user).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(product)
@@ -160,7 +164,7 @@ def delete_product(product_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/batch", response_model=ProductListResponse, status_code=201)
-async def import_products_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_products_csv(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
 
@@ -201,6 +205,7 @@ async def import_products_csv(file: UploadFile = File(...), db: Session = Depend
                 nav_history=nav_history,
                 source=source,
                 nav_updated_at=nav_updated_at,
+                user_id=None if current_user.role == "admin" else current_user.id,
             )
             db.add(product)
             db.flush()

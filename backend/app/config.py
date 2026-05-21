@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     embed_model: str = "nomic-embed-text"
     chroma_db_dir: str = "./chroma_db"
     documents_dir: str = "./documents"
+    secret_key: str = "change-me-in-production-use-a-real-random-string"
+    access_token_expire_hours: int = 24
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 

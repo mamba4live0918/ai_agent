@@ -1,3 +1,56 @@
+// ─── Auth ───
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'instructor' | 'salesperson';
+  created_at: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+// ─── Instructor ───
+export interface TrainingStatsOverview {
+  total_users: number;
+  total_sessions: number;
+  completed_sessions: number;
+  active_sessions: number;
+  completion_rate: number;
+  average_score: number | null;
+}
+
+export interface PerUserStats {
+  user_id: string;
+  username: string;
+  role: string;
+  total_sessions: number;
+  completed_sessions: number;
+  average_score: number | null;
+  last_session_at: string | null;
+}
+
+export interface TrainingTrendPoint {
+  period: string;
+  total_sessions: number;
+  completed_sessions: number;
+  average_score: number | null;
+}
+
 export interface Category {
   id: string;
   name: string;

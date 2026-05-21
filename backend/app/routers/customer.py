@@ -9,6 +9,8 @@ from sqlalchemy import func
 from ..database import get_db
 from ..models.customer import Customer
 from ..models.product import Product
+from ..models.user import User
+from ..utils.auth import get_current_user, apply_user_filter, apply_document_filter
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
     CustomerResponse, CustomerListResponse, AllocationPlanSave,
@@ -26,8 +28,9 @@ def list_customers(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Customer)
+    query = apply_user_filter(db.query(Customer), Customer, current_user)
     if q:
         query = query.filter(Customer.name.ilike(f"%{q}%"))
     total = query.count()
@@ -44,7 +47,7 @@ def list_customers(
 
 
 @router.post("", response_model=CustomerResponse, status_code=201)
-def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     customer = Customer(
         name=data.name,
         raw_input=data.raw_input,
@@ -53,6 +56,7 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
         scores=data.scores,
         presales_prep=data.presales_prep,
         allocation_plan=data.allocation_plan,
+        user_id=current_user.id,
     )
     db.add(customer)
     db.commit()
@@ -61,7 +65,7 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/analyze", response_model=CustomerAnalyzeResponse)
-def analyze_customer_text(data: CustomerAnalyzeRequest):
+def analyze_customer_text(data: CustomerAnalyzeRequest, current_user: User = Depends(get_current_user)):
     result = analyze_customer(data.raw_text)
     return CustomerAnalyzeResponse(**result)
 
@@ -71,8 +75,9 @@ def regenerate_customer_profile(
     customer_id: uuid.UUID,
     data: RegenerateProfileRequest | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     if not customer.raw_input:
@@ -91,16 +96,16 @@ def regenerate_customer_profile(
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
-def get_customer(customer_id: uuid.UUID, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+def get_customer(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     return CustomerResponse.model_validate(customer)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
-def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     customer.name = data.name
@@ -121,8 +126,8 @@ def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = 
 
 
 @router.post("/{customer_id}/presales-prep", response_model=CustomerResponse)
-def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -139,12 +144,12 @@ def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{customer_id}/allocation-plan", response_model=CustomerResponse)
-def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    products = db.query(Product).all()
+    products = apply_document_filter(db.query(Product), Product, current_user).all()
     if not products:
         raise HTTPException(status_code=400, detail="No products in library — add products first")
 
@@ -199,8 +204,9 @@ def save_allocation_plan(
     customer_id: uuid.UUID,
     data: AllocationPlanSave,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     if not customer.allocation_plan:
@@ -215,8 +221,8 @@ def save_allocation_plan(
 
 
 @router.delete("/{customer_id}", status_code=204)
-def delete_customer(customer_id: uuid.UUID, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+def delete_customer(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     db.delete(customer)

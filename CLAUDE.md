@@ -37,27 +37,38 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 ### 后端模块
 
-- `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除）
+- `routers/auth.py` — 用户注册/登录/获取当前用户（JWT + bcrypt）
+- `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除），文档按用户隔离
 - `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案 + 画像重新生成
 - `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
-- `routers/chat.py` — 知识库 RAG 问答
+- `routers/chat.py` — 知识库 RAG 问答，对话按用户命名空间隔离
 - `routers/training.py` — 仿真培训 API（7 端点：创建/列表/详情/发消息/结束/复盘/删除）
+- `routers/instructor.py` — 讲师端口（统计概览/按用户统计/训练趋势/CSV 导出）
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
 - `services/training_service.py` — DeepSeek 生成客户模拟 + 教练提示 + 复盘报告（KB-First）
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
+- `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入、用户/文档过滤
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
+- `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
 - `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
+- `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
+- `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
 
 ### 前端模块
 
+- `pages/Login.tsx` — 登录页（GitHub-dark 风格卡片表单）
+- `pages/Register.tsx` — 注册页（用户名 + 邮箱 + 密码 + 确认密码）
+- `pages/Dashboard.tsx` — 首页仪表盘
 - `pages/KnowledgeBase.tsx` — 知识库管理（分类筛选 + 文档上传 + RAG 对话）
 - `pages/CustomerAnalysis.tsx` — 客户列表 + 搜索 + 新建/删除
-- `pages/Dashboard.tsx` — 首页仪表盘
 - `pages/Training.tsx` — 仿真培训主页面（会话列表 + 聊天区 + 复盘弹窗）
+- `pages/InstructorDashboard.tsx` — 讲师端口统计面板（统计卡片 + 趋势图 + 用户表格 + CSV 导出）
+- `components/Layout.tsx` — GitHub 风格侧边栏（含用户信息 + 讲师导航 + 退出登录）
+- `components/ProtectedRoute.tsx` — 认证守卫（未登录重定向 /login）
 - `components/CustomerProfile.tsx` — 客户详情（3 Tab：分析/售前准备/配置方案）+ 发起训练入口
 - `components/AllocationPlan.tsx` — 3 套配置方案对比 + 手动调整 + 图表
 - `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页 + 净值刷新）
@@ -67,6 +78,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/PersonaForm.tsx` — 手动创建数字人客户表单
 - `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
 - `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
+- `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor）
 
 ### 仿真培训（AI 数字人对练）
 
@@ -114,6 +126,32 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - 高净值客户 PDF 自动包含 KYC 九宫格（插入在 AI 分析之后）
 - 未生成的内容（如未生成的配置方案）不会出现在 PDF 中
 
+### 用户认证与多租户
+
+- **JWT 认证**：`python-jose[cryptography]` + HS256，纯 access token（24h 过期），无 refresh token
+- **密码存储**：`bcrypt==4.2.1`（非 passlib，因兼容性问题）
+- **三种角色**：admin（管理员，看全部数据）、instructor（讲师，看全部数据 + 讲师端口）、salesperson（销售，仅看自己的数据）
+- **数据隔离**：Customer / Product / TrainingSession 添加 `user_id` 列（FK → users.id）
+- **文档分层**：Document.user_id 可空 — NULL = 基础/共享文档全员可见，非 NULL = 个人文档
+- **产品分层**：Product.user_id 可空 — 管理员创建的产品 user_id=NULL（共享），普通用户创建的仅自己可见
+- **查询过滤**：
+  - `apply_user_filter(query, model, current_user)` — admin 看全部，其他人仅看自己的（Customer / TrainingSession）
+  - `apply_document_filter(query, model, current_user)` — admin 看全部，其他人看共享 + 自己的（Document / Product）
+- **角色守卫**：`require_instructor(current_user)` 允许 admin + instructor，拒绝 salesperson
+- **默认账号**：admin / admin123（Alembic 迁移自动创建）
+- **Chat 隔离**：对话以 `user_id:conversation_id` 命名空间前缀存储
+
+### 讲师端口
+
+- **4 个 API 端点**（全部要求 instructor/admin 角色）：
+  - `GET /api/instructor/statistics/overview` — 总计：用户数/会话数/完成率/平均分
+  - `GET /api/instructor/statistics/per-user` — 按用户细分统计
+  - `GET /api/instructor/statistics/trends?granularity=weekly|monthly` — 训练趋势
+  - `GET /api/instructor/reports/export?format=csv` — CSV 报表导出
+- **评分提取**：Python 侧 `r.scores.get("overall")` 而非 SQL JSONB cast（避免 PostgreSQL JSONB 操作符兼容问题）
+- **前端**：4 张统计卡片 + Recharts BarChart/Line 组合趋势图 + 按用户表格 + CSV 导出按钮
+- **路由守卫**：`router = APIRouter(dependencies=[Depends(require_instructor)])` 统一控制
+
 ### 知识库优先生成（KB-First）
 
 所有 LLM 生成（客户分析、售前准备、资产配置）在调用 DeepSeek 前会先从 ChromaDB 检索相关知识库内容，注入 prompt 优先参考。检索失败或无匹配时静默回退到纯 LLM 生成。
@@ -121,6 +159,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 ## 技术栈
 
 - **后端**: Python 3.11 + FastAPI + SQLAlchemy + PostgreSQL
+- **认证**: JWT (python-jose) + bcrypt 4.2.1
 - **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Ollama `nomic-embed-text`

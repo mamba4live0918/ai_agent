@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine, Base
-from .routers import knowledge, customer, chat, product, training
+from .routers import knowledge, customer, chat, product, training, auth, instructor
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,6 +21,8 @@ app.include_router(customer.router, prefix="/api/customers", tags=["customers"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(product.router, prefix="/api/products", tags=["products"])
 app.include_router(training.router, prefix="/api/training", tags=["training"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(instructor.router, prefix="/api/instructor", tags=["instructor"])
 
 
 @app.get("/api/health")

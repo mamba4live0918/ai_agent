@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.customer import Customer
 from ..models.training import TrainingSession, TrainingMessage, TrainingReview
+from ..models.user import User
+from ..utils.auth import get_current_user, apply_user_filter
 from ..schemas.training import (
     CreateSessionRequest, SessionResponse, SessionListResponse,
     SessionDetailResponse, MessageResponse,
@@ -54,15 +56,16 @@ def _session_to_response(session: TrainingSession) -> SessionResponse:
 # ──────────────────────────── POST /sessions ────────────────────────────
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
-def create_session(data: CreateSessionRequest, db: Session = Depends(get_db)):
+def create_session(data: CreateSessionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if data.scenario not in SCENARIO_NAMES:
         raise HTTPException(status_code=400, detail=f"Invalid scenario. Must be one of: {list(SCENARIO_NAMES.keys())}")
 
     customer_name = None
 
     if data.customer_id:
-        # From existing customer
-        customer = db.query(Customer).filter(Customer.id == data.customer_id).first()
+        # From existing customer — verify user owns this customer
+        customer = apply_user_filter(db.query(Customer), Customer, current_user) \
+            .filter(Customer.id == data.customer_id).first()
         if not customer:
             raise HTTPException(status_code=404, detail="Customer not found")
         customer_name = customer.name
@@ -107,6 +110,7 @@ def create_session(data: CreateSessionRequest, db: Session = Depends(get_db)):
         scenario=data.scenario,
         scenario_context=scenario_context,
         status="pending",
+        user_id=current_user.id,
     )
     db.add(session)
     db.commit()
@@ -126,8 +130,9 @@ def list_sessions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(TrainingSession)
+    query = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user)
     if customer_id:
         query = query.filter(TrainingSession.customer_id == customer_id)
     if status:
@@ -152,8 +157,9 @@ def list_sessions(
 # ──────────────────────────── GET /sessions/{id} ────────────────────────────
 
 @router.get("/sessions/{session_id}", response_model=SessionDetailResponse)
-def get_session(session_id: uuid.UUID, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def get_session(session_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -173,8 +179,9 @@ def get_session(session_id: uuid.UUID, db: Session = Depends(get_db)):
 # ──────────────────────────── POST /sessions/{id}/messages ────────────────────────────
 
 @router.post("/sessions/{session_id}/messages", response_model=SendMessageResponse)
-def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.status == "completed":
@@ -251,8 +258,9 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
 # ──────────────────────────── POST /sessions/{id}/quick-replies ────────────────────────────
 
 @router.post("/sessions/{session_id}/quick-replies")
-def get_quick_replies(session_id: uuid.UUID, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def get_quick_replies(session_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.status == "completed":
@@ -282,8 +290,9 @@ def get_quick_replies(session_id: uuid.UUID, db: Session = Depends(get_db)):
 # ──────────────────────────── POST /sessions/{id}/end ────────────────────────────
 
 @router.post("/sessions/{session_id}/end", response_model=ReviewResponse)
-def end_session(session_id: uuid.UUID, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def end_session(session_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.status == "completed":
@@ -321,8 +330,9 @@ def end_session(session_id: uuid.UUID, db: Session = Depends(get_db)):
 # ──────────────────────────── GET /sessions/{id}/review ────────────────────────────
 
 @router.get("/sessions/{session_id}/review", response_model=ReviewResponse)
-def get_review(session_id: uuid.UUID, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def get_review(session_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if not session.review:
@@ -334,8 +344,9 @@ def get_review(session_id: uuid.UUID, db: Session = Depends(get_db)):
 # ──────────────────────────── DELETE /sessions/{id} ────────────────────────────
 
 @router.delete("/sessions/{session_id}", status_code=204)
-def delete_session(session_id: uuid.UUID, db: Session = Depends(get_db)):
-    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+def delete_session(session_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
+        .filter(TrainingSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     db.delete(session)  # cascade deletes messages and review

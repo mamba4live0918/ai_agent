@@ -24,17 +24,22 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   ├── config.py            # 环境变量配置
 │   │   ├── database.py          # SQLAlchemy engine + session
 │   │   ├── models/              # ORM 模型
+│   │   │   ├── user.py          # User (含 hashed_password, role)
 │   │   │   ├── knowledge.py     # Category, Document
 │   │   │   ├── customer.py      # Customer (含 presales_prep, allocation_plan JSONB)
 │   │   │   ├── product.py       # Product (含 nav_history JSONB)
 │   │   │   └── training.py      # TrainingSession / Message / Review
 │   │   ├── schemas/             # Pydantic 请求/响应
+│   │   │   ├── auth.py          # UserRegister, UserLogin, UserResponse, TokenResponse
+│   │   │   ├── instructor.py    # TrainingStatsOverview, PerUserStats, TrainingTrendPoint
 │   │   │   └── training.py      # 训练相关 Pydantic 模型
 │   │   ├── routers/             # API 路由
+│   │   │   ├── auth.py          # 注册/登录/当前用户
 │   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传/删除（含 ChromaDB 清理）
 │   │   │   ├── customer.py      # 客户 CRUD + AI 分析 + 售前准备 + 配置方案
 │   │   │   ├── product.py       # 产品库 CRUD + CSV 批量导入
 │   │   │   ├── training.py      # 仿真培训 API（7 端点）
+│   │   │   ├── instructor.py    # 讲师端口统计 + CSV 导出
 │   │   │   └── chat.py          # RAG 问答
 │   │   ├── services/
 │   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
@@ -44,6 +49,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── training_service.py   # 客户模拟 + 教练提示 + 复盘报告（KB 优先）
 │   │   │   └── fund_service.py       # 东方财富 API 获取真实基金净值走势
 │   │   └── utils/
+│   │       ├── auth.py              # JWT + bcrypt + 认证依赖注入 + 用户/文档过滤
 │   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
 │   ├── alembic/                 # 数据库迁移
 │   └── requirements.txt
@@ -133,7 +139,33 @@ npm run dev
 
 产品数据通过前端界面手动添加或 CSV 批量导入。基金产品填入基金代码后自动从东方财富拉取真实净值数据。
 
+## 用户认证
+
+系统有三种角色：**admin**（管理员，看全部数据）、**instructor**（讲师，看全部数据 + 讲师端口）、**salesperson**（销售，仅看自己的数据）。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/auth/register` | 注册（默认 salesperson） |
+| POST | `/api/auth/login` | 登录 → JWT token |
+| GET | `/api/auth/me` | 当前用户信息 |
+
+默认管理员：`admin` / `admin123`
+
+### 数据隔离
+
+- **客户 / 训练会话**：按用户隔离，非管理员仅看自己的数据
+- **知识库文档**：user_id=NULL 为基础文档（全员可见），非 NULL 为个人文档
+- **产品库**：管理员创建的产品 user_id=NULL（共享全员可见），普通用户创建的仅自己可见
+
 ## API 端点
+
+### 讲师端口（需 admin/instructor 角色）
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/instructor/statistics/overview` | 训练统计概览 |
+| GET | `/api/instructor/statistics/per-user` | 按用户细分统计 |
+| GET | `/api/instructor/statistics/trends` | 训练趋势 `?granularity=weekly\|monthly` |
+| GET | `/api/instructor/reports/export` | 导出 CSV 报表 |
 
 ### 知识库
 | 方法 | 路径 | 说明 |
@@ -188,9 +220,23 @@ npm run dev
 
 ## 核心功能
 
+**用户认证与权限**
+- JWT 认证（python-jose + bcrypt），注册/登录/自动续期
+- 三种角色：admin（管理员）/ instructor（讲师）/ salesperson（销售）
+- 数据按用户隔离：客户、产品、训练会话各归属创建者
+- 知识库文档和产品支持共享模式（user_id=NULL = 全员可见）
+- 管理员创建的文档/产品自动设为共享，普通用户创建的仅自己可见
+
+**讲师端口**
+- 训练统计概览：总用户数/总会话数/完成率/平均分
+- 按用户细分统计表：每个用户的训练数据（总会话/已完成/平均分/最近训练）
+- 训练趋势图：按周/月柱状图（总会话 + 已完成）+ 平均分折线叠加
+- 一键导出 CSV 报表（含评分/表达逻辑/专业准确度/情绪情商）
+
 **知识库**
 - 分类浏览（财经法税/沟通技巧/行业知识/销售案例）
 - 文档上传自动索引到 ChromaDB（PDF/DOCX/TXT/MD/PPTX），带上传进度条
+- 文档按用户隔离 + 基础共享文档（user_id=NULL）全员可见
 - 全文搜索 + RAG 智能问答（上下文感知，跨文档推理）
 - 删除文档同步清理 ChromaDB 向量
 

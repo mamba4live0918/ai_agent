@@ -7,6 +7,8 @@ from sqlalchemy import func
 
 from ..database import get_db
 from ..models.knowledge import Category, Document
+from ..models.user import User
+from ..utils.auth import get_current_user, apply_document_filter
 from ..schemas.knowledge import (
     CategoryCreate, CategoryResponse,
     DocumentResponse, DocumentListResponse,
@@ -54,8 +56,9 @@ def list_documents(
     category_id: uuid.UUID | None = Query(None),
     q: str | None = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Document)
+    query = apply_document_filter(db.query(Document), Document, current_user)
     if category_id:
         query = query.filter(Document.category_id == category_id)
     if q:
@@ -80,6 +83,7 @@ def upload_document(
     file: UploadFile = File(...),
     category_id: str = Form(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
@@ -105,6 +109,7 @@ def upload_document(
         file_type=ext.lstrip("."),
         content_preview=preview,
         chunk_count=chunk_count,
+        user_id=current_user.id,
     )
     db.add(doc)
     db.commit()
@@ -119,8 +124,8 @@ def upload_document(
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentResponse)
-def get_document(doc_id: uuid.UUID, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def get_document(doc_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     cat = db.query(Category).filter(Category.id == doc.category_id).first()
@@ -133,8 +138,8 @@ def get_document(doc_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.delete("/documents/{doc_id}", status_code=204)
-def delete_document(doc_id: uuid.UUID, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def delete_document(doc_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     filename = os.path.basename(doc.file_path)
