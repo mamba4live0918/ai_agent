@@ -65,6 +65,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </svg>
           产品库
         </NavLink>
+        <NavLink to="/training" className={linkClass} onClick={close}>
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16ZM8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 4.5h1.16v3.5H6.92V4.5Zm0 4.5h1.16v1H6.92V9Zm-2.5-4.5a.5.5 0 0 1 .5.5v.5h-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5h-1ZM4.92 5h.5v.5h-.5V5Zm3.5 0h.5v3.5h-.5V5Z"/>
+          </svg>
+          仿真培训
+        </NavLink>
 
         <div className="pt-4 mt-4 border-t border-[#21262d]">
           <p className="px-3 py-1 text-[11px] font-semibold text-[#484f58] uppercase tracking-wider">

@@ -190,6 +190,23 @@
     animation: fadeInUp 0.3s ease both;
   }
 
+  /* Loading bar shimmer */
+  @keyframes loadingBar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .animate-loading-bar {
+    position: relative;
+    overflow: hidden;
+  }
+  .animate-loading-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+    animation: loadingBar 1.5s ease-in-out infinite;
+  }
+
   /* Divider */
   .hr {
     border: 0;
@@ -236,5 +253,11 @@
   }
   .pdf-export .pdf-hide {
     display: none !important;
+  }
+  .pdf-export .bg-\[\#010409\] {
+    background: #ffffff !important;
+  }
+  .pdf-export .bg-\[\#1c2128\] {
+    background: #f6f8fa !important;
   }
 }

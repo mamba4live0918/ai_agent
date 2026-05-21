@@ -120,3 +120,90 @@ export interface AllocationPlan {
   total_investable?: number;
   generated_at?: string;
 }
+
+// ─── Training ───
+export interface Persona {
+  name: string;
+  age?: number | null;
+  gender?: string | null;
+  occupation?: string | null;
+  personality?: string | null;
+  investment_experience?: string | null;
+  wealth_level?: string | null;
+  risk_preference?: string | null;
+  goals?: string | null;
+}
+
+export interface TrainingSession {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  persona: Persona;
+  scenario: string;
+  scenario_context: string | null;
+  status: 'pending' | 'active' | 'completed';
+  coach_suggestions: CoachSuggestion[] | null;
+  started_at: string;
+  completed_at: string | null;
+  message_count: number;
+  has_review: boolean;
+}
+
+export interface CoachTip {
+  strategy: string;
+  phrasing: string;
+  golden_quote: string;
+  emotion: string;
+}
+
+export interface CoachSuggestion {
+  message_index: number;
+  tips: CoachTip;
+  created_at: string;
+}
+
+export interface TrainingMessage {
+  id: string;
+  session_id: string;
+  role: 'user' | 'customer' | 'coach';
+  content: string;
+  coach_tip: CoachTip | null;
+  created_at: string;
+}
+
+export interface TrainingSessionDetail extends TrainingSession {
+  messages: TrainingMessage[];
+  review: TrainingReview | null;
+}
+
+export interface TrainingReview {
+  id: string;
+  session_id: string;
+  scores: {
+    expression_logic: number;
+    professional_accuracy: number;
+    emotional_eq: number;
+    overall: number;
+  };
+  dimension_scores: Record<string, number>;
+  overall_comment: string | null;
+  weakness_analysis: { skill: string; level: string; suggestion: string }[] | null;
+  highlights: { type: 'good' | 'bad'; message_content: string; comment: string; improved_version?: string }[] | null;
+  next_steps: { priority: number; action: string }[] | null;
+  created_at: string;
+}
+
+export interface SendMessageResult {
+  user_message: TrainingMessage;
+  customer_message: TrainingMessage;
+  coach_tips: CoachTip | null;
+  conversation_ending: boolean;
+}
+
+export interface SessionList {
+  items: TrainingSession[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}

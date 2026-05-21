@@ -41,23 +41,46 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案 + 画像重新生成
 - `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
 - `routers/chat.py` — 知识库 RAG 问答
+- `routers/training.py` — 仿真培训 API（7 端点：创建/列表/详情/发消息/结束/复盘/删除）
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
+- `services/training_service.py` — DeepSeek 生成客户模拟 + 教练提示 + 复盘报告（KB-First）
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
+- `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
+- `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
 
 ### 前端模块
 
 - `pages/KnowledgeBase.tsx` — 知识库管理（分类筛选 + 文档上传 + RAG 对话）
 - `pages/CustomerAnalysis.tsx` — 客户列表 + 搜索 + 新建/删除
 - `pages/Dashboard.tsx` — 首页仪表盘
-- `components/CustomerProfile.tsx` — 客户详情（3 Tab：分析/售前准备/配置方案）
+- `pages/Training.tsx` — 仿真培训主页面（会话列表 + 聊天区 + 复盘弹窗）
+- `components/CustomerProfile.tsx` — 客户详情（3 Tab：分析/售前准备/配置方案）+ 发起训练入口
 - `components/AllocationPlan.tsx` — 3 套配置方案对比 + 手动调整 + 图表
 - `components/ProductManager.tsx` — 产品库管理（CRUD + CSV 导入 + 分页 + 净值刷新）
 - `components/ProductNavChart.tsx` — 产品净值走势图（基于 Recharts）
 - `components/KycGrid.tsx` — 华兴银行高客 KYC 九宫格（严格数据映射 + 手动补填）
+- `components/SessionList.tsx` — 训练记录侧边栏（会话列表 + 删除 + 复盘标记）
+- `components/PersonaForm.tsx` — 手动创建数字人客户表单
+- `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
+- `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
+
+### 仿真培训（AI 数字人对练）
+
+- **两种创建方式**：从客户分析页一键发起（使用客户画像），或手动创建数字人画像
+- **双 Agent 架构**：customer agent（t=0.7）模拟真实客户，coach agent（t=0.3）生成教练提示
+- **教练提示 4 维度**：策略建议、话术矫正、销售金句、情绪感知 — 每条用户消息都触发
+- **60 秒空闲检测**：输入框 60 秒无操作自动请求 LLM 生成回复思路建议
+- **对话自然结束检测**：customer agent 判断对话是否已自然结束，提示用户生成复盘
+- **实时持久化**：每条消息即时存入 PostgreSQL，导航离开再回来可继续未完成训练
+- **结构化复盘报告**：评分（表达逻辑/专业准确度/情绪情商/综合）+ 雷达图 + 话术点评 + 技能短板 + 下一步建议
+- **复盘持久化保存**：完成后左侧列表标记 📊，可随时回看历史复盘，支持导出 PDF
+- **级联删除**：删除训练会话时自动清理所有关联的消息和复盘记录
+- **会话恢复**：URL 参数 + sessionStorage 双重持久化，刷新/导航不丢失当前会话
+- **端点**：`POST /sessions`（创建）、`GET /sessions`（列表）、`GET /sessions/{id}`（详情含消息和复盘）、`POST /sessions/{id}/messages`（发消息）、`POST /sessions/{id}/end`（结束并生成复盘）、`GET /sessions/{id}/review`（单独获取复盘）、`DELETE /sessions/{id}`（级联删除）
 
 ### KYC 九宫格
 

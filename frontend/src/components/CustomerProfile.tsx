@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { Customer, CustomerProfile as CustomerProfileType, ScoreDimension } from '../types';
@@ -288,6 +289,17 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           </svg>
           导出 PDF
         </button>
+        {'id' in localCustomer && (
+          <Link
+            to={`/training?customerId=${(localCustomer as Customer).id}`}
+            className="btn btn-primary text-xs pdf-hide no-underline"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16ZM8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 4.5h1.16v3.5H6.92V4.5Zm0 4.5h1.16v1H6.92V9Zm-2.5-4.5a.5.5 0 0 1 .5.5v.5h-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5h-1ZM4.92 5h.5v.5h-.5V5Zm3.5 0h.5v3.5h-.5V5Z"/>
+            </svg>
+            发起训练
+          </Link>
+        )}
       </div>
 
       {/* Tab bar */}

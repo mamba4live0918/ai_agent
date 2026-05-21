@@ -133,3 +133,30 @@ export const sendMessage = (message: string, conversationId?: string) =>
     method: 'POST',
     body: JSON.stringify({ message, conversation_id: conversationId || null }),
   });
+
+// Training
+export const createTrainingSession = (data: { customer_id?: string; persona?: import('../types').Persona; scenario: string }) =>
+  request<import('../types').TrainingSession>('/training/sessions', { method: 'POST', body: JSON.stringify(data) });
+export const getTrainingSessions = (customerId?: string, status?: string, page = 1, pageSize = 20) => {
+  const params = new URLSearchParams();
+  if (customerId) params.set('customer_id', customerId);
+  if (status) params.set('status', status);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  return request<import('../types').SessionList>(`/training/sessions?${params}`);
+};
+export const getTrainingSession = (id: string) =>
+  request<import('../types').TrainingSessionDetail>(`/training/sessions/${id}`);
+export const sendTrainingMessage = (id: string, content: string) =>
+  request<import('../types').SendMessageResult>(`/training/sessions/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+export const getQuickReplies = (id: string) =>
+  request<{ suggestions: string[] }>(`/training/sessions/${id}/quick-replies`, { method: 'POST' });
+export const endTrainingSession = (id: string) =>
+  request<import('../types').TrainingReview>(`/training/sessions/${id}/end`, { method: 'POST' });
+export const getTrainingReview = (id: string) =>
+  request<import('../types').TrainingReview>(`/training/sessions/${id}/review`);
+export const deleteTrainingSession = (id: string) =>
+  request<void>(`/training/sessions/${id}`, { method: 'DELETE' });
