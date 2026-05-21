@@ -93,6 +93,7 @@ Base: `/api/training`
 | GET | `/sessions/{id}` | 会话详情（含全部消息） |
 | POST | `/sessions/{id}/messages` | 发送用户消息 → 返回 AI 客户回复 + 教练提示 |
 | POST | `/sessions/{id}/end` | 结束训练 → 触发复盘生成 |
+| DELETE | `/sessions/{id}` | 删除训练会话（级联删除消息和复盘记录） |
 | GET | `/sessions/{id}/review` | 获取复盘报告 |
 | GET | `/sessions/{id}/export` | 导出复盘报告（后续可加 PDF） |
 
@@ -116,7 +117,7 @@ Base: `/api/training`
 | `components/TrainingSession.tsx` | 对话区 + 教练侧边栏 |
 | `components/TrainingReview.tsx` | 复盘报告展示（含图表） |
 | `components/PersonaForm.tsx` | 数字人画像创建/编辑表单 |
-| `components/SessionList.tsx` | 左侧训练记录列表 |
+| `components/SessionList.tsx` | 左侧训练记录列表（含删除按钮，支持删除未完成和已完成会话） |
 
 ### 修改文件
 | File | Change |
@@ -165,3 +166,4 @@ Base: `/api/training`
 - [ ] 响应式：三栏/两栏/单栏切换正常
 - [ ] 面板分隔清晰
 - [ ] 训练记录关联客户，手动创建的独立存在
+- [ ] 删除训练会话（含未完成和已完成），级联清除消息和复盘
