@@ -26,18 +26,22 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   ├── models/              # ORM 模型
 │   │   │   ├── knowledge.py     # Category, Document
 │   │   │   ├── customer.py      # Customer (含 presales_prep, allocation_plan JSONB)
-│   │   │   └── product.py       # Product (含 nav_history JSONB)
+│   │   │   ├── product.py       # Product (含 nav_history JSONB)
+│   │   │   └── training.py      # TrainingSession / Message / Review
 │   │   ├── schemas/             # Pydantic 请求/响应
+│   │   │   └── training.py      # 训练相关 Pydantic 模型
 │   │   ├── routers/             # API 路由
 │   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传/删除（含 ChromaDB 清理）
 │   │   │   ├── customer.py      # 客户 CRUD + AI 分析 + 售前准备 + 配置方案
 │   │   │   ├── product.py       # 产品库 CRUD + CSV 批量导入
+│   │   │   ├── training.py      # 仿真培训 API（7 端点）
 │   │   │   └── chat.py          # RAG 问答
 │   │   ├── services/
 │   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
 │   │   │   ├── embedding_service.py  # ChromaDB 索引（分批嵌入，中文友好分割）
 │   │   │   ├── customer_service.py   # 客户 AI 画像 + 售前准备生成（KB 优先）
 │   │   │   ├── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
+│   │   │   ├── training_service.py   # 客户模拟 + 教练提示 + 复盘报告（KB 优先）
 │   │   │   └── fund_service.py       # 东方财富 API 获取真实基金净值走势
 │   │   └── utils/
 │   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
@@ -49,7 +53,8 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx    # 首页统计
 │   │   │   ├── KnowledgeBase.tsx    # 知识库（分类筛选 + 上传 + RAG 对话）
-│   │   │   └── CustomerAnalysis.tsx # 客户列表（搜索 + 分页 + CRUD）
+│   │   │   ├── CustomerAnalysis.tsx # 客户列表（搜索 + 分页 + CRUD）
+│   │   │   └── Training.tsx         # 仿真培训（会话列表 + 聊天 + 复盘弹窗）
 │   │   ├── components/
 │   │   │   ├── Layout.tsx       # GitHub 风格侧边栏布局
 │   │   │   ├── ChatPanel.tsx    # RAG 问答面板
@@ -61,7 +66,11 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── ProductNavChart.tsx   # 产品净值走势图
 │   │   │   ├── CategoryNav.tsx  # 分类导航
 │   │   │   ├── DocumentUpload.tsx    # 文档上传（带进度条）
-│   │   │   └── SearchBar.tsx    # 搜索栏
+│   │   │   ├── SearchBar.tsx    # 搜索栏
+│   │   │   ├── SessionList.tsx      # 训练记录侧边栏
+│   │   │   ├── PersonaForm.tsx      # 手动创建数字人客户
+│   │   │   ├── TrainingSession.tsx  # 训练聊天 + 教练实时提示
+│   │   │   └── TrainingReview.tsx   # 复盘报告（雷达图 + 话术 + PDF）
 │   │   ├── services/api.ts      # API 调用封装（含上传进度跟踪）
 │   │   └── types/index.ts       # TypeScript 类型定义
 │   ├── tailwind.config.js       # GitHub Primer 暗色主题配置
@@ -166,6 +175,17 @@ npm run dev
 |------|------|------|
 | POST | `/api/chat` | `{"message", "conversation_id"?}` → `{"answer", "sources", "conversation_id"}` |
 
+### 仿真培训
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/training/sessions` | 训练会话列表 `?customer_id=&status=&page=&page_size=` |
+| POST | `/api/training/sessions` | 创建训练会话（基于客户或手动创建数字人） |
+| GET | `/api/training/sessions/{id}` | 会话详情（含消息 + 复盘报告） |
+| POST | `/api/training/sessions/{id}/messages` | 发送消息 → 双 Agent 回复（客户 + 教练） |
+| POST | `/api/training/sessions/{id}/end` | 结束训练 → 生成结构化复盘报告 |
+| GET | `/api/training/sessions/{id}/review` | 单独获取复盘报告 |
+| DELETE | `/api/training/sessions/{id}` | 删除训练会话（级联清理消息和复盘） |
+
 ## 核心功能
 
 **知识库**
@@ -191,6 +211,19 @@ npm run dev
 - 基于已有客户画像，AI 一键生成售前策略报告
 - 5 大板块：生命周期分析 / 潜在难点 / 应对话术 / 心态准备 / 维护动作
 - 报告保存到客户档案，支持 PDF 导出
+- 支持从客户详情页一键"发起训练"进入仿真培训
+
+**仿真培训（AI 数字人对练）**
+- 两种创建方式：客户分析页一键发起（使用客户画像），或手动创建数字人画像（年龄/性别/职业/性格/投资偏好等）
+- 双 Agent 架构：customer agent（t=0.7）模拟真实客户行为，coach agent（t=0.3）实时生成教练建议
+- 教练 4 维提示：策略建议 / 话术矫正 / 销售金句 / 情绪感知 — 每条用户消息即时触发
+- 60 秒空闲检测：输入框无操作自动请求 LLM 生成回复思路建议
+- 对话自然结束检测：客户 agent 判断对话是否已结束，提示用户生成复盘
+- 实时持久化：每条消息即时存入数据库，导航离开再回来可继续未完成训练
+- 结构化复盘报告：评分（表达逻辑/专业准确度/情绪情商/综合）+ 雷达图 + 话术对比点评 + 技能短板分析 + 下一步行动建议
+- 复盘持久化保存：完成后训练记录标记 📊，可随时回看历史复盘追溯进步，支持 PDF 导出
+- 会话恢复：URL 参数 + sessionStorage 双重持久化，刷新/导航不丢失当前会话
+- 级联删除：删除训练会话自动清理关联消息和复盘记录
 
 **资产配置方案**
 - 基于客户画像和产品库，AI 生成 3 套配置方案（保守型/稳健型/进取型）
