@@ -99,14 +99,24 @@ Base: `/api/training`
 
 ### LLM Prompt 架构
 
-延续现有 KB-First 模式。**所有 LLM 调用（对话生成、教练提示、复盘评价）均先从 ChromaDB 检索相关知识库内容**，检索失败时静默回退到纯 LLM 生成。
+延续现有 KB-First 模式。**所有 LLM 调用均先从 ChromaDB 检索相关知识库内容**，检索失败时静默回退到纯 LLM 生成。
 
-1. **System prompt**：数字人画像 + 场景设定 + 行为指令（扮演客户、制造合理难度）
-2. **Knowledge base context**：调用 `search_knowledge_base()` 检索与当前场景相关的知识（如客诉处理技巧、产品知识、话术模板），注入 prompt
-3. **User prompt**：对话历史（最近 10 轮）+ 用户最新输入
-4. **教练 prompt**：基于知识库内容 + 用户最新输入，生成 4 类提示。知识库匹配的销售技巧/话术优先采用
+每轮对话拆分为两次独立调用：
 
-**复盘生成**单独调用：发送完整对话历史 + 知识库检索（场景相关评分标准、话术范例），AI 参照知识库基准进行评分和点评。
+**第一次调用 — 客户模拟 Agent（temperature=0.7）**
+- System prompt：数字人画像 + 场景设定 + 行为指令（扮演客户、制造合理难度）
+- Knowledge base context：场景相关背景知识
+- User prompt：对话历史（最近 10 轮）+ 用户最新输入
+- 返回：客户回复 + `conversation_ending` 标志
+
+**第二次调用 — 教练 Agent（temperature=0.3）**
+- System prompt：资深销售教练，分析训练者表现
+- Knowledge base context：场景相关销售技巧、话术范例、应对策略
+- User prompt：对话历史 + 用户最新输入 + 客户回复（上一调用结果）
+- 返回：四类提示（策略/话术/金句/情绪），知识库匹配内容优先采用
+- 教练能看到完整客户回复后再分析，更加精准
+
+**复盘生成（temperature=0.3）**：单独调用，发送完整对话历史 + 知识库检索（评分标准、话术范例），参照知识库基准进行评分和点评。
 
 ## Frontend
 
@@ -144,11 +154,12 @@ Base: `/api/training`
 ## Technical Decisions
 
 1. **KB-First**：所有生成（对话、教练提示、复盘）调用 `search_knowledge_base()` 检索相关知识库内容，注入 prompt 优先参考。检索失败时静默回退。
-2. **对话生成**：每轮调用 DeepSeek，temperature=0.7（比分析高，增加对话多样性）
-3. **教练提示**：在同一请求中要求 AI 返回 JSON 包含 `{customer_reply, coach_tips: {strategy, phrasing, golden_quote, emotion}, conversation_ending: bool}`
-4. **复盘生成**：发送完整对话历史 + 知识库检索结果，要求返回结构化 JSON（评分 + 点评 + 话术对比 + 短板 + 建议）
-5. **LLM 对话窗口**：每轮发送给 DeepSeek 的上下文保留最近 10 轮（20 条消息），超出部分省略（仅影响 prompt token 消耗，不影响存储和用户回看）
-6. **消息存储**：所有消息存 `training_messages` 表，按 `created_at` 排序加载完整对话历史，不设条数限制
+2. **客户 Agent 与教练 Agent 分离**：每轮两次独立 LLM 调用——先客户模拟（temperature=0.7，高多样性）返回客户回复；再教练分析（temperature=0.3，高精度）生成四类提示。教练可见完整客户回复，分析更精准
+3. **客户 Agent 返回**：`{reply, conversation_ending: bool}`
+4. **教练 Agent 返回**：`{coach_tips: {strategy, phrasing, golden_quote, emotion}}`
+5. **复盘生成**：发送完整对话历史 + 知识库检索结果，要求返回结构化 JSON（评分 + 点评 + 话术对比 + 短板 + 建议）
+6. **LLM 对话窗口**：每轮发送给 DeepSeek 的上下文保留最近 10 轮（20 条消息），超出部分省略（仅影响 prompt token 消耗，不影响存储和用户回看）
+7. **消息存储**：所有消息存 `training_messages` 表，按 `created_at` 排序加载完整对话历史，不设条数限制
 
 ## Verification Checklist
 
