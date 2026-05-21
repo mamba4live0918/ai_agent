@@ -91,13 +91,14 @@ Base: `/api/training`
 
 ### LLM Prompt 架构
 
-延续现有 KB-First 模式。每次对话轮次调用 DeepSeek，prompt 包含：
+延续现有 KB-First 模式。**所有 LLM 调用（对话生成、教练提示、复盘评价）均先从 ChromaDB 检索相关知识库内容**，检索失败时静默回退到纯 LLM 生成。
 
 1. **System prompt**：数字人画像 + 场景设定 + 行为指令（扮演客户、制造合理难度）
-2. **User prompt**：对话历史（最近 10 轮）+ 用户最新输入
-3. **教练 prompt**（同一请求中并行或串行）：分析用户最新输入，生成 4 类提示
+2. **Knowledge base context**：调用 `search_knowledge_base()` 检索与当前场景相关的知识（如客诉处理技巧、产品知识、话术模板），注入 prompt
+3. **User prompt**：对话历史（最近 10 轮）+ 用户最新输入
+4. **教练 prompt**：基于知识库内容 + 用户最新输入，生成 4 类提示。知识库匹配的销售技巧/话术优先采用
 
-复盘生成使用单独的 prompt，分析完整对话历史。
+**复盘生成**单独调用：发送完整对话历史 + 知识库检索（场景相关评分标准、话术范例），AI 参照知识库基准进行评分和点评。
 
 ## Frontend
 
@@ -134,11 +135,12 @@ Base: `/api/training`
 
 ## Technical Decisions
 
-1. **对话生成**：每轮调用 DeepSeek，temperature=0.7（比分析高，增加对话多样性）
-2. **教练提示**：在同一请求中要求 AI 返回 JSON 包含 `{customer_reply, coach_tips: {strategy, phrasing, golden_quote, emotion}}`
-3. **复盘生成**：发送完整对话历史，要求返回结构化 JSON（评分 + 点评 + 话术对比 + 短板 + 建议）
-4. **历史对话窗口**：保留最近 10 轮（20 条消息），超出部分省略
-5. **消息存储**：training_messages 表存所有消息；training_sessions.messages 冗余存最近 20 条以便列表快速预览
+1. **KB-First**：所有生成（对话、教练提示、复盘）调用 `search_knowledge_base()` 检索相关知识库内容，注入 prompt 优先参考。检索失败时静默回退。
+2. **对话生成**：每轮调用 DeepSeek，temperature=0.7（比分析高，增加对话多样性）
+3. **教练提示**：在同一请求中要求 AI 返回 JSON 包含 `{customer_reply, coach_tips: {strategy, phrasing, golden_quote, emotion}}`
+4. **复盘生成**：发送完整对话历史 + 知识库检索结果，要求返回结构化 JSON（评分 + 点评 + 话术对比 + 短板 + 建议）
+5. **历史对话窗口**：保留最近 10 轮（20 条消息），超出部分省略
+6. **消息存储**：training_messages 表存所有消息；training_sessions.messages 冗余存最近 20 条以便列表快速预览
 
 ## Verification Checklist
 
