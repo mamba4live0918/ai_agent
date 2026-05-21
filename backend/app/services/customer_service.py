@@ -1,0 +1,247 @@
+import json
+import re
+from openai import OpenAI
+
+from ..config import settings
+from .rag_service import search_knowledge_base
+
+_client = OpenAI(
+    api_key=settings.deepseek_api_key,
+    base_url=settings.deepseek_base_url,
+)
+
+ANALYSIS_PROMPT = """You are a professional customer analyst for financial sales. Your analysis must be thorough, data-driven, and actionable.
+
+Customer description:
+{raw_text}
+
+{kb_context}
+
+{manual_context}
+
+Return ONLY valid JSON, no other text. **CRITICAL: You MUST include the "scores" field with all 6 dimensions. Each dimension MUST have a "value" (integer 1-10) and "reasoning" (string). This is mandatory — do NOT omit the scores.**
+
+Use this exact structure:
+
+{{
+    "name": "客户姓名",
+    "structured_data": {{
+        "age": 年龄数字或null,
+        "gender": "男/女/未知",
+        "occupation": "职业",
+        "income_level": "收入水平描述",
+        "assets": "资产状况描述",
+        "risk_preference": "风险偏好(保守/稳健/进取)",
+        "investment_experience": "投资经验描述",
+        "family_status": "家庭状况",
+        "goals": "理财目标"
+    }},
+    "scores": {{
+        "wealth_scale": {{"value": 1-10, "reasoning": "一句评分依据"}},
+        "risk_tolerance": {{"value": 1-10, "reasoning": "一句评分依据"}},
+        "investment_experience": {{"value": 1-10, "reasoning": "一句评分依据"}},
+        "need_urgency": {{"value": 1-10, "reasoning": "一句评分依据"}},
+        "customer_potential": {{"value": 1-10, "reasoning": "一句评分依据"}},
+        "communication_difficulty": {{"value": 1-10, "reasoning": "一句评分依据"}}
+    }},
+    "ai_profile": {{
+        "persona_summary": "客户画像总结(4-6句，涵盖身份、性格、财务特征、核心关注点、潜在需求和合作可能性)",
+        "financial_needs_analysis": "财务需求深度分析(4-6句，从资产配置、税务规划、传承安排、现金流管理等多角度剖析，指出当前理财方案的不足与机会)",
+        "communication_suggestions": "沟通策略与话术建议(4-6句，包括开场切入点、建立信任的方法、关键话题引导、应避免的表达方式、促成技巧)",
+        "risk_warnings": "风险揭示与合规提示(4-6句，涵盖投资风险、法律风险、家庭风险、市场风险、以及合规销售注意事项)",
+        "product_recommendations": "产品配置建议(4-6句，列出具体产品类型及推荐理由，说明与客户需求的匹配度，分主次优先级)",
+        "next_steps": "详细跟进计划(4-6句，分阶段列出近期/中期/远期行动步骤，包括需要准备的资料、需要协调的团队资源)"
+    }}
+}}
+
+## Scoring Rubric (MUST apply strictly based on customer's stated facts):
+
+wealth_scale (财富规模):
+  1-3: 年收入<20万，无房产或资产
+  4-6: 年收入20-100万，1套房产，有少量可投资资产
+  7-8: 年收入100-500万，多套房产，有大额可投资资产
+  9-10: 年收入>500万，多套房产+企业股权/家族资产等
+
+risk_tolerance (风险承受力):
+  1-3: 明确表示"保本""不能亏""不接受亏损"
+  4-6: 偏保守，买过银行理财/债券基金，可以接受小幅波动
+  7-8: 理性接受波动，买过股票基金，理解风险收益正比
+  9-10: 追求高收益，做过股票/期货/PE等高风险投资
+
+investment_experience (投资经验):
+  1-3: 只存定期/买过银行理财，不关注市场
+  4-6: 买过基金，了解基本投资概念，有一定持有经验
+  7-8: 配置多种产品类型，3年以上投资经历，有独立判断能力
+  9-10: 经验丰富，涉及股票/期货/外汇/PE等多种工具，熟悉市场
+
+need_urgency (需求紧迫度):
+  1-3: 随便了解，无明确时间表，无具体需求
+  4-6: 有明确咨询方向，但未进入决策阶段
+  7-8: 已比较多家产品/方案，近期（1-3个月）有意向决策
+  9-10: 急需解决方案，已主动多次联系，准备立即行动
+
+customer_potential (客户潜力):
+  1-3: 单次小额需求，后续无明确可挖掘空间
+  4-6: 有长期理财需求，可逐步深化合作
+  7-8: 高净值客户，多个需求方向可交叉销售
+  9-10: 超高净值，可建立长期深度合作关系，有转介绍价值
+
+communication_difficulty (沟通难度):
+  1-3: 已有信任基础，沟通无障碍，客户主动配合
+  4-6: 正常商业沟通，需要通过专业能力逐步建立信任
+  7-8: 有一定顾虑或误解，需要花费精力打消疑虑、澄清认知
+  9-10: 高度防备或抵触，需要长期破冰和多方佐证
+
+Rules:
+- For missing info, use null or "未知"
+- Keep all text in Chinese
+- Base analysis ONLY on provided information, do NOT fabricate details
+- All 6 ai_profile sections MUST be 4-6 sentences each, providing depth and specificity
+- Every score MUST have a reasoning field explaining the basis for the rating
+- If a dimension cannot be scored from available info, fill with a moderate value (4-6) and note "信息不足，基于有限信息推断" in reasoning"""
+
+
+def analyze_customer(raw_text: str, edited_structured_data: dict | None = None) -> dict:
+    kb_context = search_knowledge_base(raw_text)
+
+    # Build manual context from edited structured_data
+    manual_context = ""
+    if edited_structured_data:
+        parts = []
+        for key, label in [
+            ("age", "年龄"), ("gender", "性别"), ("occupation", "职业"),
+            ("income_level", "收入水平"), ("assets", "资产状况"),
+            ("risk_preference", "风险偏好"), ("investment_experience", "投资经验"),
+            ("family_status", "家庭状况"), ("goals", "理财目标"),
+        ]:
+            val = edited_structured_data.get(key)
+            if val and val != "未知" and val != "":
+                parts.append(f"- {label}：{val}")
+        if parts:
+            manual_context = "\n".join([
+                "",
+                "【人工补充信息（最高优先级）】",
+                "以下信息来自销售人员手动填写，请严格采用这些数据，不要用 AI 重新推断或覆盖：",
+                *parts,
+                "对于未列出的字段，继续从原始客户描述中提取。",
+            ])
+
+    prompt = ANALYSIS_PROMPT.format(raw_text=raw_text, kb_context=kb_context, manual_context=manual_context)
+
+    response = _client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": "You are a financial customer analyst. Always respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=4000,
+    )
+
+    content = response.choices[0].message.content
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
+    # Extract JSON from response (handle markdown code blocks)
+    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+    if json_match:
+        content = json_match.group(1)
+
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        result = {
+            "name": "未知",
+            "structured_data": {},
+            "ai_profile": {"persona_summary": content, "error": "JSON parse failed, raw response returned"},
+        }
+
+    return result
+
+
+PRESALES_PREP_PROMPT = """You are a senior sales coach preparing a financial salesperson for an upcoming client engagement.
+
+You have the following comprehensive client analysis to work with:
+
+【Client Structured Data】
+{structured_data}
+
+【AI Profile Analysis】
+{ai_profile}
+
+【Dimensional Scores (1-10)】
+{scores}
+
+{kb_context}
+
+Based on ALL the above information, generate a comprehensive pre-sales preparation report. Return ONLY valid JSON, no other text. Use this exact structure:
+
+{{
+    "lifecycle_analysis": "客户生命周期阶段分析(4-6句)：判断客户当前处于哪个销售阶段（关系建立期/需求挖掘期/方案推荐期/促成成交期/售后维护期/深度开发期），说明判断依据，描述该阶段的关键特征和销售重点",
+    "potential_difficulties": "潜在难点与客户顾虑(4-6句)：基于客户画像和评分，预判销售过程中可能遇到的阻力——客户可能的异议、担忧、决策障碍。每一条都要结合客户的具体情况",
+    "response_scripts": "应对话术(4-6句)：针对上述潜在难点，给出具体的话术建议。包括开场切入方式、关键问题的提问方法、异议处理的回应模板。语言要自然，符合真实销售场景",
+    "mindset_preparation": "销售人员心态准备(4-6句)：这次销售应该保持什么样的心态？需要特别注意哪些沟通陷阱？如何在专业性和亲和力之间平衡？结合客户性格特点给出具体心态建议",
+    "maintenance_actions": "维护动作与跟进节奏(4-6句)：分阶段列出具体的跟进行动计划——今天沟通后立即做什么、本周内做什么、一个月内做什么。包括需要准备的材料、需要协调的团队资源、推荐的沟通频率"
+}}
+
+Rules:
+- All text in Chinese
+- Each section MUST be 4-6 sentences, specific and actionable
+- Reference specific details from the client's profile (age, occupation, assets, risk preference, scores, etc.)
+- Do NOT give generic advice — tailor every section to THIS specific client
+- For response_scripts, include actual phrases the salesperson can say"""
+
+
+def generate_presales_prep(customer_data: dict) -> dict:
+    """Generate a pre-sales preparation report based on existing customer analysis."""
+    structured_data = json.dumps(customer_data.get("structured_data") or {}, ensure_ascii=False, indent=2)
+    ai_profile = json.dumps(customer_data.get("ai_profile") or {}, ensure_ascii=False, indent=2)
+    scores = json.dumps(customer_data.get("scores") or {}, ensure_ascii=False, indent=2)
+
+    # Build search query from key customer fields
+    sd = customer_data.get("structured_data") or {}
+    search_parts = [
+        sd.get("occupation", ""),
+        sd.get("risk_preference", ""),
+        sd.get("goals", ""),
+        sd.get("investment_experience", ""),
+    ]
+    search_query = " ".join(v for v in search_parts if v and v != "未知") or "销售话术 客户沟通"
+    kb_context = search_knowledge_base(search_query)
+
+    prompt = PRESALES_PREP_PROMPT.format(
+        structured_data=structured_data,
+        ai_profile=ai_profile,
+        scores=scores,
+        kb_context=kb_context,
+    )
+
+    response = _client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=4000,
+    )
+
+    content = response.choices[0].message.content
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
+    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+    if json_match:
+        content = json_match.group(1)
+
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        result = {
+            "lifecycle_analysis": content,
+            "potential_difficulties": "JSON解析失败",
+            "response_scripts": "JSON解析失败",
+            "mindset_preparation": "JSON解析失败",
+            "maintenance_actions": "JSON解析失败",
+            "error": "JSON parse failed, raw response returned",
+        }
+
+    return result

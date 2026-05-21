@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# ChromaDB vector store (rebuilt on each run)
+chroma_db/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+
+# Environment variables
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+goal_text.txt
