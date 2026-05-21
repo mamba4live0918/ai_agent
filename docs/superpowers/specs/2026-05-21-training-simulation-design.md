@@ -37,7 +37,6 @@
 | scenario | String | 客诉处理 / 产品讲解 / 异议处理 |
 | scenario_context | Text | 场景背景描述和客户初始状态 |
 | status | String | pending / active / completed |
-| messages | JSONB | 冗余存储对话记录（便于快速读取），实际消息存 training_messages |
 | coach_suggestions | JSONB | 教练在对话过程中给出的所有提示记录 |
 | started_at | DateTime | |
 | completed_at | DateTime | nullable |
@@ -147,8 +146,8 @@ Base: `/api/training`
 2. **对话生成**：每轮调用 DeepSeek，temperature=0.7（比分析高，增加对话多样性）
 3. **教练提示**：在同一请求中要求 AI 返回 JSON 包含 `{customer_reply, coach_tips: {strategy, phrasing, golden_quote, emotion}, conversation_ending: bool}`
 4. **复盘生成**：发送完整对话历史 + 知识库检索结果，要求返回结构化 JSON（评分 + 点评 + 话术对比 + 短板 + 建议）
-5. **历史对话窗口**：保留最近 10 轮（20 条消息），超出部分省略
-6. **消息存储**：training_messages 表存所有消息；training_sessions.messages 冗余存最近 20 条以便列表快速预览
+5. **LLM 对话窗口**：每轮发送给 DeepSeek 的上下文保留最近 10 轮（20 条消息），超出部分省略（仅影响 prompt token 消耗，不影响存储和用户回看）
+6. **消息存储**：所有消息存 `training_messages` 表，按 `created_at` 排序加载完整对话历史，不设条数限制
 
 ## Verification Checklist
 
