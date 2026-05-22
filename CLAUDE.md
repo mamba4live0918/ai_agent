@@ -156,6 +156,14 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 所有 LLM 生成（客户分析、售前准备、资产配置）在调用 DeepSeek 前会先从 ChromaDB 检索相关知识库内容，注入 prompt 优先参考。检索失败或无匹配时静默回退到纯 LLM 生成。
 
+### 安全加固
+
+- **ChromaDB 检索隔离**：向量检索按 `user_id` 过滤（共享文档 + 用户自有文档），防止跨用户数据泄露
+- **JWT 密钥保护**：启动时检测 secret_key 是否为默认值，自动生成随机密钥并 WARNING 提示
+- **审计日志**：`audit_logs` 表（append-only）记录登录尝试、文档上传/删除、客户创建/删除等关键操作，含 IP 地址
+- **速率限制**：纯 ASGI 内存限流中间件，登录 5次/分钟/IP，全局 API 60次/分钟/IP
+- **Re-index 脚本**：`backend/scripts/reindex_chroma.py`，ChromaDB 元数据迁移后执行一次性重索引
+
 ## 技术栈
 
 - **后端**: Python 3.11 + FastAPI + SQLAlchemy + PostgreSQL
