@@ -20,10 +20,11 @@ class Settings(BaseSettings):
 
     # Voice Processing
     voice_processor_mode: str = "local"  # "local" or "cloud"
+    hf_endpoint: str = ""  # Set to "https://hf-mirror.com" if not using VPN
     hf_auth_token: str = ""  # HuggingFace token for pyannote models
     whisper_model_size: str = "large-v3"
-    whisper_compute_type: str = "int8_float16"
-    whisper_device: str = "cuda"  # "cuda" or "cpu"
+    whisper_compute_type: str = "int8"
+    whisper_device: str = "cpu"  # "cuda" or "cpu"
     speaker_label_strategy: str = "first_longest"
     audio_upload_dir: str = "./documents/audio"
     max_audio_duration_seconds: int = 3600

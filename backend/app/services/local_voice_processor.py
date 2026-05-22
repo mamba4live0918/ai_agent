@@ -6,21 +6,57 @@ from ..config import settings
 
 _diarization_pipeline = None
 _whisper_model = None
+_patches_applied = False
+
+
+def _apply_compat_patches():
+    """Apply compatibility patches for pyannote 4.x dependency quirks on Windows."""
+    global _patches_applied
+    if _patches_applied:
+        return
+    _patches_applied = True
+
+    # Use HF mirror for China mainland access
+    if settings.hf_endpoint and "HF_ENDPOINT" not in os.environ:
+        os.environ["HF_ENDPOINT"] = settings.hf_endpoint
+
+    # Disable OpenTelemetry metrics (crashes on Windows with None duration)
+    if "PYANNOTE_METRICS_ENABLED" not in os.environ:
+        os.environ["PYANNOTE_METRICS_ENABLED"] = "false"
+
+    # speechbrain lazy-imports k2 (FSR toolkit) which isn't installed.
+    # Make the import fail silently with a dummy module.
+    try:
+        import speechbrain.utils.importutils
+        _orig_ensure = speechbrain.utils.importutils.LazyModule.ensure_module
+
+        def _patched_ensure(self, stacklevel=1):
+            try:
+                return _orig_ensure(self, stacklevel)
+            except ImportError:
+                import types
+                return types.ModuleType(str(self.target))
+
+        speechbrain.utils.importutils.LazyModule.ensure_module = _patched_ensure
+    except Exception:
+        pass
 
 
 def _load_diarization():
     global _diarization_pipeline
     if _diarization_pipeline is None:
+        _apply_compat_patches()
         # Suppress symlink warnings on Windows
         warnings.filterwarnings("ignore", category=UserWarning, module="pyannote")
         from pyannote.audio import Pipeline
         _diarization_pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
-            use_auth_token=settings.hf_auth_token,
+            token=settings.hf_auth_token or True,
         )
         if settings.whisper_device == "cuda":
             import torch
-            _diarization_pipeline.to(torch.device("cuda"))
+            if torch.cuda.is_available():
+                _diarization_pipeline.to(torch.device("cuda"))
     return _diarization_pipeline
 
 
@@ -28,10 +64,21 @@ def _load_whisper():
     global _whisper_model
     if _whisper_model is None:
         from faster_whisper import WhisperModel
+        device = settings.whisper_device
+        compute_type = settings.whisper_compute_type
+        if device == "cuda":
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    device = "cpu"
+                    compute_type = "int8"
+            except Exception:
+                device = "cpu"
+                compute_type = "int8"
         _whisper_model = WhisperModel(
             settings.whisper_model_size,
-            device=settings.whisper_device,
-            compute_type=settings.whisper_compute_type,
+            device=device,
+            compute_type=compute_type,
         )
     return _whisper_model
 
@@ -89,7 +136,7 @@ class LocalVoiceProcessor:
         pipeline = _load_diarization()
         output = pipeline(audio_path)
         segments = []
-        for turn, _, speaker in output.itertracks(yield_label=True):
+        for turn, _, speaker in output.speaker_diarization.itertracks(yield_label=True):
             segments.append({
                 "speaker": speaker,
                 "start": round(turn.start, 2),
@@ -111,7 +158,7 @@ class LocalVoiceProcessor:
                 "start": round(seg.start, 2),
                 "end": round(seg.end, 2),
                 "text": seg.text.strip(),
-                "confidence": round(seg.avg_logprob, 4),
+                "confidence": round(float(seg.avg_logprob), 4),
             })
 
         return _merge_segments(results)

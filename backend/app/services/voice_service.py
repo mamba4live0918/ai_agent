@@ -18,6 +18,21 @@ def _ensure_audio_dir(user_id: str) -> str:
     return user_dir
 
 
+def _min_audio_size() -> int:
+    """Minimum audio file size in bytes to be considered valid (webm header is ~1KB)."""
+    return 4096
+
+
+def _convert_to_wav(audio_path: str) -> str:
+    """Convert audio to WAV using pydub (via ffmpeg). Returns path to WAV file.
+    pydub works around torchcodec issues with webm duration on Windows."""
+    from pydub import AudioSegment
+    wav_path = audio_path.rsplit(".", 1)[0] + "_converted.wav"
+    audio = AudioSegment.from_file(audio_path)
+    audio.export(wav_path, format="wav")
+    return wav_path
+
+
 def save_audio_file(uploaded_file, user_id: str) -> tuple[str, float]:
     """Save uploaded audio to user-scoped directory. Returns (filepath, duration_seconds)."""
     user_dir = _ensure_audio_dir(user_id)
@@ -26,13 +41,11 @@ def save_audio_file(uploaded_file, user_id: str) -> tuple[str, float]:
     content = uploaded_file.file.read()
     with open(filepath, "wb") as f:
         f.write(content)
-    # Duration is estimated later or reported by client
-    file_size = len(content)
     return filepath, 0.0
 
 
 def process_conversation_audio(conversation_id: uuid.UUID, user_id: str, db: Session) -> SalesConversation:
-    """Full pipeline: diarize → transcribe → analyze → save.
+    """Full pipeline: convert → diarize → transcribe → analyze → save.
 
     Sets status to 'processing' during execution, 'completed' on success,
     or 'failed' on error with error_message populated.
@@ -46,16 +59,28 @@ def process_conversation_audio(conversation_id: uuid.UUID, user_id: str, db: Ses
         db.commit()
         return conv
 
+    file_size = os.path.getsize(conv.audio_file_path)
+    if file_size < _min_audio_size():
+        conv.status = "failed"
+        conv.error_message = f"Audio file too small ({file_size} bytes). Please record at least 1 second of audio."
+        db.commit()
+        return conv
+
     conv.status = "processing"
+    conv.error_message = None
     db.commit()
 
+    wav_path = None
     try:
+        # Step 0: Convert to WAV for reliable torchcodec processing
+        wav_path = _convert_to_wav(conv.audio_file_path)
+
         # Step 1: Speaker diarization
         processor = get_voice_processor()
-        diarization_segments = processor.diarize(conv.audio_file_path)
+        diarization_segments = processor.diarize(wav_path)
 
         # Step 2: Transcription aligned with diarization
-        transcribed_segments = processor.transcribe(conv.audio_file_path, diarization_segments)
+        transcribed_segments = processor.transcribe(wav_path, diarization_segments)
 
         # Step 3: Save individual messages
         for seg in transcribed_segments:
@@ -63,9 +88,9 @@ def process_conversation_audio(conversation_id: uuid.UUID, user_id: str, db: Ses
                 conversation_id=conv.id,
                 speaker=seg.get("speaker", "未知"),
                 content=seg.get("text", ""),
-                start_time=seg.get("start", 0),
-                end_time=seg.get("end", 0),
-                confidence=seg.get("confidence"),
+                start_time=float(seg.get("start", 0)),
+                end_time=float(seg.get("end", 0)),
+                confidence=float(seg["confidence"]) if seg.get("confidence") is not None else None,
             )
             db.add(msg)
 
@@ -87,9 +112,19 @@ def process_conversation_audio(conversation_id: uuid.UUID, user_id: str, db: Ses
         db.commit()
 
     except Exception as exc:
+        import traceback
+        db.rollback()
         conv.status = "failed"
-        conv.error_message = str(exc)
+        conv.error_message = f"{exc}\n\n{traceback.format_exc()}"
         db.commit()
+
+    finally:
+        # Clean up temporary WAV file
+        if wav_path and os.path.exists(wav_path):
+            try:
+                os.remove(wav_path)
+            except OSError:
+                pass
 
     db.refresh(conv)
     return conv

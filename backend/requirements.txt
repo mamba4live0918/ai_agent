@@ -15,6 +15,6 @@ pydantic==2.13.4
 pydantic-settings==2.14.1
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
-pyannote-audio==3.1.1
+pyannote-audio==4.0.4
 faster-whisper==1.0.3
 pydub==0.25.1
