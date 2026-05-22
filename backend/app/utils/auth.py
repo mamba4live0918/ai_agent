@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 import bcrypt
@@ -7,6 +8,11 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import get_db
 from ..models.user import User
+from ..models.token_blacklist import TokenBlacklist
+
+
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
 
 
 def hash_password(password: str) -> str:
@@ -19,6 +25,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
+    to_encode.setdefault("jti", str(uuid.uuid4()))
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.access_token_expire_hours)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
@@ -26,6 +33,33 @@ def create_access_token(data: dict) -> str:
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+
+
+def _cleanup_expired_blacklist(db: Session):
+    """Remove expired blacklist entries — called during get_current_user."""
+    now = datetime.now(timezone.utc)
+    db.query(TokenBlacklist).filter(TokenBlacklist.expires_at < now).delete()
+    db.commit()
+
+
+def _is_token_blacklisted(db: Session, jti: str) -> bool:
+    return db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first() is not None
+
+
+def blacklist_token(token: str, db: Session):
+    """Add token to blacklist on logout."""
+    try:
+        payload = decode_access_token(token)
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                entry = TokenBlacklist(jti=jti, expires_at=expires_at)
+                db.add(entry)
+                db.commit()
+    except JWTError:
+        pass
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -36,10 +70,14 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     try:
         payload = decode_access_token(token)
         user_id: str = payload.get("user_id")
+        jti: str | None = payload.get("jti")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token payload")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    _cleanup_expired_blacklist(db)
+    if jti and _is_token_blacklisted(db, jti):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")

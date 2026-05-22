@@ -11,6 +11,12 @@
 - [x] 安全加固（ChromaDB 用户隔离 + JWT 密钥检查 + 审计日志 + 速率限制）
 - [x] 文件加密存储（AES-256-GCM）
 - [x] 敏感字段加密（客户 raw_input 加密落库）
+- [x] 密码复杂度策略（最少8位 + 字母 + 数字）
+- [x] 账号锁定（5次失败锁定15分钟）
+- [x] Token 黑名单 + 退出登录（JTI 机制）
+- [x] 安全响应头（HSTS / CSP / X-Frame-Options / X-XSS-Protection 等）
+- [x] CORS 收紧（methods + headers 白名单）
+- [x] 请求体大小限制（50MB）
 
 ## 陪跑助手
 

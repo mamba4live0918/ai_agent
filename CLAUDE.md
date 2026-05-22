@@ -37,7 +37,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 ### 后端模块
 
-- `routers/auth.py` — 用户注册/登录/获取当前用户（JWT + bcrypt）
+- `routers/auth.py` — 用户注册/登录/退出/获取当前用户（JWT + bcrypt，密码复杂度，账号锁定）
 - `routers/knowledge.py` — 知识库 CRUD（分类 + 文档上传/删除），文档按用户隔离
 - `routers/customer.py` — 客户 CRUD + 分析 + 售前准备 + 配置方案 + 画像重新生成
 - `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
@@ -50,11 +50,15 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `services/training_service.py` — DeepSeek 生成客户模拟 + 教练提示 + 复盘报告（KB-First）
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
-- `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入、用户/文档过滤
-- `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
-- `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
+- `utils/auth.py` — JWT 生成/验证(JTI)、bcrypt 密码哈希、Token 黑名单、认证依赖注入、用户/文档过滤
+- `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX），自动解密加密文件
+- `utils/crypto.py` — AES-256-GCM 加解密工具（文件 + 字段级）
+- `middleware/rate_limit.py` — 纯 ASGI 内存滑动窗口限流中间件
+- `middleware/security_headers.py` — 安全响应头中间件（HSTS/CSP/X-Frame-Options 等）
+- `models/user.py` — User ORM 模型（含 failed_login_attempts, locked_until 锁定字段）
+- `models/token_blacklist.py` — Token 黑名单 ORM 模型（按 JTI 索引）
 - `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
-- `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
+- `schemas/auth.py` — 认证相关 Pydantic 模型（含密码复杂度 field_validator）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
 
@@ -128,7 +132,10 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 ### 用户认证与多租户
 
-- **JWT 认证**：`python-jose[cryptography]` + HS256，纯 access token（24h 过期），无 refresh token
+- **JWT 认证**：`python-jose[cryptography]` + HS256，access token 24h 过期，含 JTI 用于吊销，无 refresh token
+- **密码策略**：最少 8 位，必须含字母和数字（Pydantic field_validator）
+- **账号保护**：5 次登录失败锁定 15 分钟，登录成功自动重置计数
+- **Token 吊销**：`POST /api/auth/logout` 将 token 的 JTI 加入黑名单，下次请求即失效
 - **密码存储**：`bcrypt==4.2.1`（非 passlib，因兼容性问题）
 - **三种角色**：admin（管理员，看全部数据）、instructor（讲师，看全部数据 + 讲师端口）、salesperson（销售，仅看自己的数据）
 - **数据隔离**：Customer / Product / TrainingSession 添加 `user_id` 列（FK → users.id）
@@ -162,12 +169,20 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **JWT 密钥保护**：启动时检测 secret_key 是否为默认值，自动生成随机密钥并 WARNING 提示
 - **审计日志**：`audit_logs` 表（append-only）记录登录尝试、文档上传/删除、客户创建/删除等关键操作，含 IP 地址
 - **速率限制**：纯 ASGI 内存限流中间件，登录 5次/分钟/IP，全局 API 60次/分钟/IP
+- **文件加密**：上传文件 AES-256-GCM 加密存储（ENC1 魔数头），文档加载器自动解密
+- **客户数据加密**：`raw_input` 字段 AES-256-GCM 加密落库，API 边界加解密
+- **密码复杂度**：最少 8 位，必须包含字母和数字（Pydantic field_validator）
+- **账号锁定**：5 次登录失败后锁定 15 分钟，登录成功自动重置
+- **Token 黑名单**：退出登录将当前 token 加入黑名单（按 JTI），`get_current_user` 检查黑名单
+- **安全响应头**：HSTS / CSP / X-Frame-Options / X-Content-Type-Options / X-XSS-Protection / Referrer-Policy / Permissions-Policy
+- **CORS 白名单**：methods 和 headers 限制为白名单（不再使用 `*`）
+- **请求体大小限制**：50MB，防止大文件 DoS
 - **Re-index 脚本**：`backend/scripts/reindex_chroma.py`，ChromaDB 元数据迁移后执行一次性重索引
 
 ## 技术栈
 
 - **后端**: Python 3.11 + FastAPI + SQLAlchemy + PostgreSQL
-- **认证**: JWT (python-jose) + bcrypt 4.2.1
+- **认证**: JWT (python-jose) + bcrypt 4.2.1，密码复杂度策略，账号锁定，Token 黑名单
 - **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
