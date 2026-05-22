@@ -1,6 +1,6 @@
 # AI 销售助手 — 陪跑助手 + 仿真培训
 
-AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路。核心功能：知识库 RAG 问答 + KB 优先生成、客户画像分析（6 维评分+雷达图）、售前准备报告（5 板块）、资产配置方案（3 套风险等级+手动调整）。
+AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路。核心功能：知识库 RAG 问答 + KB 优先生成、客户画像分析（6 维评分+雷达图）、售前准备报告（5 板块）、资产配置方案（3 套风险等级+手动调整）、**售中辅助：语音录制 + 说话人分离 + 语音转录 + AI 分析（情绪/意图/建议）**。
 
 ## 技术栈
 
@@ -12,6 +12,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Jina AI (`jina-embeddings-v3`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
+| **语音处理** | pyannote-audio 4.0.4 (说话人分离) + faster-whisper large-v3 (转录) + pydub/ffmpeg (音频转换) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 
 ## 项目结构
@@ -28,7 +29,8 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── knowledge.py     # Category, Document
 │   │   │   ├── customer.py      # Customer (含 presales_prep, allocation_plan JSONB)
 │   │   │   ├── product.py       # Product (含 nav_history JSONB)
-│   │   │   └── training.py      # TrainingSession / Message / Review
+│   │   │   ├── training.py      # TrainingSession / Message / Review
+│   │   │   └── sales_conversation.py  # SalesConversation / ConversationMessage
 │   │   ├── schemas/             # Pydantic 请求/响应
 │   │   │   ├── auth.py          # UserRegister, UserLogin, UserResponse, TokenResponse
 │   │   │   ├── instructor.py    # TrainingStatsOverview, PerUserStats, TrainingTrendPoint
@@ -38,15 +40,20 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传/删除（含 ChromaDB 清理）
 │   │   │   ├── customer.py      # 客户 CRUD + AI 分析 + 售前准备 + 配置方案
 │   │   │   ├── product.py       # 产品库 CRUD + CSV 批量导入
-│   │   │   ├── training.py      # 仿真培训 API（7 端点）
-│   │   │   ├── instructor.py    # 讲师端口统计 + CSV 导出
-│   │   │   └── chat.py          # RAG 问答
+│   │   │   ├── training.py       # 仿真培训 API（7 端点）
+│   │   │   ├── sales_assistance.py  # 售中辅助 API（6 端点：上传/列表/处理/分析/删除）
+│   │   │   ├── instructor.py     # 讲师端口统计 + CSV 导出
+│   │   │   └── chat.py           # RAG 问答
 │   │   ├── services/
-│   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
+│   │   │   ├── rag_service.py    # DeepSeek 推理 + 对话管理 + 知识库检索工具
 │   │   │   ├── embedding_service.py  # ChromaDB 索引（分批嵌入，中文友好分割）
 │   │   │   ├── customer_service.py   # 客户 AI 画像 + 售前准备生成（KB 优先）
 │   │   │   ├── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
 │   │   │   ├── training_service.py   # 客户模拟 + 教练提示 + 复盘报告（KB 优先）
+│   │   │   ├── voice_processor.py    # 语音处理器抽象层（Protocol），预留云 API
+│   │   │   ├── local_voice_processor.py  # 本地语音处理（pyannote + faster-whisper）
+│   │   │   ├── voice_service.py      # 语音文件保存 + 处理 pipeline 编排
+│   │   │   └── sales_assistance_service.py  # LLM 销售辅助分析（情绪/意图/建议）
 │   │   │   └── fund_service.py       # 东方财富 API 获取真实基金净值走势
 │   │   └── utils/
 │   │       ├── auth.py              # JWT + bcrypt + 认证依赖注入 + 用户/文档过滤
@@ -202,6 +209,16 @@ npm run dev
 | POST | `/api/products/batch` | CSV 批量导入 |
 | POST | `/api/products/{id}/refresh-nav` | 刷新基金净值（从东方财富实时拉取） |
 
+### 售中辅助（语音转录 + AI 分析）
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/sales-assistance/conversations` | 上传音频文件（webm/wav/mp3/m4a） |
+| GET | `/api/sales-assistance/conversations` | 对话列表（分页、按状态筛选） |
+| GET | `/api/sales-assistance/conversations/{id}` | 对话详情（含转录消息 + 分析结果） |
+| POST | `/api/sales-assistance/conversations/{id}/process` | 触发处理 pipeline（说话人分离→转录→AI 分析） |
+| GET | `/api/sales-assistance/conversations/{id}/analysis` | 单独获取分析结果 |
+| DELETE | `/api/sales-assistance/conversations/{id}` | 删除对话（级联消息 + 音频文件） |
+
 ### RAG 问答
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -270,6 +287,18 @@ npm run dev
 - 复盘持久化保存：完成后训练记录标记 📊，可随时回看历史复盘追溯进步，支持 PDF 导出
 - 会话恢复：URL 参数 + sessionStorage 双重持久化，刷新/导航不丢失当前会话
 - 级联删除：删除训练会话自动清理关联消息和复盘记录
+
+**售中辅助（语音转录 + AI 分析）**
+- 前端语音录制（MediaRecorder API，audio/webm），上传到后端
+- pydub + ffmpeg 自动 webm→WAV 格式转换，兼容 Windows torchcodec
+- pyannote-audio 4.0.4 说话人分离，启发式规则自动区分 销售/客户
+- faster-whisper large-v3 语音转录，中文优化，word-level timestamps
+- DeepSeek AI 分析 3 模块（KB-First RAG 注入）：
+  - 情绪分析：整体情感、情绪时间线、转折点、销售能量曲线
+  - 意图识别：购买意向/顾虑/比价/风险信号
+  - 销售建议：错失机会、后续行动（按优先级）、话术要点
+- 对话查看器（双栏：转录 + 分析面板，3 Tab 切换）
+- 说话人标签气泡（销售=蓝色/客户=灰色），时间戳显示
 
 **资产配置方案**
 - 基于客户画像和产品库，AI 生成 3 套配置方案（保守型/稳健型/进取型）

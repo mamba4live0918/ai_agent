@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 客户分析：导入客户信息（文字/图片），画像分析，信息存档查询，导出电子文档
 - 资产配置方案：导入金融产品信息，联网搜索产品详情，生成配置方案，导出文档
 - 售前准备：基于客户生命周期生成营销建议（潜在难点、应对话术、心态准备、维护动作），支持仿真培训预演
-- 售中辅助：记录销售过程，（后续：实时语音识别客户情绪/意向/问题，提供应对话术/避坑建议/促销策略）
+- 售中辅助：语音录制上传、说话人分离（pyannote）、语音转录（faster-whisper large-v3）、AI 情绪/意图/建议分析，对话记录与回放
 - 售后分析：生成客户销售档案（分类/查询/萃取/删除），导出电子表格，给出评价与行动建议
 - 销售辅助知识库：财经法税知识、沟通技巧、行业知识、销售案例等（图文/短视频）
 - 30秒客户宣教视频生成及分发
@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 预留讲师端口：统计训练结果，导出报表，学练考评闭环
 
 **终端支持**：PC端 + 移动端双端访问
-**当前开发阶段**：文字交互优先，语音功能暂不处理
+**当前开发阶段**：文字交互 + 语音转录已完成，实时转录规划中
 
 ## 当前状态
 
@@ -43,11 +43,17 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `routers/product.py` — 产品库 CRUD + CSV 批量导入 + 净值自动刷新
 - `routers/chat.py` — 知识库 RAG 问答，对话按用户命名空间隔离
 - `routers/training.py` — 仿真培训 API（7 端点：创建/列表/详情/发消息/结束/复盘/删除）
+- `routers/sales_assistance.py` — 售中辅助 API（6 端点：上传/列表/详情/处理/分析/删除）
 - `routers/instructor.py` — 讲师端口（统计概览/按用户统计/训练趋势/CSV 导出）
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
 - `services/training_service.py` — DeepSeek 生成客户模拟 + 教练提示 + 复盘报告（KB-First）
+- `services/voice_processor.py` — 语音处理器抽象层（Protocol），工厂函数 get_voice_processor()
+- `services/local_voice_processor.py` — 本地语音处理：pyannote 说话人分离 + faster-whisper large-v3 转录
+- `services/cloud_voice_processor.py` — 云端语音处理占位（预留阿里云/讯飞）
+- `services/voice_service.py` — 语音文件保存 + 处理 pipeline 编排（webm→wav 转换 + 转录 + 分析）
+- `services/sales_assistance_service.py` — LLM 销售辅助分析（3 模块：情绪/意图/建议，KB-First）
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
 - `utils/auth.py` — JWT 生成/验证(JTI)、bcrypt 密码哈希、Token 黑名单、认证依赖注入、用户/文档过滤
@@ -58,9 +64,11 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `models/user.py` — User ORM 模型（含 failed_login_attempts, locked_until 锁定字段）
 - `models/token_blacklist.py` — Token 黑名单 ORM 模型（按 JTI 索引）
 - `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
+- `models/sales_conversation.py` — SalesConversation / ConversationMessage ORM 模型（售中辅助）
 - `schemas/auth.py` — 认证相关 Pydantic 模型（含密码复杂度 field_validator）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
+- `schemas/sales_assistance.py` — 售中辅助 Pydantic 模型
 
 ### 前端模块
 
@@ -82,6 +90,10 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/PersonaForm.tsx` — 手动创建数字人客户表单
 - `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
 - `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
+- `components/VoiceRecorder.tsx` — 语音录制（MediaRecorder API，录制/停止/上传状态机）
+- `components/ConversationViewer.tsx` — 对话回放（双栏布局：转录对话 + 分析面板）
+- `components/AnalysisPanel.tsx` — AI 分析面板（3 Tab：情绪/意图/建议）
+- `pages/SalesAssistance.tsx` — 售中辅助主页（268px 会话列表 + 录制入口/对话查看器）
 - `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor）
 
 ### 仿真培训（AI 数字人对练）
@@ -97,6 +109,23 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **级联删除**：删除训练会话时自动清理所有关联的消息和复盘记录
 - **会话恢复**：URL 参数 + sessionStorage 双重持久化，刷新/导航不丢失当前会话
 - **端点**：`POST /sessions`（创建）、`GET /sessions`（列表）、`GET /sessions/{id}`（详情含消息和复盘）、`POST /sessions/{id}/messages`（发消息）、`POST /sessions/{id}/end`（结束并生成复盘）、`GET /sessions/{id}/review`（单独获取复盘）、`DELETE /sessions/{id}`（级联删除）
+
+### 售中辅助（语音转录 + AI 分析）
+
+- **语音录制**：前端 MediaRecorder API，audio/webm 格式上传
+- **格式转换**：pydub (ffmpeg) webm→WAV 转换，解决 torchcodec 在 Windows 上的 webm duration 读取问题
+- **说话人分离**：pyannote-audio 4.0.4（speaker-diarization-3.1），自动区分 SPEAKER_00/01
+- **说话人映射**：启发式规则（首个发言 + 总时长最长 → 销售，另一个 → 客户）
+- **语音转录**：faster-whisper large-v3（CPU），中文优化，word-level timestamps 对齐
+- **np.float64 兼容**：faster-whisper 返回 numpy 类型，需显式 float() 转换后落库（否则 PostgreSQL 报 "schema np does not exist"）
+- **AI 分析 3 模块**（DeepSeek + KB-First RAG）：
+  - 情绪分析：整体情感倾向、客户情绪时间线、转折点、销售能量曲线
+  - 意图识别：客户意图（比价/顾虑/购买意向）、购买信号、风险信号
+  - 销售建议：错失机会、后续行动（按优先级）、话术要点、下次会面准备
+- **数据模型**：`sales_conversations` + `conversation_messages`（JSONB transcription_segments + analysis_results）
+- **前端**：VoiceRecorder 录制组件 + ConversationViewer 双栏回放 + AnalysisPanel 3 Tab 分析面板
+- **6 个 API 端点**：`POST /conversations`（上传）、`GET /conversations`（列表）、`GET /conversations/{id}`（详情）、`POST /conversations/{id}/process`（触发处理）、`GET /conversations/{id}/analysis`（分析结果）、`DELETE /conversations/{id}`（级联删除）
+- **语音处理器抽象**：Python Protocol 实现，`voice_processor_mode` 配置切换 local/cloud，预留云端 API 接入
 
 ### KYC 九宫格
 
@@ -186,6 +215,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
+- **语音处理**: pyannote-audio 4.0.4（说话人分离）+ faster-whisper large-v3（语音转录）+ pydub/ffmpeg（音频格式转换）
 - **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
 - **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
@@ -215,3 +245,7 @@ curl http://localhost:8000/api/health
 - 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
 - Embedding 分批：每批 4 个 chunk，避免 embedding 模型的 token 上下文溢出
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）
+- FFmpeg 共享 DLL 需放在 torchcodec 包目录下（avcodec-62.dll 等），否则 pyannote 无法加载音频文件
+- HuggingFace 访问：国内需 `HF_ENDPOINT=https://hf-mirror.com`，VPN 环境留空即可直连官方源
+- pyannote 说话人分离模型需 HuggingFace token（`HF_AUTH_TOKEN`），用于访问 gated model
+- faster-whisper 返回 numpy 类型，写入 PostgreSQL 前需 float() 转换
