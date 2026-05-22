@@ -1,7 +1,7 @@
 import uuid
 import os
 import shutil
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -14,6 +14,7 @@ from ..schemas.knowledge import (
     DocumentResponse, DocumentListResponse,
 )
 from ..services.embedding_service import index_document, delete_from_chroma
+from ..services.audit_service import log_action
 from ..utils.document_loader import get_content_preview, load_single_document
 
 router = APIRouter()
@@ -80,6 +81,7 @@ def list_documents(
 
 @router.post("/documents", response_model=DocumentResponse, status_code=201)
 def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     category_id: str = Form(...),
     db: Session = Depends(get_db),
@@ -115,6 +117,16 @@ def upload_document(
     db.commit()
     db.refresh(doc)
 
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="document_upload",
+        resource_type="document",
+        resource_id=str(doc.id),
+        ip_address=request.client.host if request.client else None,
+        detail=f"Uploaded: {doc.title} ({doc.file_type})",
+    )
+
     return DocumentResponse(
         id=doc.id, title=doc.title, category_id=doc.category_id,
         file_type=doc.file_type, content_preview=doc.content_preview,
@@ -138,7 +150,7 @@ def get_document(doc_id: uuid.UUID, db: Session = Depends(get_db), current_user:
 
 
 @router.delete("/documents/{doc_id}", status_code=204)
-def delete_document(doc_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_document(doc_id: uuid.UUID, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -148,3 +160,12 @@ def delete_document(doc_id: uuid.UUID, db: Session = Depends(get_db), current_us
     db.delete(doc)
     db.commit()
     delete_from_chroma(filename)
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="document_delete",
+        resource_type="document",
+        resource_id=str(doc_id),
+        ip_address=request.client.host if request.client else None,
+        detail=f"Deleted: {filename}",
+    )

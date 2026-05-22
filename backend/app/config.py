@@ -1,3 +1,5 @@
+import secrets
+import warnings
 from pydantic_settings import BaseSettings
 
 
@@ -20,3 +22,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def check_secret_key():
+    if settings.secret_key == "change-me-in-production-use-a-real-random-string":
+        warnings.warn(
+            "SECURITY WARNING: JWT secret_key is using the default value. "
+            "A random secret has been generated for this session. "
+            "Set SECRET_KEY in your .env for production deployments.",
+            RuntimeWarning,
+        )
+        settings.secret_key = secrets.token_urlsafe(64)

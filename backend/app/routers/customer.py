@@ -2,7 +2,7 @@ import copy
 import math
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -10,7 +10,8 @@ from ..database import get_db
 from ..models.customer import Customer
 from ..models.product import Product
 from ..models.user import User
-from ..utils.auth import get_current_user, apply_user_filter, apply_document_filter
+from ..utils.auth import get_current_user, apply_user_filter
+from ..services.audit_service import log_action
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
     CustomerResponse, CustomerListResponse, AllocationPlanSave,
@@ -47,7 +48,7 @@ def list_customers(
 
 
 @router.post("", response_model=CustomerResponse, status_code=201)
-def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_customer(data: CustomerCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     customer = Customer(
         name=data.name,
         raw_input=data.raw_input,
@@ -61,6 +62,15 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current
     db.add(customer)
     db.commit()
     db.refresh(customer)
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="customer_create",
+        resource_type="customer",
+        resource_id=str(customer.id),
+        ip_address=request.client.host if request.client else None,
+        detail=f"Created customer: {customer.name}",
+    )
     return CustomerResponse.model_validate(customer)
 
 
@@ -221,9 +231,18 @@ def save_allocation_plan(
 
 
 @router.delete("/{customer_id}", status_code=204)
-def delete_customer(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_customer(customer_id: uuid.UUID, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     db.delete(customer)
     db.commit()
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="customer_delete",
+        resource_type="customer",
+        resource_id=str(customer_id),
+        ip_address=request.client.host if request.client else None,
+        detail=f"Deleted customer: {customer.name}",
+    )

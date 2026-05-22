@@ -2,14 +2,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+from .config import settings, check_secret_key
 from .database import engine, Base
 from .routers import knowledge, customer, chat, product, training, auth, instructor
+from .middleware.rate_limit import RateLimitMiddleware
+
+# Security: ensure JWT secret is not the default value
+check_secret_key()
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Sales Assistant", version="0.1.0")
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",")
+
+# Rate limiter: 5/min login, 60/min global per IP
+app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
