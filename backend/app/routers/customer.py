@@ -11,6 +11,7 @@ from ..models.customer import Customer
 from ..models.product import Product
 from ..models.user import User
 from ..utils.auth import get_current_user, apply_user_filter
+from ..utils.crypto import encrypt_string, decrypt_string
 from ..services.audit_service import log_action
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
@@ -21,6 +22,26 @@ from ..services.customer_service import analyze_customer, generate_presales_prep
 from ..services.allocation_service import generate_allocation_plan
 
 router = APIRouter()
+
+
+def _encrypt_customer(c: Customer):
+    """Encrypt sensitive fields in-place before DB write."""
+    if c.raw_input:
+        c.raw_input = encrypt_string(c.raw_input)
+
+
+def _decrypt_customer(c: Customer):
+    """Decrypt sensitive fields in-place after DB read. Safe to call on plaintext."""
+    if c.raw_input:
+        try:
+            c.raw_input = decrypt_string(c.raw_input)
+        except Exception:
+            pass
+
+
+def _get_customer(customer_id: uuid.UUID, db: Session, current_user: User) -> Customer | None:
+    """Fetch a customer by ID with user filtering. Caller must decrypt before returning to client."""
+    return apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
 
 
 @router.get("", response_model=CustomerListResponse)
@@ -38,6 +59,8 @@ def list_customers(
     total_pages = max(1, math.ceil(total / page_size))
     offset = (page - 1) * page_size
     items = query.order_by(Customer.updated_at.desc()).offset(offset).limit(page_size).all()
+    for item in items:
+        _decrypt_customer(item)
     return CustomerListResponse(
         items=[CustomerResponse.model_validate(item) for item in items],
         total=total,
@@ -59,9 +82,11 @@ def create_customer(data: CustomerCreate, request: Request, db: Session = Depend
         allocation_plan=data.allocation_plan,
         user_id=current_user.id,
     )
+    _encrypt_customer(customer)
     db.add(customer)
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)
     log_action(
         db,
         user_id=current_user.id,
@@ -87,12 +112,13 @@ def regenerate_customer_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     if not customer.raw_input:
         raise HTTPException(status_code=400, detail="Customer has no raw_input to re-analyze")
 
+    _decrypt_customer(customer)  # Decrypt for LLM analysis
     edited_sd = data.structured_data if data else None
     merged_sd = {**(customer.structured_data or {}), **(edited_sd or {})}
     result = analyze_customer(customer.raw_input, user_id=str(current_user.id), edited_structured_data=merged_sd)
@@ -100,22 +126,25 @@ def regenerate_customer_profile(
     customer.structured_data = result.get("structured_data", customer.structured_data)
     customer.ai_profile = result.get("ai_profile", customer.ai_profile)
     customer.scores = result.get("scores", customer.scores)
+    _encrypt_customer(customer)  # Re-encrypt before storing
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)  # Decrypt for response
     return CustomerResponse.model_validate(customer)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
 def get_customer(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
+    _decrypt_customer(customer)
     return CustomerResponse.model_validate(customer)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
 def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     customer.name = data.name
@@ -132,12 +161,13 @@ def update_customer(customer_id: uuid.UUID, data: CustomerCreate, db: Session = 
         customer.allocation_plan = data.allocation_plan
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)
     return CustomerResponse.model_validate(customer)
 
 
 @router.post("/{customer_id}/presales-prep", response_model=CustomerResponse)
 def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -150,12 +180,13 @@ def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db), 
     customer.presales_prep = result
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)
     return CustomerResponse.model_validate(customer)
 
 
 @router.post("/{customer_id}/allocation-plan", response_model=CustomerResponse)
 def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -206,6 +237,7 @@ def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db)
     customer.allocation_plan = allocation_plan
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)
     return CustomerResponse.model_validate(customer)
 
 
@@ -216,7 +248,7 @@ def save_allocation_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     if not customer.allocation_plan:
@@ -227,12 +259,13 @@ def save_allocation_plan(
         customer.allocation_plan["total_investable"] = data.total_investable
     db.commit()
     db.refresh(customer)
+    _decrypt_customer(customer)
     return CustomerResponse.model_validate(customer)
 
 
 @router.delete("/{customer_id}", status_code=204)
 def delete_customer(customer_id: uuid.UUID, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
+    customer = _get_customer(customer_id, db, current_user)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     db.delete(customer)

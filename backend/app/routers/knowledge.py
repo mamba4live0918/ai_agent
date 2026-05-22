@@ -16,6 +16,7 @@ from ..schemas.knowledge import (
 from ..services.embedding_service import index_document, delete_from_chroma
 from ..services.audit_service import log_action
 from ..utils.document_loader import get_content_preview, load_single_document
+from ..utils.crypto import encrypt_bytes
 
 router = APIRouter()
 
@@ -97,8 +98,10 @@ def upload_document(
 
     os.makedirs(DOCUMENTS_DIR, exist_ok=True)
     file_path = os.path.join(DOCUMENTS_DIR, file.filename)
+    raw_bytes = file.file.read()
+    encrypted_bytes = encrypt_bytes(raw_bytes)
     with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(b"ENC1" + encrypted_bytes)
 
     docs = load_single_document(file_path)
     preview = get_content_preview(docs)
