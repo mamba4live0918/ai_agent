@@ -162,27 +162,23 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **认证**: JWT (python-jose) + bcrypt 4.2.1
 - **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
 - **向量存储**: ChromaDB（本地持久化）
-- **Embedding**: Ollama `nomic-embed-text`
+- **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
 - **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
 - **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
 ## 启动命令
 
-**4 个服务缺一不可：**
+**3 个服务缺一不可：**
 
 | # | 服务 | 命令 | 端口 |
 |---|------|------|------|
 | 1 | PostgreSQL | 系统服务，需保持运行 | 5432 |
-| 2 | Ollama | `ollama serve`（或系统托盘启动） | 11434 |
-| 3 | Backend | `cd backend && uvicorn app.main:app --port 8000 --reload` | 8000 |
-| 4 | Frontend | `cd frontend && npm run dev` | 5173 |
+| 2 | Backend | `cd backend && uvicorn app.main:app --port 8000 --reload` | 8000 |
+| 3 | Frontend | `cd frontend && npm run dev` | 5173 |
 
 ```bash
 # 激活虚拟环境
 source .venv/Scripts/activate
-
-# 验证 Ollama（需要 nomic-embed-text 模型）
-curl http://localhost:11434/api/tags
 
 # 验证后端
 curl http://localhost:8000/api/health
@@ -190,9 +186,9 @@ curl http://localhost:8000/api/health
 
 ## 关键约束
 
-- Ollama 必须运行且已拉取 `nomic-embed-text`，否则知识库上传和 RAG 问答全部崩溃
+- 需配置 Jina API Key（`JINA_API_KEY`），免费额度 100 万 token/天，否则知识库上传和 RAG 问答全部崩溃
 - PostgreSQL 需提前创建 `ai_agent` 数据库
 - DeepSeek API Key 通过环境变量或 `.env` 文件配置
 - 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
-- Embedding 分批：每批 4 个 chunk，避免 `nomic-embed-text` 的 8192 token 上下文溢出
+- Embedding 分批：每批 4 个 chunk，避免 embedding 模型的 token 上下文溢出
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）

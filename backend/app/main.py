@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 from .database import engine, Base
 from .routers import knowledge, customer, chat, product, training, auth, instructor
@@ -8,9 +9,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Sales Assistant", version="0.1.0")
 
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

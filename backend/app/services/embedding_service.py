@@ -1,11 +1,32 @@
 import os
 import shutil
-from langchain_ollama import OllamaEmbeddings
+import requests
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDocument
+from langchain_core.embeddings import Embeddings
 
 from ..config import settings
+
+
+class JinaEmbeddings(Embeddings):
+    def __init__(self, api_key: str, base_url: str, model: str):
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        resp = requests.post(
+            f"{self.base_url}/embeddings",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"model": self.model, "input": [{"text": t} for t in texts]},
+        )
+        if not resp.ok:
+            raise RuntimeError(f"Jina embedding failed: {resp.status_code} {resp.text[:500]}")
+        return [d["embedding"] for d in resp.json()["data"]]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.embed_documents([text])[0]
 
 
 _text_splitter = RecursiveCharacterTextSplitter(
@@ -14,7 +35,11 @@ _text_splitter = RecursiveCharacterTextSplitter(
     separators=["\n\n", "\n", "。", "！", "？", "；", "，", ".", " ", ""],
 )
 
-_embedding_function = OllamaEmbeddings(model=settings.embed_model)
+_embedding_function = JinaEmbeddings(
+    api_key=settings.jina_api_key,
+    base_url=settings.jina_base_url,
+    model=settings.embed_model,
+)
 
 
 def get_embedding_function():
