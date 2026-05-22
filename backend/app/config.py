@@ -18,6 +18,17 @@ class Settings(BaseSettings):
     jina_base_url: str = "https://api.jina.ai/v1"
     embed_model: str = "jina-embeddings-v3"
 
+    # Voice Processing
+    voice_processor_mode: str = "local"  # "local" or "cloud"
+    hf_auth_token: str = ""  # HuggingFace token for pyannote models
+    whisper_model_size: str = "large-v3"
+    whisper_compute_type: str = "int8_float16"
+    whisper_device: str = "cuda"  # "cuda" or "cpu"
+    speaker_label_strategy: str = "first_longest"
+    audio_upload_dir: str = "./documents/audio"
+    max_audio_duration_seconds: int = 3600
+    max_upload_mb: int = 500
+
     model_config = {"env_file": "../.env", "extra": "ignore"}
 
 

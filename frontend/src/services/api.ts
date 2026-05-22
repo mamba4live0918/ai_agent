@@ -216,3 +216,54 @@ export const getTrainingReview = (id: string) =>
   request<import('../types').TrainingReview>(`/training/sessions/${id}/review`);
 export const deleteTrainingSession = (id: string) =>
   request<void>(`/training/sessions/${id}`, { method: 'DELETE' });
+
+// ─── Sales Assistance ───
+export const uploadConversationAudio = (audioBlob: Blob, customerId?: string, duration?: number, onProgress?: (pct: number) => void) => {
+  return new Promise<import('../types').SalesConversation>((resolve, reject) => {
+    const form = new FormData();
+    form.append('audio', audioBlob, 'recording.webm');
+    if (customerId) form.append('customer_id', customerId);
+    if (duration !== undefined) form.append('duration', String(duration));
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        if (xhr.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.detail || 'Upload failed'));
+        } catch { reject(new Error('Upload failed')); }
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+    xhr.open('POST', `${BASE}/sales-assistance/conversations`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.send(form);
+  });
+};
+
+export const getSalesConversations = (customerId?: string, status?: string, page = 1, pageSize = 20) => {
+  const params = new URLSearchParams();
+  if (customerId) params.set('customer_id', customerId);
+  if (status) params.set('status', status);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  return request<import('../types').ConversationList>(`/sales-assistance/conversations?${params}`);
+};
+
+export const getSalesConversation = (id: string) =>
+  request<import('../types').SalesConversationDetail>(`/sales-assistance/conversations/${id}`);
+
+export const processConversation = (id: string) =>
+  request<import('../types').SalesConversationDetail>(`/sales-assistance/conversations/${id}/process`, { method: 'POST' });
+
+export const getConversationAnalysis = (id: string) =>
+  request<{ analysis_results: import('../types').SalesConversationDetail['analysis_results']; status: string; error_message: string | null }>(`/sales-assistance/conversations/${id}/analysis`);
+
+export const deleteSalesConversation = (id: string) =>
+  request<void>(`/sales-assistance/conversations/${id}`, { method: 'DELETE' });

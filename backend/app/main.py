@@ -5,7 +5,7 @@ import os
 
 from .config import settings, check_secret_key
 from .database import engine, Base
-from .routers import knowledge, customer, chat, product, training, auth, instructor
+from .routers import knowledge, customer, chat, product, training, auth, instructor, sales_assistance
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
 
@@ -18,7 +18,7 @@ app = FastAPI(title="AI Sales Assistant", version="0.1.0")
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",")
 
-MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB — only enforced on POST/PUT/PATCH
+MAX_UPLOAD_BYTES = settings.max_upload_mb * 1024 * 1024
 
 
 @app.middleware("http")
@@ -52,6 +52,7 @@ app.include_router(product.router, prefix="/api/products", tags=["products"])
 app.include_router(training.router, prefix="/api/training", tags=["training"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(instructor.router, prefix="/api/instructor", tags=["instructor"])
+app.include_router(sales_assistance.router, prefix="/api/sales-assistance", tags=["sales-assistance"])
 
 
 @app.get("/api/health")

@@ -260,3 +260,85 @@ export interface SessionList {
   page_size: number;
   total_pages: number;
 }
+
+// ─── Sales Assistance ───
+export interface SalesConversation {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  duration_seconds: number | null;
+  status: 'uploaded' | 'processing' | 'completed' | 'failed';
+  message_count: number;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface ConversationMessage {
+  id: string;
+  speaker: string;
+  content: string;
+  start_time: number;
+  end_time: number;
+  confidence: number | null;
+}
+
+export interface EmotionAnalysis {
+  overall_sentiment: string;
+  customer_emotions: Array<{
+    time_range: string;
+    emotion: string;
+    intensity: number;
+    trigger: string;
+  }>;
+  emotional_turning_points: Array<{
+    time_range: string;
+    from: string;
+    to: string;
+    cause: string;
+  }>;
+  salesperson_energy: Record<string, string>;
+  summary: string;
+}
+
+export interface IntentDetection {
+  customer_intents: Array<{
+    intent: string;
+    confidence: number;
+    evidence: string;
+    suggested_response: string;
+  }>;
+  buying_signals: string[];
+  risk_signals: string[];
+  summary: string;
+}
+
+export interface TalkingPointSuggestions {
+  missed_opportunities: string[];
+  follow_up_actions: Array<{
+    priority: number;
+    action: string;
+    reason: string;
+    suggested_script: string;
+  }>;
+  key_talking_points: string[];
+  next_meeting_prep: string;
+  summary: string;
+}
+
+export interface SalesConversationDetail extends SalesConversation {
+  messages: ConversationMessage[];
+  analysis_results: {
+    emotion_analysis?: EmotionAnalysis;
+    intent_detection?: IntentDetection;
+    suggestions?: TalkingPointSuggestions;
+  } | null;
+  error_message: string | null;
+}
+
+export interface ConversationList {
+  items: SalesConversation[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
