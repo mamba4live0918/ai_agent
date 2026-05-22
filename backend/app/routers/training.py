@@ -92,14 +92,14 @@ def create_session(data: CreateSessionRequest, db: Session = Depends(get_db), cu
             parts = [prep.get("lifecycle_analysis", ""), prep.get("potential_difficulties", ""), prep.get("response_scripts", "")]
             scenario_context = "\n\n".join(p for p in parts if p)
         if not scenario_context:
-            briefing = generate_briefing(persona, data.scenario)
+            briefing = generate_briefing(persona, data.scenario, user_id=str(current_user.id))
             scenario_context = briefing.get("scenario_context", "")
 
     elif data.persona:
         # Manual persona
         persona = data.persona.model_dump(exclude_none=True)
         customer_name = persona.get("name", "手动创建")
-        briefing = generate_briefing(persona, data.scenario)
+        briefing = generate_briefing(persona, data.scenario, user_id=str(current_user.id))
         scenario_context = briefing.get("scenario_context", "")
     else:
         raise HTTPException(status_code=400, detail="Either customer_id or persona is required")
@@ -211,6 +211,7 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
         scenario_context=session.scenario_context or "",
         history_text=history_text,
         user_message=data.content,
+        user_id=str(current_user.id),
     )
     customer_reply = customer_result.get("reply", "") or customer_result.get("raw", "（客户没有回应）")
     conversation_ending = bool(customer_result.get("conversation_ending", False))
@@ -228,6 +229,7 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
         history_text=history_text + f"\n销售: {data.content}\n客户: {customer_reply}",
         user_message=data.content,
         customer_reply=customer_reply,
+        user_id=str(current_user.id),
     )
 
     # Attach coach_tip to user message
@@ -283,6 +285,7 @@ def get_quick_replies(session_id: uuid.UUID, db: Session = Depends(get_db), curr
         scenario=session.scenario,
         history_text=history_text,
         last_customer_message=last_customer,
+        user_id=str(current_user.id),
     )
     return result
 
@@ -307,6 +310,7 @@ def end_session(session_id: uuid.UUID, db: Session = Depends(get_db), current_us
         persona=session.persona,
         scenario=session.scenario,
         full_history=full_history,
+        user_id=str(current_user.id),
     )
 
     review = TrainingReview(

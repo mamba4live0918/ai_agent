@@ -66,7 +66,7 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current
 
 @router.post("/analyze", response_model=CustomerAnalyzeResponse)
 def analyze_customer_text(data: CustomerAnalyzeRequest, current_user: User = Depends(get_current_user)):
-    result = analyze_customer(data.raw_text)
+    result = analyze_customer(data.raw_text, user_id=str(current_user.id))
     return CustomerAnalyzeResponse(**result)
 
 
@@ -85,7 +85,7 @@ def regenerate_customer_profile(
 
     edited_sd = data.structured_data if data else None
     merged_sd = {**(customer.structured_data or {}), **(edited_sd or {})}
-    result = analyze_customer(customer.raw_input, edited_structured_data=merged_sd)
+    result = analyze_customer(customer.raw_input, user_id=str(current_user.id), edited_structured_data=merged_sd)
     customer.name = result.get("name", customer.name)
     customer.structured_data = result.get("structured_data", customer.structured_data)
     customer.ai_profile = result.get("ai_profile", customer.ai_profile)
@@ -136,7 +136,7 @@ def create_presales_prep(customer_id: uuid.UUID, db: Session = Depends(get_db), 
         "ai_profile": customer.ai_profile,
         "scores": customer.scores,
     }
-    result = generate_presales_prep(customer_data)
+    result = generate_presales_prep(customer_data, user_id=str(current_user.id))
     customer.presales_prep = result
     db.commit()
     db.refresh(customer)
@@ -173,7 +173,7 @@ def create_allocation_plan(customer_id: uuid.UUID, db: Session = Depends(get_db)
         "scores": customer.scores or {},
     }
 
-    result = generate_allocation_plan(client_data, products_data)
+    result = generate_allocation_plan(client_data, products_data, user_id=str(current_user.id))
     ai_plan = result
 
     # Enrich allocations with product_name from the DB product lookup

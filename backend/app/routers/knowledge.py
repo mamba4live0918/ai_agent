@@ -100,7 +100,7 @@ def upload_document(
 
     docs = load_single_document(file_path)
     preview = get_content_preview(docs)
-    chunk_count = index_document(file_path)
+    chunk_count = index_document(file_path, user_id=str(current_user.id))
 
     doc = Document(
         title=file.filename or "untitled",

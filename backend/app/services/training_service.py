@@ -50,7 +50,7 @@ Rules:
 - Each section type retains its own content"""
 
 
-def generate_briefing(persona: dict, scenario: str) -> dict:
+def generate_briefing(persona: dict, scenario: str, user_id: str) -> dict:
     scenario_names = {
         "客诉处理": "客户投诉处理",
         "产品讲解": "产品讲解与推荐",
@@ -60,7 +60,7 @@ def generate_briefing(persona: dict, scenario: str) -> dict:
 
     persona_text = json.dumps(persona, ensure_ascii=False, indent=2)
     query = f"{scenario_display} {persona.get('occupation', '')} {persona.get('personality', '')} 销售技巧"
-    kb_context = search_knowledge_base(query)
+    kb_context = search_knowledge_base(query, user_id=user_id)
 
     prompt = BRIEFING_PROMPT.format(persona=persona_text, scenario=scenario_display, kb_context=kb_context)
 
@@ -108,10 +108,10 @@ Return ONLY valid JSON:
 conversation_ending = true ONLY when the conversation has naturally concluded from YOUR side."""
 
 
-def simulate_customer(persona: dict, scenario: str, scenario_context: str, history_text: str, user_message: str) -> dict:
+def simulate_customer(persona: dict, scenario: str, scenario_context: str, history_text: str, user_message: str, user_id: str) -> dict:
     persona_text = json.dumps(persona, ensure_ascii=False, indent=2)
     query = f"{scenario} {persona.get('occupation', '')} 客户沟通 应对"
-    kb_context = search_knowledge_base(query)
+    kb_context = search_knowledge_base(query, user_id=user_id)
 
     prompt = CUSTOMER_AGENT_PROMPT.format(
         persona=persona_text,
@@ -167,10 +167,10 @@ Rules:
 - All text in Chinese"""
 
 
-def simulate_coach(persona: dict, scenario: str, history_text: str, user_message: str, customer_reply: str) -> dict:
+def simulate_coach(persona: dict, scenario: str, history_text: str, user_message: str, customer_reply: str, user_id: str) -> dict:
     persona_text = json.dumps(persona, ensure_ascii=False, indent=2)
     query = f"{scenario} 销售技巧 话术 应对策略"
-    kb_context = search_knowledge_base(query)
+    kb_context = search_knowledge_base(query, user_id=user_id)
 
     prompt = COACH_AGENT_PROMPT.format(
         scenario=scenario,
@@ -219,9 +219,9 @@ Return ONLY valid JSON:
 Keep each suggestion under 30 characters. They should be different strategic angles."""
 
 
-def generate_quick_replies(persona: dict, scenario: str, history_text: str, last_customer_message: str) -> dict:
+def generate_quick_replies(persona: dict, scenario: str, history_text: str, last_customer_message: str, user_id: str) -> dict:
     query = f"{scenario} 销售话术 快速应对"
-    kb_context = search_knowledge_base(query)
+    kb_context = search_knowledge_base(query, user_id=user_id)
 
     prompt = QUICK_REPLY_PROMPT.format(
         persona=json.dumps(persona, ensure_ascii=False, indent=2),
@@ -292,10 +292,10 @@ Rules:
 - Weakness analysis must include actionable improvement suggestions"""
 
 
-def generate_review(persona: dict, scenario: str, full_history: str) -> dict:
+def generate_review(persona: dict, scenario: str, full_history: str, user_id: str) -> dict:
     persona_text = json.dumps(persona, ensure_ascii=False, indent=2)
     query = f"{scenario} 销售评分标准 话术范例 复盘"
-    kb_context = search_knowledge_base(query)
+    kb_context = search_knowledge_base(query, user_id=user_id)
 
     prompt = REVIEW_PROMPT.format(
         persona=persona_text,

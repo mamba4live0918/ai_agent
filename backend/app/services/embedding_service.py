@@ -87,10 +87,25 @@ def get_or_create_vectorstore() -> Chroma:
     )
 
 
-def index_document(filepath: str) -> int:
+def retrieve_from_chroma(query: str, user_id: str, k: int = 8) -> list:
+    """Retrieve chunks filtered by user_id: shared docs + user's own docs."""
+    vectorstore = get_or_create_vectorstore()
+    where_filter = {
+        "$or": [
+            {"user_id": "shared"},
+            {"user_id": str(user_id)},
+        ]
+    }
+    return vectorstore.similarity_search(query, k=k, filter=where_filter)
+
+
+def index_document(filepath: str, user_id: str | None = None) -> int:
     from ..utils.document_loader import load_single_document
     docs = load_single_document(filepath)
     chunks = chunk_documents(docs)
+    uid = user_id if user_id else "shared"
+    for chunk in chunks:
+        chunk.metadata["user_id"] = uid
     add_to_chroma(chunks)
     return len(chunks)
 

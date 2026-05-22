@@ -25,7 +25,7 @@ def chat_endpoint(req: ChatRequest, current_user: User = Depends(get_current_use
     namespaced_id = None
     if req.conversation_id:
         namespaced_id = f"{current_user.id}:{req.conversation_id}"
-    result = rag_chat(req.message, namespaced_id)
+    result = rag_chat(req.message, user_id=str(current_user.id), conversation_id=namespaced_id)
     # Strip namespace prefix from returned conversation_id
     raw_id = result.get("conversation_id", "")
     if raw_id and ":" in raw_id:

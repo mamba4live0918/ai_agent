@@ -2,7 +2,7 @@ import re
 from openai import OpenAI
 
 from ..config import settings
-from .embedding_service import get_or_create_vectorstore
+from .embedding_service import retrieve_from_chroma
 
 _client = OpenAI(
     api_key=settings.deepseek_api_key,
@@ -20,9 +20,8 @@ def _get_or_create_history(conversation_id: str | None) -> tuple[str, list[tuple
     return cid, _conversations[cid]
 
 
-def retrieve_context(query: str, k: int = 8) -> tuple[str, list[dict]]:
-    vectorstore = get_or_create_vectorstore()
-    docs = vectorstore.similarity_search(query, k=k)
+def retrieve_context(query: str, user_id: str, k: int = 8) -> tuple[str, list[dict]]:
+    docs = retrieve_from_chroma(query, user_id=user_id, k=k)
 
     context_parts = []
     sources = []
@@ -87,17 +86,17 @@ Provide:
     return {"answer": answer, "conversation_id": cid}
 
 
-def chat(message: str, conversation_id: str | None = None) -> dict:
-    context, sources = retrieve_context(message)
+def chat(message: str, user_id: str, conversation_id: str | None = None) -> dict:
+    context, sources = retrieve_context(message, user_id=user_id)
     result = query_llm(message, context, conversation_id)
     result["sources"] = sources
     return result
 
 
-def search_knowledge_base(query: str, k: int = 5) -> str:
+def search_knowledge_base(query: str, user_id: str, k: int = 5) -> str:
     """Search KB for relevant content. Returns formatted prompt-ready string or empty string on failure."""
     try:
-        context, _ = retrieve_context(query, k=k)
+        context, _ = retrieve_context(query, user_id=user_id, k=k)
         if not context.strip():
             return ""
         return f"""

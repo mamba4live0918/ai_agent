@@ -59,7 +59,7 @@ Rules:
 - Do NOT fabricate products — only use products from the provided list"""
 
 
-def generate_allocation_plan(client_data: dict, products: list[dict]) -> dict:
+def generate_allocation_plan(client_data: dict, products: list[dict], user_id: str) -> dict:
     """Generate three allocation plans based on client profile and available products."""
     client_json = json.dumps(client_data, ensure_ascii=False, indent=2)
     products_json = json.dumps(products, ensure_ascii=False, indent=2)
@@ -76,7 +76,7 @@ def generate_allocation_plan(client_data: dict, products: list[dict]) -> dict:
     product_types = list({p.get("type", "") for p in products if p.get("type")})
     search_query = " ".join(v for v in search_parts if v and v != "未知") + " " + " ".join(product_types)
     search_query = search_query.strip() or "资产配置 理财产品推荐"
-    kb_context = search_knowledge_base(search_query)
+    kb_context = search_knowledge_base(search_query, user_id=user_id)
 
     prompt = ALLOCATION_PROMPT.format(client_data=client_json, products=products_json, kb_context=kb_context)
 

@@ -101,8 +101,8 @@ Rules:
 - If a dimension cannot be scored from available info, fill with a moderate value (4-6) and note "信息不足，基于有限信息推断" in reasoning"""
 
 
-def analyze_customer(raw_text: str, edited_structured_data: dict | None = None) -> dict:
-    kb_context = search_knowledge_base(raw_text)
+def analyze_customer(raw_text: str, user_id: str, edited_structured_data: dict | None = None) -> dict:
+    kb_context = search_knowledge_base(raw_text, user_id=user_id)
 
     # Build manual context from edited structured_data
     manual_context = ""
@@ -191,7 +191,7 @@ Rules:
 - For response_scripts, include actual phrases the salesperson can say"""
 
 
-def generate_presales_prep(customer_data: dict) -> dict:
+def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
     """Generate a pre-sales preparation report based on existing customer analysis."""
     structured_data = json.dumps(customer_data.get("structured_data") or {}, ensure_ascii=False, indent=2)
     ai_profile = json.dumps(customer_data.get("ai_profile") or {}, ensure_ascii=False, indent=2)
@@ -206,7 +206,7 @@ def generate_presales_prep(customer_data: dict) -> dict:
         sd.get("investment_experience", ""),
     ]
     search_query = " ".join(v for v in search_parts if v and v != "未知") or "销售话术 客户沟通"
-    kb_context = search_knowledge_base(search_query)
+    kb_context = search_knowledge_base(search_query, user_id=user_id)
 
     prompt = PRESALES_PREP_PROMPT.format(
         structured_data=structured_data,
