@@ -10,7 +10,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **数据库** | PostgreSQL (结构化数据) + ChromaDB (向量存储) |
 | **ORM** | SQLAlchemy + Alembic (迁移) |
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
-| **Embedding** | Ollama (`nomic-embed-text`) |
+| **Embedding** | Jina AI (`jina-embeddings-v3`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 
@@ -94,9 +94,9 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 
 - **Python 3.11** + 虚拟环境
 - **PostgreSQL**（默认 `localhost:5432`，数据库 `ai_agent`）
-- **Ollama**（需运行并已拉取 `nomic-embed-text` 模型）
+- **Jina AI Key**（免费额度 100 万 token/天）
 - **Node.js** 18+
-- **4 个服务缺一不可**：PostgreSQL → Ollama → Backend → Frontend
+- **3 个服务缺一不可**：PostgreSQL → Backend → Frontend
 
 ### 1. 环境配置
 

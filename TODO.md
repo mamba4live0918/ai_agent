@@ -4,7 +4,7 @@
 - [x] FastAPI + React 项目脚手架
 - [x] PostgreSQL + ChromaDB 双库架构
 - [x] DeepSeek API 集成
-- [x] Ollama Embedding (`nomic-embed-text`)
+- [x] Jina AI Embedding (`jina-embeddings-v3`，免费 100 万 token/天)
 - [x] GitHub 风格前端 UI (Tailwind CSS)
 - [x] 移动端适配 (响应式侧边栏 + 全页面断点适配 + 客户列表分页)
 - [x] 用户登录/权限系统

@@ -98,7 +98,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="px-3 py-2 flex items-center gap-2 text-xs text-[#8b949e]">
           <span className="w-2 h-2 rounded-full bg-[#3fb950] flex-shrink-0" />
-          Ollama · DeepSeek
+          DeepSeek · Jina AI
         </div>
         <div className="px-3 py-1 flex items-center gap-2 text-xs text-[#8b949e]">
           <span className="w-2 h-2 rounded-full bg-[#d29922] flex-shrink-0" />
