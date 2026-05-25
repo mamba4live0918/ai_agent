@@ -26,6 +26,17 @@ Thumbs.db
 # Tauri build artifacts
 frontend/src-tauri/target/
 
+# Uploaded files
+backend/audio_uploads/
+backend/documents/
+
+# Electron build artifacts
+dist-electron/
+electron/
+
+# Superpowers plugin
+.superpowers/
+
 # Temporary files
 *.tmp
 goal_text.txt
