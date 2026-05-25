@@ -74,6 +74,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </svg>
           仿真培训
         </NavLink>
+        <NavLink to="/post-sales" className={linkClass} onClick={close}>
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M0 2.5A1.5 1.5 0 0 1 1.5 1h11A1.5 1.5 0 0 1 14 2.5v10.528c0 .3-.05.654-.238.972h.004a.75.75 0 0 1-.732.486H1.966a.75.75 0 0 1-.733-.486h-.005A1.87 1.87 0 0 1 1 13V2.5h-.001A1.5 1.5 0 0 1 0 2.5ZM1.966 13h.034ZM3 3.5v7h9v-7H3Zm1.5 1.5h2v2h-2V5Zm3.5 0h2v1.5H8V5Zm0 2.5h2v2H8v-2Zm-3.5 0h2v2h-2v-2Z"/>
+          </svg>
+          售后分析
+        </NavLink>
 
         {isInstructor && (
           <>

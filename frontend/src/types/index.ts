@@ -260,3 +260,79 @@ export interface SessionList {
   page_size: number;
   total_pages: number;
 }
+
+// ─── Post-Sales Analysis ───
+export interface PostSalesSession {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  status: 'recording' | 'processing' | 'completed';
+  summary: Record<string, unknown> | null;
+  started_at: string;
+  completed_at: string | null;
+  message_count: number;
+}
+
+export interface PostSalesMessage {
+  id: string;
+  session_id: string;
+  role: 'salesperson' | 'customer' | 'system';
+  content: string;
+  audio_file: string | null;
+  analysis: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface PostSalesSessionDetail extends PostSalesSession {
+  messages: PostSalesMessage[];
+  report: PostSalesReport | null;
+}
+
+export interface PostSalesReport {
+  summary: string;
+  sentiment_trajectory: SentimentPoint[];
+  key_moments: KeyMoment[];
+  capability_radar: Record<string, number>;
+  deal_probability: DealProbability;
+  missed_opportunities: MissedOpportunity[];
+  strengths: string[];
+  improvements: string[];
+  overall_score: number;
+  kb_matches?: { title: string; snippet: string }[];
+  generated_at?: string;
+}
+
+export interface SentimentPoint {
+  turn: number;
+  salesperson: string;
+  customer: string;
+  customer_sentiment: number;
+  salesperson_sentiment: number;
+}
+
+export interface KeyMoment {
+  type: 'positive' | 'negative' | 'critical';
+  turn: number;
+  description: string;
+  impact: string;
+}
+
+export interface DealProbability {
+  level: string;
+  percentage: number;
+  reasoning: string;
+}
+
+export interface MissedOpportunity {
+  turn: number;
+  description: string;
+  suggestion: string;
+}
+
+export interface PostSalesSessionList {
+  items: PostSalesSession[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}

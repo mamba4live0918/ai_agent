@@ -192,3 +192,23 @@ curl http://localhost:8000/api/health
 - 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
 - Embedding 分批：每批 4 个 chunk，避免 embedding 模型的 token 上下文溢出
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）
+
+## 售后分析（Post-Sales Analysis）
+
+- **创建方式**：从客户分析页一键发起（带 customerId），或从售后分析页独立创建
+- **录音功能**：支持在 app 内直接录制（MediaRecorder API → `.webm`）、上传音频文件、手动输入对话
+- **音频转录**：ffmpeg 转 16kHz WAV → faster-whisper `large-v3` 模型自动转录（中英文）
+- **对话记录**：转录结果按 segments 分条展示，区分销售/客户/系统角色
+- **客户关联**：`PATCH /sessions/{id}` 支持关联/解除客户，session 左侧列表实时更新
+- **报告浮窗**：结束通话后 AI 分析报告以浮窗弹窗展示（html2canvas + jsPDF 导出），不替换对话视图
+- **端点**：7 端点 — POST/GET/PATCH/DELETE sessions，POST messages，POST audio，POST end
+- **报告内容**：综合评分 + 通话摘要 + 情绪轨迹图 + 对话占比饼图 + 能力评估雷达图 + 成交概率仪表盘 + 关键时刻时间线 + 错失机会 + 优势/待改进 + 知识库匹配
+
+### KB 优先原则
+
+所有 LLM 生成（客户分析、售前准备、资产配置、培训教练、快速回复、复盘、售后报告、通话摘要）统一遵循：
+
+- 优先基于 ChromaDB 知识库检索内容进行分析和建议
+- 知识库支撑的内容标注 **📚** 或 **📚基于知识库**
+- 知识库未覆盖、AI 自行推断的内容标注 **💡AI分析**
+- 严禁编造知识库中不存在的信息

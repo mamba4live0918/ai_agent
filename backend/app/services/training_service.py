@@ -47,7 +47,8 @@ Rules:
 - All text in Chinese
 - Be specific — reference concrete persona details (age, occupation, personality, etc.)
 - Keep briefing actionable and concise
-- Each section type retains its own content"""
+- Each section type retains its own content
+- 【KB优先原则】有知识库匹配时优先基于KB中的销售方法论和最佳实践。KB支撑的标注"📚"，AI自行补充的标注"💡AI分析" """
 
 
 def generate_briefing(persona: dict, scenario: str, user_id: str) -> dict:
@@ -164,7 +165,8 @@ Rules:
 - Be specific to what just happened — don't give generic advice
 - Reference actual phrases used when possible
 - Keep each tip concise and immediately actionable
-- All text in Chinese"""
+- All text in Chinese
+- 【KB优先原则】有知识库匹配时优先参考KB中的销售技巧和话术范例。KB支撑的建议标注"📚"，AI自行判断的标注"💡AI分析" """
 
 
 def simulate_coach(persona: dict, scenario: str, history_text: str, user_message: str, customer_reply: str, user_id: str) -> dict:
@@ -200,6 +202,8 @@ QUICK_REPLY_PROMPT = """You are a sales coach helping a trainee who is stuck. Th
 【Scenario】
 {scenario}
 
+{kb_context}
+
 【Recent Conversation】
 {history}
 
@@ -216,7 +220,12 @@ Return ONLY valid JSON:
     ]
 }}
 
-Keep each suggestion under 30 characters. They should be different strategic angles."""
+Keep each suggestion under 30 characters. They should be different strategic angles.
+
+Rules:
+- If KB context provides relevant sales techniques, prioritize them and prefix those suggestions with "📚"
+- If a suggestion comes from your own reasoning without KB support, prefix it with "💡"
+- Do not fabricate techniques that contradict KB content"""
 
 
 def generate_quick_replies(persona: dict, scenario: str, history_text: str, last_customer_message: str, user_id: str) -> dict:
@@ -226,6 +235,7 @@ def generate_quick_replies(persona: dict, scenario: str, history_text: str, last
     prompt = QUICK_REPLY_PROMPT.format(
         persona=json.dumps(persona, ensure_ascii=False, indent=2),
         scenario=scenario,
+        kb_context=kb_context,
         history=history_text,
         last_customer_message=last_customer_message,
     )
@@ -289,7 +299,8 @@ Rules:
 - Be honest and constructive — not just praise
 - Specific examples from the conversation are essential for highlights
 - Dimension scores should be evidence-based
-- Weakness analysis must include actionable improvement suggestions"""
+- Weakness analysis must include actionable improvement suggestions
+- 【KB优先原则】评分标准和改善建议优先参考知识库中的销售最佳实践。KB支撑的点评标注"📚"，AI自行判断的标注"💡AI分析"。严禁编造KB中不存在的最佳实践"""
 
 
 def generate_review(persona: dict, scenario: str, full_history: str, user_id: str) -> dict:

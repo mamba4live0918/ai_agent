@@ -56,7 +56,8 @@ Rules:
 - Each product_id MUST be an exact UUID from the products list
 - All text in Chinese
 - Be specific — reference the client's actual age, occupation, income, assets, risk preference
-- Do NOT fabricate products — only use products from the provided list"""
+- Do NOT fabricate products — only use products from the provided list
+- 【KB优先原则】有知识库匹配内容时，优先参考KB中的配置思路和产品建议。KB支撑的方案逻辑标注"📚"，KB未覆盖、AI自行设计的标注"💡AI分析" """
 
 
 def generate_allocation_plan(client_data: dict, products: list[dict], user_id: str) -> dict:

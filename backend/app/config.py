@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     jina_api_key: str = ""
     jina_base_url: str = "https://api.jina.ai/v1"
     embed_model: str = "jina-embeddings-v3"
+    audio_upload_dir: str = "./audio_uploads"
+    huggingface_token: str = ""
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 

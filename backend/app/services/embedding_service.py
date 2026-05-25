@@ -38,7 +38,6 @@ _embedding_function = JinaEmbeddings(
     model=settings.embed_model,
     base_url=settings.jina_base_url,
 )
-)
 
 
 def get_embedding_function():

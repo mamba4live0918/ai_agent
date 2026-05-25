@@ -218,3 +218,55 @@ export const getTrainingReview = (id: string) =>
   request<import('../types').TrainingReview>(`/training/sessions/${id}/review`);
 export const deleteTrainingSession = (id: string) =>
   request<void>(`/training/sessions/${id}`, { method: 'DELETE' });
+
+// ─── Post-Sales Analysis ───
+export const createPostSalesSession = (customerId?: string) =>
+  request<import('../types').PostSalesSession>('/post-sales/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ customer_id: customerId || null }),
+  });
+
+export const getPostSalesSessions = (customerId?: string, status?: string, page = 1, pageSize = 20) => {
+  const params = new URLSearchParams();
+  if (customerId) params.set('customer_id', customerId);
+  if (status) params.set('status', status);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  return request<import('../types').PostSalesSessionList>(`/post-sales/sessions?${params}`);
+};
+
+export const getPostSalesSession = (id: string) =>
+  request<import('../types').PostSalesSessionDetail>(`/post-sales/sessions/${id}`);
+
+export const updatePostSalesSession = (id: string, data: { customer_id?: string | null }) =>
+  request<import('../types').PostSalesSession>(`/post-sales/sessions/${id}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  });
+
+export const addPostSalesMessage = (id: string, content: string) =>
+  request<import('../types').PostSalesMessage>(`/post-sales/sessions/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+
+export const uploadPostSalesAudio = async (id: string, file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/post-sales/sessions/${id}/audio`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: form,
+  });
+  if (!res.ok) {
+    if (res.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+    throw new Error('Upload failed');
+  }
+  return res.json() as Promise<import('../types').PostSalesMessage[]>;
+};
+
+export const endPostSalesSession = (id: string) =>
+  request<import('../types').PostSalesSessionDetail>(`/post-sales/sessions/${id}/end`, { method: 'POST' });
+
+export const deletePostSalesSession = (id: string) =>
+  request<void>(`/post-sales/sessions/${id}`, { method: 'DELETE' });

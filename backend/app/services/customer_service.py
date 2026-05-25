@@ -98,7 +98,8 @@ Rules:
 - Base analysis ONLY on provided information, do NOT fabricate details
 - All 6 ai_profile sections MUST be 4-6 sentences each, providing depth and specificity
 - Every score MUST have a reasoning field explaining the basis for the rating
-- If a dimension cannot be scored from available info, fill with a moderate value (4-6) and note "信息不足，基于有限信息推断" in reasoning"""
+- If a dimension cannot be scored from available info, fill with a moderate value (4-6) and note "信息不足，基于有限信息推断" in reasoning
+- 【KB优先原则】优先基于知识库匹配内容进行分析。KB支撑的分析在reasoning中标注"📚基于知识库"，KB未覆盖、AI自行推断的在reasoning中标注"💡AI分析" """
 
 
 def analyze_customer(raw_text: str, user_id: str, edited_structured_data: dict | None = None) -> dict:
@@ -188,7 +189,8 @@ Rules:
 - Each section MUST be 4-6 sentences, specific and actionable
 - Reference specific details from the client's profile (age, occupation, assets, risk preference, scores, etc.)
 - Do NOT give generic advice — tailor every section to THIS specific client
-- For response_scripts, include actual phrases the salesperson can say"""
+- For response_scripts, include actual phrases the salesperson can say
+- 【KB优先原则】有知识库匹配内容时优先基于KB分析。KB支撑的建议标注"📚"，KB未覆盖、AI自行判断的标注"💡AI分析"。严禁编造KB中不存在的信息"""
 
 
 def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
