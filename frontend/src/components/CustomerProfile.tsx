@@ -94,7 +94,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
   const dimensions = parseScores(localCustomer.scores);
 
-  const pp = localCustomer.presales_prep || {};
+  const pp = (localCustomer as Customer).presales_prep || {};
   const ppSections = ([
     ['客户生命周期分析', pp.lifecycle_analysis || '', '#58a6ff'],
     ['潜在难点与顾虑', pp.potential_difficulties || '', '#f85149'],

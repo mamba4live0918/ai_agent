@@ -79,13 +79,7 @@ export default function Training() {
     autoCreatedRef.current = true;
 
     (async () => {
-      // Check if sessions already exist for this customer
-      const existing = await getTrainingSessions(initialCustomerId, undefined, 1, 1);
-      if (existing.items.length > 0) {
-        handleSelect(existing.items[0]);
-        return;
-      }
-      // Auto-create a new session from the customer
+      // Always create a new session when coming from customer profile
       try {
         setCreating(true);
         const s = await createTrainingSession({
@@ -138,7 +132,7 @@ export default function Training() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
+    <div className="flex h-full">
       {/* Left: Session list */}
       <div className="w-[268px] flex-shrink-0 border-r-2 border-[#30363d] flex flex-col bg-[#0d1117]">
         <SessionList

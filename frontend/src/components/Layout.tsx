@@ -139,7 +139,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={close} />

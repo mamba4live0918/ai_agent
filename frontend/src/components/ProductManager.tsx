@@ -155,7 +155,7 @@ export default function ProductManager() {
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <input type="text" value={search} onChange={e => handleSearch(e.target.value)}
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="搜索产品名称..." className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 text-xs text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] outline-none flex-1" />
         <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
           className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3] outline-none focus:border-[#58a6ff]">

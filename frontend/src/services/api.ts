@@ -1,5 +1,17 @@
 const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
+function isTauri(): boolean {
+  return !!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+}
+
+async function tauriFetch(): Promise<typeof globalThis.fetch> {
+  if (isTauri()) {
+    const { fetch } = await import('@tauri-apps/plugin-http');
+    return fetch as unknown as typeof globalThis.fetch;
+  }
+  return globalThis.fetch;
+}
+
 function getToken(): string | null {
   return localStorage.getItem('token');
 }
@@ -10,9 +22,14 @@ function authHeaders(): Record<string, string> {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options?.headers },
-    ...options,
+  const fetcher = await tauriFetch();
+  const mergedHeaders: Record<string, string> = { ...authHeaders() };
+  if (options?.body) mergedHeaders['Content-Type'] = 'application/json';
+  if (options?.headers) Object.assign(mergedHeaders, options.headers);
+  const { headers: _, ...rest } = options || {};
+  const res = await fetcher(`${BASE}${url}`, {
+    headers: mergedHeaders,
+    ...rest,
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -48,7 +65,8 @@ export const getInstructorTrends = (granularity: 'weekly' | 'monthly' = 'weekly'
 
 export const exportReport = async (): Promise<void> => {
   const token = getToken();
-  const res = await fetch(`${BASE}/instructor/reports/export`, {
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/instructor/reports/export`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Export failed');
@@ -77,29 +95,21 @@ export const getDocuments = (categoryId?: string, q?: string) => {
 };
 export const getDocument = (id: string) =>
   request<import('../types').Document>(`/knowledge/documents/${id}`);
-export const uploadDocument = (file: File, categoryId: string, onProgress?: (pct: number) => void) => {
-  return new Promise<import('../types').Document>((resolve, reject) => {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('category_id', categoryId);
-    const xhr = new XMLHttpRequest();
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
-    });
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText));
-      } else {
-        if (xhr.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-        reject(new Error('Upload failed'));
-      }
-    });
-    xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-    xhr.open('POST', `${BASE}/knowledge/documents`);
-    const token = getToken();
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.send(form);
+export const uploadDocument = async (file: File, categoryId: string, _onProgress?: (pct: number) => void) => {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('category_id', categoryId);
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/knowledge/documents`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: form,
   });
+  if (!res.ok) {
+    if (res.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+    throw new Error('Upload failed');
+  }
+  return res.json();
 };
 export const deleteDocument = (id: string) =>
   request<void>(`/knowledge/documents/${id}`, { method: 'DELETE' });
@@ -144,28 +154,20 @@ export const getProduct = (id: string) =>
   request<import('../types').Product>(`/products/${id}`);
 export const createProduct = (data: Record<string, unknown>) =>
   request<import('../types').Product>('/products', { method: 'POST', body: JSON.stringify(data) });
-export const importProductsCsv = (file: File, onProgress?: (pct: number) => void) => {
-  return new Promise<import('../types').ProductList>((resolve, reject) => {
-    const form = new FormData();
-    form.append('file', file);
-    const xhr = new XMLHttpRequest();
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
-    });
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText));
-      } else {
-        if (xhr.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-        reject(new Error('Import failed'));
-      }
-    });
-    xhr.addEventListener('error', () => reject(new Error('Import failed')));
-    xhr.open('POST', `${BASE}/products/batch`);
-    const token = getToken();
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.send(form);
+export const importProductsCsv = async (file: File, _onProgress?: (pct: number) => void) => {
+  const form = new FormData();
+  form.append('file', file);
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/products/batch`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: form,
   });
+  if (!res.ok) {
+    if (res.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+    throw new Error('Import failed');
+  }
+  return res.json();
 };
 export const updateProduct = (id: string, data: Record<string, unknown>) =>
   request<import('../types').Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });

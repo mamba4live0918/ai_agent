@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { saveAllocationPlan, generateAllocationPlan } from '../services/api';
-import type { Customer, AllocationSubPlan, AllocationItem } from '../types';
+import type { Customer, AllocationSubPlan } from '../types';
 
 interface Props {
   customer: Customer;
@@ -145,7 +145,7 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
               <XAxis type="number" domain={[0, 100]} hide />
               <Tooltip
                 contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, fontSize: 11 }}
-                formatter={(value: number, _: string, props: any) => [`${value}%`, props.payload.fullName]}
+                formatter={(_value: unknown, _name: unknown, props: unknown) => [`${(props as { payload: { ratio: number } }).payload.ratio}%`, (props as { payload: { fullName: string } }).payload.fullName]}
               />
               <Bar dataKey="ratio" stackId="a" radius={0}>
                 {chartData.map((_, idx) => (

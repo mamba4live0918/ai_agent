@@ -23,6 +23,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Tauri build artifacts
+frontend/src-tauri/target/
+
 # Temporary files
 *.tmp
 goal_text.txt

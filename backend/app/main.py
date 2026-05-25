@@ -21,7 +21,7 @@ app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins + ["https://tauri.localhost", "tauri://localhost"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

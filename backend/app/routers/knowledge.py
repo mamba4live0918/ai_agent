@@ -91,12 +91,18 @@ def upload_document(
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    ext = os.path.splitext(file.filename or "")[1].lower()
+    raw_name = file.filename or "untitled"
+    try:
+        raw_name = raw_name.encode("latin-1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass
+
+    ext = os.path.splitext(raw_name)[1].lower()
     if ext not in (".pdf", ".docx", ".txt", ".md", ".pptx"):
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
     os.makedirs(DOCUMENTS_DIR, exist_ok=True)
-    file_path = os.path.join(DOCUMENTS_DIR, file.filename)
+    file_path = os.path.join(DOCUMENTS_DIR, raw_name)
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
@@ -105,7 +111,7 @@ def upload_document(
     chunk_count = index_document(file_path, user_id=str(current_user.id))
 
     doc = Document(
-        title=file.filename or "untitled",
+        title=raw_name,
         category_id=cat.id,
         file_path=file_path,
         file_type=ext.lstrip("."),

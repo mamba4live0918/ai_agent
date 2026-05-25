@@ -7,7 +7,7 @@ interface Props {
   productType?: string;
 }
 
-export default function ProductNavChart({ data, source, productType }: Props) {
+export default function ProductNavChart({ data, source }: Props) {
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-4">
@@ -38,9 +38,11 @@ export default function ProductNavChart({ data, source, productType }: Props) {
           <Tooltip
             contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, fontSize: 11 }}
             labelStyle={{ color: '#8b949e' }}
-            formatter={(value: number, name: string) => {
-              if (name === 'nav') return [`${value.toFixed(4)}`, '净值'];
-              return [`${value.toFixed(2)}%`, '收益率'];
+            formatter={(value: unknown, name: unknown) => {
+              const num = value as number;
+              const n = name as string;
+              if (n === 'nav') return [`${num.toFixed(4)}`, '净值'];
+              return [`${num.toFixed(2)}%`, '收益率'];
             }}
           />
           <Area type="monotone" dataKey="nav" stroke="#3fb950" strokeWidth={1.5} fill="url(#navGradient)" dot={false} />

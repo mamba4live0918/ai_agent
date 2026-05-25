@@ -1,6 +1,6 @@
 import os
 import shutil
-import requests
+from openai import OpenAI
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDocument
@@ -9,25 +9,6 @@ from langchain_core.embeddings import Embeddings
 from ..config import settings
 
 
-class JinaEmbeddings(Embeddings):
-    def __init__(self, api_key: str, base_url: str, model: str):
-        self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
-        self.model = model
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        resp = requests.post(
-            f"{self.base_url}/embeddings",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"model": self.model, "input": [{"text": t} for t in texts]},
-        )
-        if not resp.ok:
-            raise RuntimeError(f"Jina embedding failed: {resp.status_code} {resp.text[:500]}")
-        return [d["embedding"] for d in resp.json()["data"]]
-
-    def embed_query(self, text: str) -> list[float]:
-        return self.embed_documents([text])[0]
-
 
 _text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=512,
@@ -35,10 +16,28 @@ _text_splitter = RecursiveCharacterTextSplitter(
     separators=["\n\n", "\n", "。", "！", "？", "；", "，", ".", " ", ""],
 )
 
+
+class JinaEmbeddings(Embeddings):
+    """Jina AI embedding function using OpenAI-compatible API."""
+
+    def __init__(self, api_key: str, model: str, base_url: str):
+        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        self._model = model
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        resp = self._client.embeddings.create(model=self._model, input=texts)
+        return [d.embedding for d in sorted(resp.data, key=lambda x: x.index)]
+
+    def embed_query(self, text: str) -> list[float]:
+        resp = self._client.embeddings.create(model=self._model, input=[text])
+        return resp.data[0].embedding
+
+
 _embedding_function = JinaEmbeddings(
     api_key=settings.jina_api_key,
-    base_url=settings.jina_base_url,
     model=settings.embed_model,
+    base_url=settings.jina_base_url,
+)
 )
 
 
@@ -56,7 +55,6 @@ def chunk_documents(docs: list[LCDocument]) -> list[LCDocument]:
 
 
 def add_to_chroma(chunks: list[LCDocument]):
-    """Add chunks to ChromaDB in small batches to avoid exceeding embedding context limits."""
     batch_size = 4
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
@@ -111,7 +109,6 @@ def index_document(filepath: str, user_id: str | None = None) -> int:
 
 
 def delete_from_chroma(filename: str) -> None:
-    """Remove all chunks belonging to a document by filename metadata."""
     try:
         if not os.path.exists(settings.chroma_db_dir) or not os.listdir(settings.chroma_db_dir):
             return
@@ -121,4 +118,4 @@ def delete_from_chroma(filename: str) -> None:
         )
         vectorstore.delete(where={"filename": filename})
     except Exception:
-        pass  # Don't fail the whole delete if ChromaDB cleanup fails
+        pass

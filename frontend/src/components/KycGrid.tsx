@@ -80,7 +80,7 @@ export default function KycGrid({ customer }: Props) {
     setEditingIdx(idx);
   };
 
-  const saveEdit = (idx: number) => {
+  const saveEdit = (_idx: number) => {
     setEditingIdx(null);
   };
 

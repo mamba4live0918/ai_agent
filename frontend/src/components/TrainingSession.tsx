@@ -26,12 +26,26 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   const [showEndingHint, setShowEndingHint] = useState(false);
   const [review, setReview] = useState<TrainingReviewType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPersonaPopover, setShowPersonaPopover] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reviewRef = useRef<HTMLDivElement>(null);
+  const personaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setDetail(initialSession); }, [initialSession]);
+
+  // Close persona popover on outside click
+  useEffect(() => {
+    if (!showPersonaPopover) return;
+    const handler = (e: MouseEvent) => {
+      if (personaRef.current && !personaRef.current.contains(e.target as Node)) {
+        setShowPersonaPopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPersonaPopover]);
 
   const scrollToBottom = useCallback(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -171,8 +185,82 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
       <div className="flex-1 flex flex-col bg-[#0d1117] border-r-2 border-[#30363d] min-w-0">
         {/* Persona header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#161b22] border-b-2 border-[#21262d] flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-[#30363d] border-2 border-[#d29922] flex items-center justify-center text-sm flex-shrink-0">
-            👤
+          <div ref={personaRef} className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowPersonaPopover(v => !v)}
+              className="w-8 h-8 rounded-full bg-[#30363d] border-2 border-[#d29922] flex items-center justify-center text-sm hover:border-[#e0a832] hover:bg-[#3a404a] transition-colors cursor-pointer"
+              title="点击查看客户信息"
+            >
+              👤
+            </button>
+            {showPersonaPopover && (
+              <div className="absolute top-full left-0 mt-2 w-72 bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[#21262d]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-[#30363d] border border-[#d29922] flex items-center justify-center text-xs">
+                      👤
+                    </div>
+                    <span className="text-sm font-semibold text-[#e6edf3]">{detail.persona?.name || '未知'}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowPersonaPopover(false)}
+                    className="text-[#484f58] hover:text-[#e6edf3] text-sm leading-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="px-3.5 py-3 space-y-2.5 max-h-80 overflow-y-auto">
+                  {detail.persona?.age != null && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">年龄</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.age}岁</div>
+                    </div>
+                  )}
+                  {detail.persona?.gender && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">性别</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.gender}</div>
+                    </div>
+                  )}
+                  {detail.persona?.occupation && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">职业</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.occupation}</div>
+                    </div>
+                  )}
+                  {detail.persona?.investment_experience && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">投资经验</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.investment_experience}</div>
+                    </div>
+                  )}
+                  {detail.persona?.wealth_level && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">资产状况</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.wealth_level}</div>
+                    </div>
+                  )}
+                  {detail.persona?.risk_preference && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">风险偏好</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.risk_preference}</div>
+                    </div>
+                  )}
+                  {detail.persona?.goals && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">理财目标</div>
+                      <div className="text-xs text-[#e6edf3]">{detail.persona.goals}</div>
+                    </div>
+                  )}
+                  {detail.persona?.personality && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">性格特征</div>
+                      <div className="text-xs text-[#e6edf3] leading-relaxed">{detail.persona.personality}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs text-[#e6edf3] font-semibold truncate">
