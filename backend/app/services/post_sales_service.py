@@ -42,7 +42,7 @@ def _run_diarization(wav_path: str) -> dict | None:
 
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
-            use_auth_token=settings.huggingface_token,
+            token=settings.huggingface_token,
         )
         # Load audio in-memory to avoid torchcodec dependency
         waveform, sample_rate = torchaudio.load(wav_path)
@@ -80,7 +80,7 @@ def _align_speakers(whisper_segments: list[dict], diarization: list[dict] | None
     """Align whisper segments with diarization speaker labels."""
     if not diarization:
         for seg in whisper_segments:
-            seg["speaker"] = "未知"
+            seg["speaker"] = "销售"
         return whisper_segments
 
     for seg in whisper_segments:
