@@ -6,6 +6,8 @@ import shutil
 from datetime import datetime
 from openai import OpenAI
 
+from opencc import OpenCC
+
 from ..config import settings
 from .rag_service import search_knowledge_base
 
@@ -13,6 +15,8 @@ _client = OpenAI(
     api_key=settings.deepseek_api_key,
     base_url=settings.deepseek_base_url,
 )
+
+_cc = OpenCC("t2s")  # Traditional Chinese → Simplified Chinese
 
 
 def _extract_json(content: str) -> dict:
@@ -51,7 +55,7 @@ def transcribe_audio(file_path: str) -> list[dict]:
         from faster_whisper import WhisperModel
         model = WhisperModel("large-v3", device="cpu", compute_type="int8")
         segments, _ = model.transcribe(wav_path, beam_size=5)
-        return [{"start": s.start, "end": s.end, "text": s.text.strip()} for s in segments]
+        return [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in segments]
     except ImportError:
         raise RuntimeError("faster-whisper not installed — run: pip install faster-whisper")
     except Exception as e:
