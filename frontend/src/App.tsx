@@ -9,6 +9,7 @@ import CustomerAnalysis from './pages/CustomerAnalysis';
 import Products from './pages/Products';
 import Training from './pages/Training';
 import PostSalesAnalysis from './pages/PostSalesAnalysis';
+import Feedback from './pages/Feedback';
 import InstructorDashboard from './pages/InstructorDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -38,6 +39,7 @@ export default function App() {
                         <Route path="/products" element={<Products />} />
                         <Route path="/training" element={<Training />} />
                         <Route path="/post-sales" element={<PostSalesAnalysis />} />
+                        <Route path="/feedback" element={<Feedback />} />
                         <Route path="/instructor" element={<InstructorDashboard />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>

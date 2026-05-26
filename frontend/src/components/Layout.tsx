@@ -81,6 +81,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           售后分析
         </NavLink>
 
+        <NavLink to="/feedback" className={linkClass} onClick={close}>
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+          </svg>
+          自我复盘
+        </NavLink>
+
         {isInstructor && (
           <>
             <div className="pt-4 mt-4 border-t border-[#21262d]">
@@ -97,19 +104,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </>
         )}
 
-        <div className="pt-4 mt-4 border-t border-[#21262d]">
-          <p className="px-3 py-1 text-[11px] font-semibold text-[#484f58] uppercase tracking-wider">
-            状态
-          </p>
-        </div>
-        <div className="px-3 py-2 flex items-center gap-2 text-xs text-[#8b949e]">
-          <span className="w-2 h-2 rounded-full bg-[#3fb950] flex-shrink-0" />
-          DeepSeek · Jina AI
-        </div>
-        <div className="px-3 py-1 flex items-center gap-2 text-xs text-[#8b949e]">
-          <span className="w-2 h-2 rounded-full bg-[#d29922] flex-shrink-0" />
-          PostgreSQL · ChromaDB
-        </div>
       </nav>
 
       {/* Footer with user info */}
