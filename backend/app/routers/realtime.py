@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError
+from sqlalchemy.orm import Session
 
-from ..database import SessionLocal
+from ..database import SessionLocal, get_db
 from ..models.user import User
+from ..models.realtime_session import RealtimeSession, RealtimeSegment
 from ..services.realtime_asr import StreamingTranscriber
-from ..utils.auth import decode_access_token
+from ..services.realtime_service import archive_session
+from ..utils.auth import decode_access_token, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +168,66 @@ async def realtime_session(
         except Exception:
             pass
         logger.info("Realtime session cleaned up: user=%s", user_id)
+
+
+# ---------------------------------------------------------------------------
+# HTTP endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/api/realtime/sessions/{session_id}")
+def get_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return a full real-time session replay including all segments.
+
+    The caller must own the session.  Segments are returned in time order.
+    """
+    session = (
+        db.query(RealtimeSession)
+        .filter(
+            RealtimeSession.id == session_id,
+            RealtimeSession.user_id == current_user.id,
+        )
+        .first()
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    segments = (
+        db.query(RealtimeSegment)
+        .filter(RealtimeSegment.session_id == session_id)
+        .order_by(RealtimeSegment.start)
+        .all()
+    )
+
+    return {
+        "session": {
+            "id": str(session.id),
+            "user_id": str(session.user_id),
+            "status": session.status,
+            "speaker_count": session.speaker_count,
+            "started_at": session.started_at.isoformat() if session.started_at else None,
+            "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+            "created_at": session.created_at.isoformat() if session.created_at else None,
+        },
+        "segments": [
+            {
+                "id": str(seg.id),
+                "session_id": str(seg.session_id),
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text,
+                "speaker": seg.speaker,
+                "confidence": seg.confidence,
+                "asr_model": seg.asr_model,
+                "created_at": seg.created_at.isoformat() if seg.created_at else None,
+            }
+            for seg in segments
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
