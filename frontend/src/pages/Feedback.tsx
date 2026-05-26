@@ -2,6 +2,52 @@ import { useState, useEffect } from 'react';
 import { submitFeedback, getFeedbackStats, getMyFeedback } from '../services/api';
 import type { FeedbackStats, FeedbackResponse } from '../types';
 
+function FeedbackRecord({ feedback: f }: { feedback: FeedbackResponse }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className={`card transition-colors ${open ? 'border-[#58a6ff]/40' : 'cursor-pointer hover:border-[#30363d]'}`}
+      onClick={() => setOpen(!open)}
+    >
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(i => (
+              <span key={i} className={`text-xs ${i <= f.rating ? 'text-[#d29922]' : 'text-[#21262d]'}`}>★</span>
+            ))}
+          </div>
+          <span className="text-[11px] text-[#6e7681]">
+            {new Date(f.created_at).toLocaleDateString('zh-CN')}
+          </span>
+        </div>
+        <svg className={`w-4 h-4 text-[#484f58] transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.427 5.927a.75.75 0 0 1 1.06 0L8 8.44l2.513-2.513a.75.75 0 0 1 1.06 1.06l-3.043 3.043a.75.75 0 0 1-1.06 0L4.427 6.987a.75.75 0 0 1 0-1.06Z"/>
+        </svg>
+      </div>
+      {open && (
+        <div className="px-4 pb-4 border-t border-[#21262d] pt-3 space-y-2">
+          <div>
+            <span className="text-[10px] text-[#484f58] uppercase tracking-wider">评分</span>
+            <p className="text-sm text-[#e6edf3]">{f.rating} / 5</p>
+          </div>
+          {f.feedback_text && (
+            <div>
+              <span className="text-[10px] text-[#484f58] uppercase tracking-wider">评价内容</span>
+              <p className="text-sm text-[#e6edf3] whitespace-pre-wrap">{f.feedback_text}</p>
+            </div>
+          )}
+          <div>
+            <span className="text-[10px] text-[#484f58] uppercase tracking-wider">提交时间</span>
+            <p className="text-sm text-[#8b949e]">
+              {new Date(f.created_at).toLocaleString('zh-CN')}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FeedbackPage() {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -148,21 +194,7 @@ export default function FeedbackPage() {
           <h3 className="text-sm font-semibold text-[#8b949e] uppercase tracking-wider mb-3">我的评价记录</h3>
           <div className="space-y-2">
             {myFeedbacks.map(f => (
-              <div key={f.id} className="card p-4 flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-1">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <span key={i} className={`text-xs ${i <= f.rating ? 'text-[#d29922]' : 'text-[#21262d]'}`}>★</span>
-                    ))}
-                    <span className="text-[11px] text-[#6e7681] ml-2">
-                      {new Date(f.created_at).toLocaleDateString('zh-CN')}
-                    </span>
-                  </div>
-                  {f.feedback_text && (
-                    <p className="text-sm text-[#8b949e]">{f.feedback_text}</p>
-                  )}
-                </div>
-              </div>
+              <FeedbackRecord key={f.id} feedback={f} />
             ))}
           </div>
         </div>

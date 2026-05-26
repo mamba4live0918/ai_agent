@@ -7,17 +7,18 @@ export default function TauriTitlebar() {
   return (
     <div
       data-tauri-drag-region
-      className="sticky top-0 z-50 flex items-center justify-between h-9 bg-[#0d1117] border-b border-[#21262d] select-none flex-shrink-0"
+      className="sticky top-0 z-50 flex items-center justify-between h-10 bg-[#161b22] border-b border-[#21262d] select-none flex-shrink-0 cursor-grab"
+      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       <div className="flex items-center gap-2 px-3">
         <div className="w-3 h-3 rounded-sm bg-[#3fb950]" />
         <span className="text-[11px] font-semibold text-[#e6edf3]">SalesMate</span>
         <span className="text-[9px] text-[#484f58] ml-1">Docker · DeepSeek</span>
       </div>
-      <div className="flex h-full">
+      <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           onClick={tauri.minimize}
-          className="w-11 h-full flex items-center justify-center text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+          className="w-11 h-full flex items-center justify-center text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors cursor-pointer"
           title="最小化"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
