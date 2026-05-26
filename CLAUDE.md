@@ -20,8 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - AI数字人教练：实时提供策略建议、话术矫正、销售金句，复盘点评表达逻辑/专业准确度/情绪情商，记录训练过程并归档
 - 预留讲师端口：统计训练结果，导出报表，学练考评闭环
 
-**终端支持**：PC端 + 移动端双端访问
-**当前开发阶段**：文字交互优先 + 售后语音转录已实现（含说话人分离）
+**终端支持**：PC端 + 移动端双端访问 + Windows 桌面应用（Tauri v2）
+**当前开发阶段**：文字交互 + 售后语音转录 + 实时语音陪跑（含 ASR/说话人分离/教练触发/TTS）
 
 ## 当前状态
 
@@ -53,6 +53,13 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
 - `services/post_sales_service.py` — 音频转录（faster-whisper）+ 售后报告生成 + 通话摘要 + KB 匹配
+- `services/realtime_asr.py` — 实时 ASR 流水线（Silero-VAD + faster-whisper large-v3-turbo + OpenCC 简繁转换）
+- `services/speaker_clustering.py` — 在线说话人聚类（pyannote embedding + 增量余弦相似度匹配，最多 4 人）
+- `services/trigger_engine.py` — 教练触发器引擎（8 条 YAML 规则 + DeepSeek 流式生成教练提示）
+- `services/trigger_rules.yaml` — 触发器规则配置（犹豫/价格异议/竞品/承诺/反对/长静默/多人/情绪）
+- `services/tts_service.py` — 语音合成服务（edge-tts，默认 zh-CN-XiaoxiaoNeural）
+- `services/realtime_service.py` — 实时会话归档（完成后 bulk persist 到 PostgreSQL）
+- `routers/realtime.py` — WebSocket 端点 /ws/realtime/session + HTTP GET 回放端点
 - `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入（含 require_admin/require_super_admin/分组管理员过滤）
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
 - `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
@@ -60,6 +67,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `models/post_sales.py` — PostSalesSession / PostSalesMessage ORM 模型
 - `models/feedback.py` — Feedback ORM 模型
 - `models/group.py` — Group ORM 模型（UUID PK, name, description, admin_id FK→users, created_at）
+- `models/realtime_session.py` — RealtimeSession / RealtimeSegment / RealtimeCoachEvent ORM 模型
 - `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
@@ -95,6 +103,10 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `pages/AdminUsers.tsx` — 管理员用户管理（列表/角色修改/添加/删除）
 - `pages/AdminFeedback.tsx` — 管理员反馈总览（全部反馈展开查看 + 统计）
 - `pages/AdminGroups.tsx` — 分组管理（创建/编辑/删除分组 + 成员管理 + 权限控制）
+- `hooks/useRealtimeASR.ts` — 实时语音识别 Hook（MediaRecorder + WebSocket + 自动重连）
+- `hooks/useVoiceInterrupt.ts` — 语音打断检测 Hook（AudioContext RMS 音量监测，阈值 0.08）
+- `components/RealtimeTranscript.tsx` — 实时转录面板（固定右下角，可折叠，说话人标签）
+- `components/RealtimeCoach.tsx` — 实时教练提示浮窗（打字机效果，自动消失/钉住，历史 20 条）
 
 ### 用户分组系统
 
@@ -190,10 +202,16 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **后端**: Python 3.11 + FastAPI + SQLAlchemy + PostgreSQL
 - **认证**: JWT (python-jose) + bcrypt 4.2.1
 - **前端**: React 19 + TypeScript + Vite + Tailwind CSS + Recharts
+- **桌面应用**: Tauri v2（Windows MSI/NSIS 安装包）
+- **实时通信**: FastAPI WebSocket（JWT token 认证）
+- **VAD**: Silero-VAD ONNX（8kHz, 32ms 窗口）
+- **ASR**: faster-whisper `large-v3-turbo`（CTranslate2, CPU INT8）
+- **说话人分离**: pyannote.audio（embedding + diarization-3.1）
+- **教练引擎**: YAML 规则配置 + DeepSeek 流式 API
+- **TTS**: edge-tts（zh-CN-XiaoxiaoNeural）/ Web Speech API
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
-- **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
-- **语音转录**: faster-whisper `large-v3-turbo` + OpenCC `t2s` 简繁转换 + ffmpeg 音频预处理
+- **LLM**: DeepSeek API（OpenAI 兼容客户端）
 - **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
 ## 启动命令
@@ -213,6 +231,8 @@ source .venv/Scripts/activate
 # 验证后端
 curl http://localhost:8000/api/health
 ```
+
+| 4 | Desktop App | `cd frontend && cargo tauri build` | — |
 
 ## 关键约束
 
@@ -244,6 +264,79 @@ curl http://localhost:8000/api/health
 - **错误处理**：转录失败不阻塞流程，用户仍可手动输入对话内容
 - **✅ 说话人分离（Speaker Diarization）** — pyannote.audio `speaker-diarization-3.1` 自动识别 2-4 个说话人，按发言时长排序映射为 销售/客户/其他。需配置 `HUGGINGFACE_TOKEN`，未配置时回退到无分离模式
 
+## 实时语音陪跑（Real-time Voice AI）— 四阶段实现
+
+### 概览
+
+实时语音陪跑系统通过 WebSocket 连接实现低延迟 ASR 转录 + AI 教练实时提示 + TTS 语音反馈的完整闭环。
+
+- **Phase 1**：实时 ASR 流水线（Silero-VAD + faster-whisper + OpenCC）
+- **Phase 2**：多说话人分离（pyannote embedding + 在线聚类）
+- **Phase 3**：AI 教练触发器引擎（YAML 规则 + DeepSeek 流式生成）
+- **Phase 4**：TTS 语音合成 + 语音打断 + 会话归档
+
+### 架构
+
+```
+浏览器 (MediaRecorder) ──WebSocket 二进制音频──▶ FastAPI /ws/realtime/session
+                                                      │
+                                   ┌──────────────────┼──────────────────┐
+                                   ▼                  ▼                  ▼
+                              Silero-VAD         Speaker             Trigger
+                              (8kHz, 32ms)       Clustering          Engine
+                                   │             (cosine≥0.65)       (8 rules)
+                                   ▼                  │                  │
+                              faster-whisper         │                  │
+                              large-v3-turbo          │                  │
+                              (INT8 CPU)             │                  │
+                                   │                  │                  │
+                                   └──────────────────┴──────────────────┘
+                                                      │
+                                   ◀── JSON transcript / coach_tip ──▶ 浏览器
+                                                      │
+                                   TTS ◀── edge-tts ──┘  (zh-CN-XiaoxiaoNeural)
+```
+
+### ASR 流水线
+
+- **VAD**：Silero-VAD ONNX 模型，8kHz 采样率，32ms 原生窗口，threshold=0.5，min_speech_duration=500ms，max_speech_duration=10s
+- **ASR**：faster-whisper `large-v3-turbo`（809M 参数），CTranslate2 加速，CPU INT8 量化
+- **后处理**：OpenCC `t2s` 繁→简转换
+- **VAD 坐标修复**：`_trim_audio_buffer` 使用 `end_vad - _current_sample` 而非绝对 `end_vad`
+
+### 说话人聚类
+
+- **SpeakerEmbedder**：pyannote/embedding 模型（512 维向量），LRU 缓存 200 条
+- **OnlineSpeakerClustering**：增量余弦相似度匹配，threshold=0.65，max_speakers=4
+- **质心更新**：移动平均 + L2 归一化
+- **回退**：无 HF token 时使用随机 embedding
+
+### 教练触发器引擎
+
+- **8 条 YAML 规则**：hesitation（犹豫）、price_objection（价格异议）、competitor_mention（竞品提及）、commitment_signal（承诺信号）、objection（反对）、long_silence（长静默 60s）、multi_party（多人讨论）、emotional_shift（情绪转变）
+- **每条规则**：id、condition、pattern（regex）、action、priority、cooldown（秒）
+- **CoachPromptBuilder**：7 种 action 专用中文 prompt 模板，DeepSeek 流式生成（t=0.3, max_tokens=512）
+- **Cooldown 追踪**：`{rule_id: last_trigger_time}` 字典
+
+### TTS + 打断
+
+- **TTS**：edge-tts（免费 Microsoft Edge TTS），默认语音 `zh-CN-XiaoxiaoNeural`，支持 `synthesize()` / `synthesize_stream()` / `synthesize_base64()`
+- **语音打断**：AudioContext + AnalyserNode RMS 音量监测，threshold=0.08，sustainedMs=200，intervalMs=50
+- **打断信号**：WebSocket 发送 `{"type": "interrupt"}` JSON 消息
+
+### 前端组件
+
+- **useRealtimeASR**：MediaRecorder 录音（audio/webm;codecs=opus，100ms 分片），WebSocket 连接管理，自动重连（3 次，指数退避 1s/2s/4s）
+- **RealtimeTranscript**：固定右下角浮窗（`fixed bottom-4 right-4 z-50`），可折叠，红色录音脉冲点，滚动区域 max-h-280px，说话人标签 `[说话人0]`
+- **RealtimeCoach**：独立 WebSocket 连接，打字机效果（~25ms 间隔），7 种触发器类型颜色，8 个中文标签，自动消失（10s）+ 钉住，历史 20 条，绿色 "LIVE" 连接按钮
+- **实验入口**：Training.tsx 右上角 "实验：实时语音" 按钮
+
+### 数据持久化
+
+- **RealtimeSession**：id, user_id, status (active/completed/abandoned), speaker_count, started_at, ended_at
+- **RealtimeSegment**：id, session_id (FK CASCADE), start, end, text, speaker, confidence, asr_model
+- **RealtimeCoachEvent**：id, session_id (FK CASCADE), trigger_rule, coach_content, segment_id (FK SET NULL)
+- **归档**：`archive_session()` 在 WebSocket 断开后 bulk persist，`GET /api/realtime/sessions/{id}` 回放历史
 
 ### KB 优先原则
 
