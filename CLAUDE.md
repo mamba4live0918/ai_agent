@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 预留讲师端口：统计训练结果，导出报表，学练考评闭环
 
 **终端支持**：PC端 + 移动端双端访问
-**当前开发阶段**：文字交互优先，语音功能暂不处理
+**当前开发阶段**：文字交互优先 + 售后语音转录已实现（说话人分离待实现）
 
 ## 当前状态
 
@@ -43,19 +43,26 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `routers/chat.py` — 知识库 RAG 问答，对话按用户命名空间隔离
 - `routers/training.py` — 仿真培训 API（7 端点：创建/列表/详情/发消息/结束/复盘/删除）
 - `routers/instructor.py` — 讲师端口（统计概览/按用户统计/训练趋势/CSV 导出）
+- `routers/post_sales.py` — 售后分析（7 端点：会话 CRUD + 消息 + 音频上传 + 结束生成报告）
+- `routers/feedback.py` — 用户反馈（提交/我的反馈/统计/管理员全量查看）
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
 - `services/training_service.py` — DeepSeek 生成客户模拟 + 教练提示 + 复盘报告（KB-First）
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
+- `services/post_sales_service.py` — 音频转录（faster-whisper）+ 售后报告生成 + 通话摘要 + KB 匹配
 - `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入、用户/文档过滤
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
 - `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
 - `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
+- `models/post_sales.py` — PostSalesSession / PostSalesMessage ORM 模型
+- `models/feedback.py` — Feedback ORM 模型
 - `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
+- `schemas/post_sales.py` — 售后分析 Pydantic 模型
+- `schemas/feedback.py` — 用户反馈 Pydantic 模型
 
 ### 前端模块
 
@@ -78,6 +85,12 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
 - `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
 - `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor）
+- `pages/PostSalesAnalysis.tsx` — 售后分析主页面（会话列表 + 新建）
+- `components/PostSalesSession.tsx` — 售后分析对话界面（录音/上传/手动输入/报告浮窗）
+- `components/PostSalesReport.tsx` — 售后报告可视化（雷达图/情绪轨迹/仪表盘/时间线/PDF 导出）
+- `pages/Feedback.tsx` — 用户反馈页（星级评分 + 评价记录展开查看 + 统计）
+- `pages/AdminUsers.tsx` — 管理员用户管理（列表/角色修改/添加/删除）
+- `pages/AdminFeedback.tsx` — 管理员反馈总览（全部反馈展开查看 + 统计）
 
 ### 仿真培训（AI 数字人对练）
 
@@ -163,6 +176,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
 - **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
+- **语音转录**: faster-whisper `large-v3` + OpenCC `t2s` 简繁转换 + ffmpeg 音频预处理
 - **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
 ## 启动命令
@@ -191,8 +205,9 @@ curl http://localhost:8000/api/health
 - 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
 - Embedding 分批：每批 4 个 chunk，避免 embedding 模型的 token 上下文溢出
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）
+- 语音转录需安装 ffmpeg（系统级）和 faster-whisper（pip install faster-whisper），首次运行会自动下载 large-v3 模型（约 3GB）
 
-## 售后分析（Post-Sales Analysis）
+## 售后分析（Post-Sales Analysis）— 含语音转录
 
 - **创建方式**：从客户分析页一键发起（带 customerId），或从售后分析页独立创建
 - **录音功能**：支持在 app 内直接录制（MediaRecorder API → `.webm`）、上传音频文件、手动输入对话
@@ -202,6 +217,16 @@ curl http://localhost:8000/api/health
 - **报告浮窗**：结束通话后 AI 分析报告以浮窗弹窗展示（html2canvas + jsPDF 导出），不替换对话视图
 - **端点**：7 端点 — POST/GET/PATCH/DELETE sessions，POST messages，POST audio，POST end
 - **报告内容**：综合评分 + 通话摘要 + 情绪轨迹图 + 对话占比饼图 + 能力评估雷达图 + 成交概率仪表盘 + 关键时刻时间线 + 错失机会 + 优势/待改进 + 知识库匹配
+
+### 语音转录（Audio Transcription）
+
+- **前端录制**：MediaRecorder API 录制 `audio/webm` 格式，支持实时录制和文件上传两种方式
+- **后端处理**：`post_sales_service.transcribe_audio()` — ffmpeg 转 16kHz 单声道 WAV → faster-whisper `large-v3` (CPU int8) 转录
+- **简繁转换**：OpenCC `t2s` 自动将转录文本从繁体转简体中文
+- **存储路径**：音频文件保存在 `audio_uploads/` 目录，上传后立即转录并存入 PostgreSQL
+- **错误处理**：转录失败不阻塞流程，用户仍可手动输入对话内容
+- **⚠️ 待实现：说话人分离（Speaker Diarization）** — 当前所有转录内容统一标记为"销售"角色，无法自动区分销售/客户。可选方案：pyannote.audio（开源 + HuggingFace token）或云端 API（阿里云/讯飞/腾讯云）
+
 
 ### KB 优先原则
 
