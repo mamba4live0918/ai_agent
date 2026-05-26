@@ -270,3 +270,13 @@ export const endPostSalesSession = (id: string) =>
 
 export const deletePostSalesSession = (id: string) =>
   request<void>(`/post-sales/sessions/${id}`, { method: 'DELETE' });
+
+// ─── Feedback ───
+export const submitFeedback = (data: import('../types').FeedbackRequest) =>
+  request<import('../types').FeedbackResponse>('/feedback', { method: 'POST', body: JSON.stringify(data) });
+
+export const getMyFeedback = () =>
+  request<import('../types').FeedbackResponse[]>('/feedback/my');
+
+export const getFeedbackStats = () =>
+  request<import('../types').FeedbackStats>('/feedback/stats');

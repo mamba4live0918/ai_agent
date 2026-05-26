@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCategories, getCustomers, getProducts } from '../services/api';
+import FeedbackForm from '../components/FeedbackForm';
 
 export default function Dashboard() {
   const [docCount, setDocCount] = useState(0);
@@ -162,6 +163,9 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* Feedback */}
+      <FeedbackForm />
     </div>
   );
 }

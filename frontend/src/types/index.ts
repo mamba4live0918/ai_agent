@@ -336,3 +336,23 @@ export interface PostSalesSessionList {
   page_size: number;
   total_pages: number;
 }
+
+// ─── Feedback ───
+export interface FeedbackRequest {
+  rating: number;
+  feedback_text?: string | null;
+}
+
+export interface FeedbackResponse {
+  id: string;
+  user_id: string;
+  rating: number;
+  feedback_text: string | null;
+  created_at: string;
+}
+
+export interface FeedbackStats {
+  total: number;
+  average: number;
+  distribution: Record<number, number>;
+}

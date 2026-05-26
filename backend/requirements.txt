@@ -17,3 +17,4 @@ python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 openai==1.109.1
 faster-whisper==1.2.0
+duckduckgo_search==8.1.1
