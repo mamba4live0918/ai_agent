@@ -55,6 +55,7 @@ class ASRSegment:
     end: float  # seconds from stream start
     text: str  # transcribed Chinese / English text
     confidence: float  # model confidence [0, 1]
+    speaker: str = ""  # speaker identifier (set by StreamingTranscriber)
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +611,9 @@ class StreamingTranscriber:
         Maximum speech segment duration before force-split.
     enable_pyannote_check : bool
         If True, use pyannote VAD as a secondary false-positive filter.
+    enable_speaker_clustering : bool
+        If True, use OnlineSpeakerClustering to assign speaker IDs to each
+        transcribed segment in real time.
     """
 
     def __init__(
@@ -619,6 +623,7 @@ class StreamingTranscriber:
         min_speech_duration_ms: int = 500,
         max_speech_duration_s: float = 10.0,
         enable_pyannote_check: bool = False,
+        enable_speaker_clustering: bool = False,
     ):
         self.sample_rate = sample_rate
 
@@ -631,6 +636,13 @@ class StreamingTranscriber:
         self._asr = ASRProcessor()
         self._pyannote = _load_pyannote_vad() if enable_pyannote_check else None
         self._enable_pyannote = enable_pyannote_check
+
+        # Speaker clustering (lazy init)
+        self._enable_speaker_clustering = enable_speaker_clustering
+        self._speaker_clustering = None
+        if enable_speaker_clustering:
+            from .speaker_clustering import OnlineSpeakerClustering
+            self._speaker_clustering = OnlineSpeakerClustering()
 
         # Track cumulative time offset for segments
         self._processed_seconds = 0.0
@@ -662,7 +674,14 @@ class StreamingTranscriber:
                     )
                     continue
 
-            # Step 3: ASR transcription
+            # Step 3: Speaker clustering (before ASR, based on audio only)
+            speaker_id = ""
+            if self._speaker_clustering is not None:
+                speaker_id = self._speaker_clustering.add_segment(
+                    vseg.audio_bytes, self.sample_rate
+                )
+
+            # Step 4: ASR transcription
             asr_seg = self._asr.transcribe_segment(
                 vseg.audio_bytes, sample_rate=self.sample_rate
             )
@@ -670,6 +689,7 @@ class StreamingTranscriber:
             # Use VAD timestamps (more precise than ASR)
             asr_seg.start = self._processed_seconds + vseg.start
             asr_seg.end = self._processed_seconds + vseg.end
+            asr_seg.speaker = speaker_id
 
             if asr_seg.text.strip():
                 results.append(asr_seg)

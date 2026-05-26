@@ -114,6 +114,7 @@ async def realtime_session(
         sample_rate=8000,
         vad_threshold=0.5,
         min_speech_duration_ms=500,
+        enable_speaker_clustering=True,
     )
 
     # ---- Step 4: process audio chunks --------------------------------------
@@ -146,6 +147,7 @@ async def realtime_session(
                         "end": seg.end,
                         "text": seg.text,
                         "confidence": seg.confidence,
+                        "speaker": seg.speaker,
                         "is_partial": False,
                     }
                 )

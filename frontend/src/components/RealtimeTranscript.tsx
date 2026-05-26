@@ -113,6 +113,11 @@ export default function RealtimeTranscript({
                 key={`${seg.start}-${i}`}
                 className="text-[12px] text-[#e6edf3] leading-relaxed"
               >
+                {seg.speaker && (
+                  <span className="text-[#58a6ff] font-medium mr-1">
+                    [{seg.speaker.replace('speaker_', '说话人')}]
+                  </span>
+                )}
                 {seg.text}
               </p>
             ))}

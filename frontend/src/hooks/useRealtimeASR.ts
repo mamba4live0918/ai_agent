@@ -6,6 +6,7 @@ export interface TranscriptSegment {
   text: string;
   confidence: number;
   isPartial: boolean;
+  speaker: string;
 }
 
 export type ConnectionState = 'idle' | 'connecting' | 'streaming' | 'disconnected';
@@ -114,6 +115,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
                   text: data.text ?? '',
                   confidence: data.confidence ?? 0,
                   isPartial: false,
+                  speaker: data.speaker ?? '',
                 },
               ]);
               setPartialText('');
