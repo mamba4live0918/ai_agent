@@ -22,3 +22,4 @@ torch>=2.0
 torchaudio>=2.0
 pyannote.audio>=3.0
 opencc-python-reimplemented==0.1.7
+silero-vad>=6.0
