@@ -1,0 +1,62 @@
+# Rule-based trigger engine configuration
+# Each rule defines a condition to detect during real-time sales conversations
+# and the corresponding action to take (coach tip, alert, guidance, etc.)
+
+triggers:
+  # ── Priority 1: Text-based triggers (regex pattern matching) ──
+  - id: hesitation
+    condition: client_hesitation
+    pattern: "嗯+|呃+|这个...+|那个...+"
+    action: coach_tip
+    priority: 1
+    cooldown: 15
+
+  - id: price_objection
+    condition: price_objection
+    pattern: "太贵|便宜|折扣|优惠|费率|费用|价格"
+    action: coach_tip
+    priority: 1
+    cooldown: 20
+
+  - id: competitor_mention
+    condition: competitor_mention
+    pattern: "别的|其他公司|某行|某平台|对比|别家|他们"
+    action: strategy_alert
+    priority: 1
+    cooldown: 30
+
+  - id: commitment_signal
+    condition: commitment_signal
+    pattern: "可以试试|怎么签约|先买|办一个|来一份|怎么办理"
+    action: closing_guide
+    priority: 1
+    cooldown: 30
+
+  - id: objection
+    condition: objection_pattern
+    pattern: "不行|不考虑|算了|不需要|再说|再想想|暂时不"
+    action: objection_handle
+    priority: 1
+    cooldown: 20
+
+  # ── Priority 2: Context-based triggers (no regex) ──
+  - id: long_silence
+    condition: long_silence
+    timeout: 10
+    action: break_tip
+    priority: 2
+    cooldown: 60
+
+  - id: multi_party
+    condition: multi_party_debate
+    speaker_count: ">=3"
+    action: role_analysis
+    priority: 2
+    cooldown: 45
+
+  - id: emotional_shift
+    condition: sentiment_change
+    threshold: 0.4
+    action: emotion_alert
+    priority: 2
+    cooldown: 30
