@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, deleteUser, createUser } from '../services/api';
+import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { User } from '../types';
+import type { User, Group } from '../types';
 
 const ROLES = ['admin', 'instructor', 'salesperson'] as const;
 const ROLE_LABELS: Record<string, string> = { admin: '管理员', instructor: '讲师', salesperson: '销售' };
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
+  const isSuperAdmin = me?.role === 'admin' && !me?.group_id;
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -17,12 +18,22 @@ export default function AdminUsers() {
   const [addForm, setAddForm] = useState({ username: '', email: '', password: '' });
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [groupMap, setGroupMap] = useState<Record<string, string>>({});
   const pageSize = 20;
 
   const load = () => {
     setLoading(true);
-    getAllUsers(page, pageSize)
-      .then((res) => { setUsers(res.items); setTotal(res.total); })
+    Promise.all([
+      getAllUsers(page, pageSize),
+      getGroups(1, 200),
+    ])
+      .then(([userRes, groupRes]) => {
+        setUsers(userRes.items);
+        setTotal(userRes.total);
+        const map: Record<string, string> = {};
+        groupRes.items.forEach((g: Group) => { map[g.id] = g.name; });
+        setGroupMap(map);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -77,12 +88,14 @@ export default function AdminUsers() {
           <h2 className="text-2xl font-bold text-[#e6edf3] mb-1">用户管理</h2>
           <p className="text-sm text-[#8b949e]">管理平台用户与角色分配</p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 text-sm font-medium rounded-md bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
-        >
-          添加用户
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => setShowAdd(true)}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+          >
+            添加用户
+          </button>
+        )}
       </div>
 
       {/* Add user modal */}
@@ -149,6 +162,7 @@ export default function AdminUsers() {
               <tr className="border-b border-[#21262d] text-[#8b949e] text-left">
                 <th className="px-4 py-3 font-medium">用户名</th>
                 <th className="px-4 py-3 font-medium">邮箱</th>
+                <th className="px-4 py-3 font-medium">所属分组</th>
                 <th className="px-4 py-3 font-medium">角色</th>
                 <th className="px-4 py-3 font-medium">注册时间</th>
                 <th className="px-4 py-3 font-medium w-20">操作</th>
@@ -165,8 +179,15 @@ export default function AdminUsers() {
                       {isSelf && <span className="ml-2 text-[10px] text-[#58a6ff]">(你)</span>}
                     </td>
                     <td className="px-4 py-3 text-[#8b949e]">{u.email}</td>
+                    <td className="px-4 py-3 text-[#8b949e] text-xs">
+                      {u.group_id && groupMap[u.group_id] ? (
+                        <span className="px-1.5 py-0.5 rounded bg-[#1f6feb]/20 text-[#58a6ff]">{groupMap[u.group_id]}</span>
+                      ) : (
+                        <span className="text-[#484f58]">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
-                      {isSelf ? (
+                      {isSelf || !isSuperAdmin ? (
                         <span className="text-[#8b949e]">{ROLE_LABELS[u.role]}</span>
                       ) : (
                         <select
@@ -184,7 +205,7 @@ export default function AdminUsers() {
                       {new Date(u.created_at).toLocaleDateString('zh-CN')}
                     </td>
                     <td className="px-4 py-3">
-                      {!isSelf && !isAdmin && (
+                      {isSuperAdmin && !isSelf && !isAdmin && (
                         confirmDelete === u.id ? (
                           <div className="flex items-center gap-1">
                             <button

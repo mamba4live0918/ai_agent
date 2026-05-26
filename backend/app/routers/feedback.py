@@ -46,12 +46,20 @@ def feedback_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/feedback/all", response_model=FeedbackAdminList, dependencies=[Depends(require_admin)])
-def admin_all_feedback(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+def admin_all_feedback(
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     offset = (page - 1) * page_size
-    total = db.query(func.count(Feedback.id)).scalar() or 0
+    base_query = db.query(Feedback).join(User, Feedback.user_id == User.id)
+    # Group admin only sees feedback from users in their group
+    if current_user.group_id is not None:
+        base_query = base_query.filter(User.group_id == current_user.group_id)
+    total = base_query.count()
     rows = (
-        db.query(Feedback, User.username)
-        .join(User, Feedback.user_id == User.id)
+        base_query.with_entities(Feedback, User.username)
         .order_by(Feedback.created_at.desc())
         .offset(offset)
         .limit(page_size)

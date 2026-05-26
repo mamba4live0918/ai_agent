@@ -44,7 +44,8 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `routers/training.py` — 仿真培训 API（7 端点：创建/列表/详情/发消息/结束/复盘/删除）
 - `routers/instructor.py` — 讲师端口（统计概览/按用户统计/训练趋势/CSV 导出）
 - `routers/post_sales.py` — 售后分析（7 端点：会话 CRUD + 消息 + 音频上传 + 结束生成报告）
-- `routers/feedback.py` — 用户反馈（提交/我的反馈/统计/管理员全量查看）
+- `routers/feedback.py` — 用户反馈（提交/我的反馈/统计/管理员全量查看，分组管理员仅看组内）
+- `routers/groups.py` — 分组管理 CRUD + 成员管理（超级管理员/分组管理员权限控制）
 - `services/customer_service.py` — DeepSeek 生成客户分析 + 售前准备报告
 - `services/allocation_service.py` — DeepSeek 生成 3 套资产配置方案
 - `services/rag_service.py` — Chat 问答 + KB 检索工具函数
@@ -52,17 +53,19 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `services/fund_service.py` — 东方财富 API 获取真实基金净值走势
 - `services/embedding_service.py` — ChromaDB 向量存储，支持分批嵌入
 - `services/post_sales_service.py` — 音频转录（faster-whisper）+ 售后报告生成 + 通话摘要 + KB 匹配
-- `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入、用户/文档过滤
+- `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入（含 require_admin/require_super_admin/分组管理员过滤）
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
 - `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
 - `models/training.py` — TrainingSession / TrainingMessage / TrainingReview ORM 模型
 - `models/post_sales.py` — PostSalesSession / PostSalesMessage ORM 模型
 - `models/feedback.py` — Feedback ORM 模型
+- `models/group.py` — Group ORM 模型（UUID PK, name, description, admin_id FK→users, created_at）
 - `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
 - `schemas/post_sales.py` — 售后分析 Pydantic 模型
 - `schemas/feedback.py` — 用户反馈 Pydantic 模型
+- `schemas/group.py` — 分组管理 Pydantic 模型（GroupCreate, GroupUpdate, GroupResponse, GroupMemberResponse）
 
 ### 前端模块
 
@@ -84,13 +87,23 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/PersonaForm.tsx` — 手动创建数字人客户表单
 - `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
 - `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
-- `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor）
+- `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor、isAdmin）
 - `pages/PostSalesAnalysis.tsx` — 售后分析主页面（会话列表 + 新建）
 - `components/PostSalesSession.tsx` — 售后分析对话界面（录音/上传/手动输入/报告浮窗）
 - `components/PostSalesReport.tsx` — 售后报告可视化（雷达图/情绪轨迹/仪表盘/时间线/PDF 导出）
 - `pages/Feedback.tsx` — 用户反馈页（星级评分 + 评价记录展开查看 + 统计）
 - `pages/AdminUsers.tsx` — 管理员用户管理（列表/角色修改/添加/删除）
 - `pages/AdminFeedback.tsx` — 管理员反馈总览（全部反馈展开查看 + 统计）
+- `pages/AdminGroups.tsx` — 分组管理（创建/编辑/删除分组 + 成员管理 + 权限控制）
+
+### 用户分组系统
+
+- **超级管理员**（role=admin, group_id=NULL）：管理所有分组和用户，创建/删除分组，分配分组管理员，修改角色
+- **分组管理员**（role=admin, group_id=<group>，且为组的 admin_id）：仅管理自己分组的成员，查看组内用户和反馈
+- `groups` 表：id, name (unique), description, admin_id (FK→users), created_at
+- `users.group_id` (FK→groups, nullable)：用户所属分组
+- 分组管理员登录后仅看到自己组的用户和反馈，`apply_user_filter` 按组隔离数据
+- 端点：`POST/GET/PATCH/DELETE /api/groups` + `GET/POST/DELETE /api/groups/{id}/members/{user_id}`
 
 ### 仿真培训（AI 数字人对练）
 
@@ -143,13 +156,17 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **JWT 认证**：`python-jose[cryptography]` + HS256，纯 access token（24h 过期），无 refresh token
 - **密码存储**：`bcrypt==4.2.1`（非 passlib，因兼容性问题）
 - **三种角色**：admin（管理员，看全部数据）、instructor（讲师，看全部数据 + 讲师端口）、salesperson（销售，仅看自己的数据）
+- **权限层级**：
+  - **超级管理员**（role=admin, group_id=NULL）：管理所有用户/分组/反馈
+  - **分组管理员**（role=admin, group_id=<group>，且是组的 admin_id）：仅管理自己组内用户
+  - **普通用户**：仅看自己的数据
 - **数据隔离**：Customer / Product / TrainingSession 添加 `user_id` 列（FK → users.id）
 - **文档分层**：Document.user_id 可空 — NULL = 基础/共享文档全员可见，非 NULL = 个人文档
 - **产品分层**：Product.user_id 可空 — 管理员创建的产品 user_id=NULL（共享），普通用户创建的仅自己可见
 - **查询过滤**：
-  - `apply_user_filter(query, model, current_user)` — admin 看全部，其他人仅看自己的（Customer / TrainingSession）
+  - `apply_user_filter(query, model, current_user)` — 超级管理员看全部，分组管理员看组内数据，其他人仅看自己的（Customer / TrainingSession）
   - `apply_document_filter(query, model, current_user)` — admin 看全部，其他人看共享 + 自己的（Document / Product）
-- **角色守卫**：`require_instructor(current_user)` 允许 admin + instructor，拒绝 salesperson
+- **角色守卫**：`require_instructor(current_user)` 允许 admin + instructor，拒绝 salesperson；`require_super_admin(current_user)` 要求 role=admin 且 group_id=NULL
 - **默认账号**：admin / admin123（Alembic 迁移自动创建）
 - **Chat 隔离**：对话以 `user_id:conversation_id` 命名空间前缀存储
 

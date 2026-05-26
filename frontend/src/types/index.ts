@@ -4,6 +4,7 @@ export interface User {
   username: string;
   email: string;
   role: 'admin' | 'instructor' | 'salesperson';
+  group_id: string | null;
   created_at: string;
 }
 
@@ -369,4 +370,29 @@ export interface FeedbackAdminList {
 export interface UserListResponse {
   items: User[];
   total: number;
+}
+
+// ─── Groups ───
+export interface Group {
+  id: string;
+  name: string;
+  description: string | null;
+  admin_id: string | null;
+  admin_name: string | null;
+  member_count: number;
+  created_at: string;
+}
+
+export interface GroupListResponse {
+  items: Group[];
+  total: number;
+}
+
+export interface GroupMember {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  group_id: string | null;
+  created_at: string;
 }

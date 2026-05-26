@@ -299,3 +299,25 @@ export const createUser = (data: { username: string; email: string; password: st
 
 export const deleteUser = (userId: string) =>
   request<void>(`/auth/users/${userId}`, { method: 'DELETE' });
+
+// ─── Groups ───
+export const getGroups = (page = 1, pageSize = 20) =>
+  request<import('../types').GroupListResponse>(`/groups?page=${page}&page_size=${pageSize}`);
+
+export const createGroup = (data: { name: string; description?: string; admin_id?: string }) =>
+  request<import('../types').Group>('/groups', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateGroup = (id: string, data: { name?: string; description?: string; admin_id?: string }) =>
+  request<import('../types').Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteGroup = (id: string) =>
+  request<void>(`/groups/${id}`, { method: 'DELETE' });
+
+export const getGroupMembers = (groupId: string) =>
+  request<import('../types').GroupMember[]>(`/groups/${groupId}/members`);
+
+export const addGroupMember = (groupId: string, userId: string) =>
+  request<import('../types').GroupMember>(`/groups/${groupId}/members/${userId}`, { method: 'POST' });
+
+export const removeGroupMember = (groupId: string, userId: string) =>
+  request<void>(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' });

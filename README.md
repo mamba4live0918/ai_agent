@@ -141,23 +141,42 @@ npm run dev
 
 ## 用户认证
 
-系统有三种角色：**admin**（管理员，看全部数据）、**instructor**（讲师，看全部数据 + 讲师端口）、**salesperson**（销售，仅看自己的数据）。
+系统有三种角色：**admin**（管理员）、**instructor**（讲师，看全部数据 + 讲师端口）、**salesperson**（销售，仅看自己的数据）。
+
+管理员分为两级：
+- **超级管理员**（role=admin, group_id=NULL）：管理所有用户、分组和反馈，创建/删除分组，分配分组管理员
+- **分组管理员**（role=admin, group_id=<group>）：仅管理自己分组的成员，查看组内用户和反馈
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/auth/register` | 注册（默认 salesperson） |
 | POST | `/api/auth/login` | 登录 → JWT token |
 | GET | `/api/auth/me` | 当前用户信息 |
+| GET | `/api/auth/users` | 用户列表（超级管理员看全部，分组管理员看组内） |
+| POST | `/api/auth/users` | 创建用户（仅超级管理员） |
+| PATCH | `/api/auth/users/{id}/role` | 修改角色（仅超级管理员） |
+| DELETE | `/api/auth/users/{id}` | 删除用户（仅超级管理员） |
 
-默认管理员：`admin` / `admin123`
+默认超级管理员：`admin` / `admin123`
 
 ### 数据隔离
 
-- **客户 / 训练会话**：按用户隔离，非管理员仅看自己的数据
+- **客户 / 训练会话**：超级管理员看全部，分组管理员看组内数据，普通用户仅看自己的
 - **知识库文档**：user_id=NULL 为基础文档（全员可见），非 NULL 为个人文档
 - **产品库**：管理员创建的产品 user_id=NULL（共享全员可见），普通用户创建的仅自己可见
 
 ## API 端点
+
+### 分组管理（需管理员角色）
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/groups` | 分组列表（超级管理员看全部，分组管理员看自己的） |
+| POST | `/api/groups` | 创建分组（仅超级管理员） |
+| PATCH | `/api/groups/{id}` | 更新分组名称/描述/管理员 |
+| DELETE | `/api/groups/{id}` | 删除分组（仅超级管理员，成员自动取消分组） |
+| GET | `/api/groups/{id}/members` | 分组成员列表 |
+| POST | `/api/groups/{id}/members/{user_id}` | 添加用户到分组 |
+| DELETE | `/api/groups/{id}/members/{user_id}` | 从分组移除用户 |
 
 ### 讲师端口（需 admin/instructor 角色）
 | 方法 | 路径 | 说明 |
@@ -223,9 +242,16 @@ npm run dev
 **用户认证与权限**
 - JWT 认证（python-jose + bcrypt），注册/登录/自动续期
 - 三种角色：admin（管理员）/ instructor（讲师）/ salesperson（销售）
+- 管理员分级：超级管理员（group_id=NULL，管所有）+ 分组管理员（group_id=<group>，管本组）
 - 数据按用户隔离：客户、产品、训练会话各归属创建者
 - 知识库文档和产品支持共享模式（user_id=NULL = 全员可见）
 - 管理员创建的文档/产品自动设为共享，普通用户创建的仅自己可见
+
+**用户分组管理**
+- 超级管理员可创建分组、设置分组管理员
+- 分组管理员只能管理自己组内的成员和查看组内反馈
+- 支持添加/移除分组成员，成员自动关联分组
+- 删除分组时成员自动取消分组（group_id 置 NULL）
 
 **讲师端口**
 - 训练统计概览：总用户数/总会话数/完成率/平均分

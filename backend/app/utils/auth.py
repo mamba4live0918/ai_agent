@@ -58,10 +58,21 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin" or current_user.group_id is not None:
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    return current_user
+
+
 def apply_user_filter(query, model, current_user: User):
-    """Filter query by user_id. Admin sees all, others see only their own data."""
-    if current_user.role == "admin":
+    """Filter query by user_id. Super admin sees all, group admin sees their group, others see only own data."""
+    if current_user.role == "admin" and current_user.group_id is None:
         return query
+    if current_user.role == "admin" and current_user.group_id is not None:
+        from sqlalchemy import select
+        from ..models.user import User as UserModel
+        member_ids = select(UserModel.id).where(UserModel.group_id == current_user.group_id)
+        return query.filter(model.user_id.in_(member_ids))
     return query.filter(model.user_id == current_user.id)
 
 

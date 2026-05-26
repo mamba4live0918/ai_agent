@@ -13,6 +13,7 @@ import FeedbackPage from './pages/Feedback';
 import InstructorDashboard from './pages/InstructorDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminFeedback from './pages/AdminFeedback';
+import AdminGroups from './pages/AdminGroups';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -45,6 +46,7 @@ export default function App() {
                         <Route path="/instructor" element={<InstructorDashboard />} />
                         <Route path="/admin/users" element={<AdminUsers />} />
                         <Route path="/admin/feedback" element={<AdminFeedback />} />
+                        <Route path="/admin/groups" element={<AdminGroups />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Layout>

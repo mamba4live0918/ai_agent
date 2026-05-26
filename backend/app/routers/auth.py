@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.user import User
 from ..schemas.auth import UserRegister, UserLogin, UserResponse, TokenResponse, RoleUpdateRequest, UserListResponse
-from ..utils.auth import hash_password, verify_password, create_access_token, get_current_user, require_admin
+from ..utils.auth import hash_password, verify_password, create_access_token, get_current_user, require_admin, require_super_admin
 from ..services.audit_service import log_action
 
 router = APIRouter()
@@ -58,14 +58,23 @@ def me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/users", response_model=UserListResponse, dependencies=[Depends(require_admin)])
-def list_users(page: int = 1, page_size: int = 20, db: Session = Depends(get_db)):
+def list_users(
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     offset = (page - 1) * page_size
-    total = db.query(User).count()
-    users = db.query(User).order_by(User.created_at.desc()).offset(offset).limit(page_size).all()
+    query = db.query(User)
+    # Group admin only sees users in their group
+    if current_user.group_id is not None:
+        query = query.filter(User.group_id == current_user.group_id)
+    total = query.count()
+    users = query.order_by(User.created_at.desc()).offset(offset).limit(page_size).all()
     return UserListResponse(items=[UserResponse.model_validate(u) for u in users], total=total)
 
 
-@router.patch("/users/{user_id}/role", response_model=UserResponse, dependencies=[Depends(require_admin)])
+@router.patch("/users/{user_id}/role", response_model=UserResponse, dependencies=[Depends(require_super_admin)])
 def update_user_role(
     user_id: str,
     data: RoleUpdateRequest,
@@ -85,7 +94,7 @@ def update_user_role(
     return UserResponse.model_validate(user)
 
 
-@router.post("/users", status_code=201, response_model=UserResponse, dependencies=[Depends(require_admin)])
+@router.post("/users", status_code=201, response_model=UserResponse, dependencies=[Depends(require_super_admin)])
 def admin_create_user(data: UserRegister, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(status_code=409, detail="Username already taken")
@@ -102,7 +111,7 @@ def admin_create_user(data: UserRegister, db: Session = Depends(get_db)):
     return UserResponse.model_validate(user)
 
 
-@router.delete("/users/{user_id}", status_code=204, dependencies=[Depends(require_admin)])
+@router.delete("/users/{user_id}", status_code=204, dependencies=[Depends(require_super_admin)])
 def delete_user(
     user_id: str,
     db: Session = Depends(get_db),

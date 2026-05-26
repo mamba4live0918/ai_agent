@@ -19,6 +19,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     role: str
+    group_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
