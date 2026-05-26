@@ -4,7 +4,7 @@ import os
 
 from .config import settings, check_secret_key
 from .database import engine, Base
-from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups
+from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups, realtime
 from .middleware.rate_limit import RateLimitMiddleware
 
 # Security: ensure JWT secret is not the default value
@@ -37,6 +37,7 @@ app.include_router(instructor.router, prefix="/api/instructor", tags=["instructo
 app.include_router(post_sales.router, prefix="/api/post-sales", tags=["post-sales"])
 app.include_router(feedback.router, prefix="/api", tags=["feedback"])
 app.include_router(groups.router, prefix="/api", tags=["groups"])
+app.include_router(realtime.router, tags=["realtime"])
 
 
 @app.get("/api/health")
