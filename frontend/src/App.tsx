@@ -11,6 +11,8 @@ import Training from './pages/Training';
 import PostSalesAnalysis from './pages/PostSalesAnalysis';
 import FeedbackPage from './pages/Feedback';
 import InstructorDashboard from './pages/InstructorDashboard';
+import AdminUsers from './pages/AdminUsers';
+import AdminFeedback from './pages/AdminFeedback';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -41,6 +43,8 @@ export default function App() {
                         <Route path="/post-sales" element={<PostSalesAnalysis />} />
                         <Route path="/feedback" element={<FeedbackPage />} />
                         <Route path="/instructor" element={<InstructorDashboard />} />
+                        <Route path="/admin/users" element={<AdminUsers />} />
+                        <Route path="/admin/feedback" element={<AdminFeedback />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Layout>

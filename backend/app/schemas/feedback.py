@@ -22,3 +22,12 @@ class FeedbackStats(BaseModel):
     total: int
     average: float
     distribution: dict[int, int]
+
+
+class FeedbackAdminResponse(FeedbackResponse):
+    username: str
+
+
+class FeedbackAdminList(BaseModel):
+    items: list[FeedbackAdminResponse]
+    total: int

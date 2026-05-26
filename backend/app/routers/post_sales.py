@@ -189,10 +189,15 @@ def upload_audio(session_id: uuid.UUID, file: UploadFile = File(...), db: Sessio
         segments = transcribe_audio(file_path)
         results = []
         for seg in segments:
+            speaker = seg.get("speaker", "未知")
+            # Map Chinese speaker labels to message roles
+            role_map = {"销售": "salesperson", "客户": "customer"}
+            role = role_map.get(speaker, "system")
+            speaker_label = f"【{speaker}】" if speaker not in ("未知",) else ""
             transcript_msg = PostSalesMessage(
                 session_id=session.id,
-                role="salesperson",
-                content=f"[Transcribed {seg['start']:.1f}s-{seg['end']:.1f}s]: {seg['text']}",
+                role=role,
+                content=f"{speaker_label}[{seg['start']:.1f}s-{seg['end']:.1f}s] {seg['text']}".strip(),
             )
             db.add(transcript_msg)
             results.append(transcript_msg)

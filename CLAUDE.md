@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 预留讲师端口：统计训练结果，导出报表，学练考评闭环
 
 **终端支持**：PC端 + 移动端双端访问
-**当前开发阶段**：文字交互优先 + 售后语音转录已实现（说话人分离待实现）
+**当前开发阶段**：文字交互优先 + 售后语音转录已实现（含说话人分离）
 
 ## 当前状态
 
@@ -205,7 +205,7 @@ curl http://localhost:8000/api/health
 - 文本分割：`chunk_size=512, overlap=100`，分隔符包含中文标点（`。！？；，`）
 - Embedding 分批：每批 4 个 chunk，避免 embedding 模型的 token 上下文溢出
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）
-- 语音转录需安装 ffmpeg（系统级）和 faster-whisper（pip install faster-whisper），首次运行会自动下载 large-v3 模型（约 3GB）
+- 语音转录：ffmpeg（系统级）+ faster-whisper + pyannote.audio（需 `HUGGINGFACE_TOKEN`）+ OpenCC 简繁转换
 
 ## 售后分析（Post-Sales Analysis）— 含语音转录
 
@@ -225,7 +225,7 @@ curl http://localhost:8000/api/health
 - **简繁转换**：OpenCC `t2s` 自动将转录文本从繁体转简体中文
 - **存储路径**：音频文件保存在 `audio_uploads/` 目录，上传后立即转录并存入 PostgreSQL
 - **错误处理**：转录失败不阻塞流程，用户仍可手动输入对话内容
-- **⚠️ 待实现：说话人分离（Speaker Diarization）** — 当前所有转录内容统一标记为"销售"角色，无法自动区分销售/客户。可选方案：pyannote.audio（开源 + HuggingFace token）或云端 API（阿里云/讯飞/腾讯云）
+- **✅ 说话人分离（Speaker Diarization）** — pyannote.audio `speaker-diarization-3.1` 自动识别 2-4 个说话人，按发言时长排序映射为 销售/客户/其他。需配置 `HUGGINGFACE_TOKEN`，未配置时回退到无分离模式
 
 
 ### KB 优先原则

@@ -1,0 +1,143 @@
+import { useState, useEffect } from 'react';
+import { getAllFeedback, getFeedbackStats } from '../services/api';
+import type { FeedbackAdminResponse, FeedbackStats } from '../types';
+
+function FeedbackRow({ fb }: { fb: FeedbackAdminResponse }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className={`card transition-colors ${open ? 'border-[#58a6ff]/40' : 'cursor-pointer hover:border-[#30363d]'}`}
+      onClick={() => setOpen(!open)}
+    >
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-sm text-[#e6edf3] font-medium">{fb.username}</span>
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(i => (
+              <span key={i} className={`text-xs ${i <= fb.rating ? 'text-[#d29922]' : 'text-[#21262d]'}`}>★</span>
+            ))}
+          </div>
+          {fb.feedback_text && (
+            <span className="text-xs text-[#484f58] truncate max-w-[200px] hidden sm:block">
+              {fb.feedback_text.slice(0, 40)}{fb.feedback_text.length > 40 ? '...' : ''}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[#6e7681]">
+            {new Date(fb.created_at).toLocaleDateString('zh-CN')}
+          </span>
+          <svg className={`w-4 h-4 text-[#484f58] transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} viewBox="0 0 16 16" fill="currentColor">
+            <path d="M4.427 5.927a.75.75 0 0 1 1.06 0L8 8.44l2.513-2.513a.75.75 0 0 1 1.06 1.06l-3.043 3.043a.75.75 0 0 1-1.06 0L4.427 6.987a.75.75 0 0 1 0-1.06Z"/>
+          </svg>
+        </div>
+      </div>
+      {open && (
+        <div className="px-4 pb-4 border-t border-[#21262d] pt-3 space-y-2">
+          <div>
+            <span className="text-[10px] text-[#484f58] uppercase tracking-wider">评分</span>
+            <p className="text-sm text-[#e6edf3]">{fb.rating} / 5</p>
+          </div>
+          {fb.feedback_text ? (
+            <div>
+              <span className="text-[10px] text-[#484f58] uppercase tracking-wider">评价内容</span>
+              <p className="text-sm text-[#e6edf3] whitespace-pre-wrap">{fb.feedback_text}</p>
+            </div>
+          ) : (
+            <p className="text-xs text-[#484f58] italic">无文字评价</p>
+          )}
+          <div>
+            <span className="text-[10px] text-[#484f58] uppercase tracking-wider">提交时间</span>
+            <p className="text-sm text-[#8b949e]">{new Date(fb.created_at).toLocaleString('zh-CN')}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminFeedback() {
+  const [feedbacks, setFeedbacks] = useState<FeedbackAdminResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<FeedbackStats | null>(null);
+  const pageSize = 20;
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([getAllFeedback(page, pageSize), getFeedbackStats()])
+      .then(([res, s]) => { setFeedbacks(res.items); setTotal(res.total); setStats(s); })
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+        <p className="text-sm text-[#8b949e]">加载中...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-[#e6edf3] mb-1">反馈总览</h2>
+        <p className="text-sm text-[#8b949e]">查看所有用户的反馈记录</p>
+      </div>
+
+      {stats && stats.total > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+          <div className="card p-4 text-center">
+            <p className="text-2xl font-bold text-[#d29922] font-mono">{stats.average.toFixed(1)}</p>
+            <p className="text-[11px] text-[#6e7681] mt-1">平均评分</p>
+          </div>
+          {[5, 4, 3, 2].map(n => (
+            <div key={n} className="card p-4 text-center">
+              <p className="text-lg font-bold text-[#e6edf3] font-mono">{stats.distribution[n]}</p>
+              <p className="text-[11px] text-[#6e7681] mt-1">{'★'.repeat(n)}{'☆'.repeat(5 - n)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {feedbacks.length === 0 ? (
+        <div className="card p-12 text-center">
+          <p className="text-[#8b949e] text-sm">暂无反馈记录</p>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {feedbacks.map(fb => (
+              <FeedbackRow key={fb.id} fb={fb} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-xs text-[#484f58]">共 {total} 条反馈</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] disabled:opacity-40"
+                >
+                  上一页
+                </button>
+                <span className="text-xs text-[#8b949e] px-2">{page} / {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] disabled:opacity-40"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

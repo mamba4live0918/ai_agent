@@ -280,3 +280,22 @@ export const getMyFeedback = () =>
 
 export const getFeedbackStats = () =>
   request<import('../types').FeedbackStats>('/feedback/stats');
+
+export const getAllFeedback = (page = 1, pageSize = 20) =>
+  request<import('../types').FeedbackAdminList>(`/feedback/all?page=${page}&page_size=${pageSize}`);
+
+// ─── Admin ───
+export const getAllUsers = (page = 1, pageSize = 20) =>
+  request<import('../types').UserListResponse>(`/auth/users?page=${page}&page_size=${pageSize}`);
+
+export const updateUserRole = (userId: string, role: string) =>
+  request<import('../types').User>(`/auth/users/${userId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+
+export const createUser = (data: { username: string; email: string; password: string }) =>
+  request<import('../types').User>('/auth/users', { method: 'POST', body: JSON.stringify(data) });
+
+export const deleteUser = (userId: string) =>
+  request<void>(`/auth/users/${userId}`, { method: 'DELETE' });

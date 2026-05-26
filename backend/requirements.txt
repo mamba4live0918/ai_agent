@@ -18,3 +18,7 @@ bcrypt==4.2.1
 openai==1.109.1
 faster-whisper==1.2.0
 duckduckgo_search==8.1.1
+torch>=2.0
+torchaudio>=2.0
+pyannote.audio>=3.0
+opencc-python-reimplemented==0.1.7

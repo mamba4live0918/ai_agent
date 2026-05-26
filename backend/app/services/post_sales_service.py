@@ -32,10 +32,78 @@ def _extract_json(content: str) -> dict:
 
 # ──────────────────────────── Audio Transcription ────────────────────────────
 
-def transcribe_audio(file_path: str) -> list[dict]:
-    """Convert audio to 16kHz mono WAV via ffmpeg, then transcribe with faster-whisper.
+def _run_diarization(wav_path: str) -> dict | None:
+    """Run speaker diarization via pyannote.audio. Returns None if unavailable."""
+    if not settings.huggingface_token:
+        return None
+    try:
+        import torchaudio
+        from pyannote.audio import Pipeline
 
-    Returns list of segments: [{"start": float, "end": float, "text": str}]
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            use_auth_token=settings.huggingface_token,
+        )
+        # Load audio in-memory to avoid torchcodec dependency
+        waveform, sample_rate = torchaudio.load(wav_path)
+        diarization = pipeline({"waveform": waveform, "sample_rate": sample_rate})
+
+        # Collect speaker segments and total speaking time per speaker
+        speaker_time: dict[str, float] = {}
+        speaker_segments: list[dict] = []
+        for turn, _, speaker in diarization.itertracks(yield_label=True):
+            duration = turn.end - turn.start
+            speaker_time[speaker] = speaker_time.get(speaker, 0) + duration
+            speaker_segments.append({"start": turn.start, "end": turn.end, "speaker": speaker})
+
+        # Map speaker labels to Chinese roles by speaking time (descending)
+        sorted_speakers = sorted(speaker_time.keys(), key=lambda s: speaker_time[s], reverse=True)
+        label_map: dict[str, str] = {}
+        if len(sorted_speakers) >= 2:
+            label_map[sorted_speakers[0]] = "销售"
+            label_map[sorted_speakers[1]] = "客户"
+            for i, s in enumerate(sorted_speakers[2:], 3):
+                label_map[s] = f"其他{i - 2}"
+        elif len(sorted_speakers) == 1:
+            label_map[sorted_speakers[0]] = "销售"
+
+        # Remap speaker labels
+        for seg in speaker_segments:
+            seg["speaker"] = label_map.get(seg["speaker"], seg["speaker"])
+
+        return speaker_segments
+    except Exception:
+        return None
+
+
+def _align_speakers(whisper_segments: list[dict], diarization: list[dict] | None) -> list[dict]:
+    """Align whisper segments with diarization speaker labels."""
+    if not diarization:
+        for seg in whisper_segments:
+            seg["speaker"] = "未知"
+        return whisper_segments
+
+    for seg in whisper_segments:
+        seg_start = seg["start"]
+        seg_end = seg["end"]
+        overlap: dict[str, float] = {}
+        for d in diarization:
+            o_start = max(seg_start, d["start"])
+            o_end = min(seg_end, d["end"])
+            if o_start < o_end:
+                overlap[d["speaker"]] = overlap.get(d["speaker"], 0) + (o_end - o_start)
+        if overlap:
+            seg["speaker"] = max(overlap, key=overlap.get)
+        else:
+            seg["speaker"] = "未知"
+    return whisper_segments
+
+
+def transcribe_audio(file_path: str) -> list[dict]:
+    """Convert audio to 16kHz mono WAV via ffmpeg, transcribe with faster-whisper,
+    and optionally run speaker diarization via pyannote.audio.
+
+    Returns list of segments: [{"start": float, "end": float, "text": str, "speaker": str}]
     """
     if not shutil.which("ffmpeg"):
         raise RuntimeError("ffmpeg not found — install ffmpeg to enable audio transcription")
@@ -51,15 +119,20 @@ def transcribe_audio(file_path: str) -> list[dict]:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"ffmpeg conversion failed: {e.stderr.decode()}") from e
 
+    # Whisper transcription
     try:
         from faster_whisper import WhisperModel
         model = WhisperModel("large-v3", device="cpu", compute_type="int8")
-        segments, _ = model.transcribe(wav_path, beam_size=5)
-        return [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in segments]
+        whisper_segments, _ = model.transcribe(wav_path, beam_size=5)
+        segments = [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in whisper_segments]
     except ImportError:
         raise RuntimeError("faster-whisper not installed — run: pip install faster-whisper")
     except Exception as e:
         raise RuntimeError(f"Transcription failed: {e}") from e
+
+    # Speaker diarization (best-effort)
+    diarization = _run_diarization(wav_path)
+    return _align_speakers(segments, diarization)
 
 
 # ──────────────────────────── KB Matching ────────────────────────────

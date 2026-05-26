@@ -356,3 +356,17 @@ export interface FeedbackStats {
   average: number;
   distribution: Record<number, number>;
 }
+
+export interface FeedbackAdminResponse extends FeedbackResponse {
+  username: string;
+}
+
+export interface FeedbackAdminList {
+  items: FeedbackAdminResponse[];
+  total: number;
+}
+
+export interface UserListResponse {
+  items: User[];
+  total: number;
+}

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, isInstructor, logout } = useAuth();
+  const { user, isInstructor, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const close = useCallback(() => setSidebarOpen(false), []);
@@ -100,6 +100,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <path d="M0 2.5A1.5 1.5 0 0 1 1.5 1h11A1.5 1.5 0 0 1 14 2.5v10.528c0 .3-.05.654-.238.972h.004a.75.75 0 0 1-.732.486H1.966a.75.75 0 0 1-.733-.486h-.005A1.87 1.87 0 0 1 1 13V2.5h-.001A1.5 1.5 0 0 1 0 2.5ZM1.966 13h.034ZM3 3.5v7h9v-7H3Zm1.5 1.5h2v2h-2V5Zm3.5 0h2v1.5H8V5Zm0 2.5h2v2H8v-2Zm-3.5 0h2v2h-2v-2Z"/>
               </svg>
               讲师端口
+            </NavLink>
+          </>
+        )}
+
+        {isAdmin && (
+          <>
+            <div className="pt-4 mt-4 border-t border-[#21262d]">
+              <p className="px-3 py-1 text-[11px] font-semibold text-[#484f58] uppercase tracking-wider">
+                管理员
+              </p>
+            </div>
+            <NavLink to="/admin/users" className={linkClass} onClick={close}>
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6.004 6.004 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
+              </svg>
+              用户管理
+            </NavLink>
+            <NavLink to="/admin/feedback" className={linkClass} onClick={close}>
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+              </svg>
+              反馈总览
             </NavLink>
           </>
         )}

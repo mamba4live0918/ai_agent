@@ -391,8 +391,14 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
         )}
         {messages.map(msg => {
           const roleInfo = ROLE_LABEL[msg.role] || { label: msg.role, color: 'bg-[#484f58]' };
-          const isTranscribed = msg.content.startsWith('[Transcribed');
+          const isTranscribed = /^【(?:销售|客户|其他[\d]*)】\[[\d.]+s-[\d.]+s\]|^\[[\d.]+s-[\d.]+s\]/.test(msg.content);
           const isAudio = msg.content.startsWith('[Audio uploaded');
+          // Clean display text: strip speaker tag and timestamp
+          const displayText = isAudio
+            ? msg.content.replace('[Audio uploaded: ', '录音文件: ').replace(']', '')
+            : isTranscribed
+            ? msg.content.replace(/^(?:【.+?】)?\[[\d.]+s-[\d.]+s\]\s*/, '')
+            : msg.content;
           return (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'salesperson' ? 'justify-end' : ''}`}>
               {msg.role !== 'salesperson' && (
@@ -421,12 +427,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                     ? 'bg-[#292a2d] border border-[#d2992280] text-[#e6edf3] rounded-tl-sm'
                     : 'bg-[#21262d] text-[#e6edf3] rounded-tl-sm'
                 }`}>
-                  {isAudio
-                    ? msg.content.replace('[Audio uploaded: ', '录音文件: ').replace(']', '')
-                    : isTranscribed
-                    ? msg.content.replace(/^\[Transcribed [\d.]+s-[\d.]+s\]:\s*/, '')
-                    : msg.content
-                  }
+                  {displayText}
                 </div>
                 <span className="text-[9px] text-[#484f58] mt-0.5 block">
                   {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}

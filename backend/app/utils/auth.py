@@ -52,6 +52,12 @@ def require_instructor(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
 def apply_user_filter(query, model, current_user: User):
     """Filter query by user_id. Admin sees all, others see only their own data."""
     if current_user.role == "admin":
