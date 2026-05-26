@@ -190,13 +190,13 @@ class TestVADProcessor:
         vad = VADProcessor(
             sample_rate=8000,
             threshold=0.5,
-            min_speech_duration_ms=300,
+            min_speech_duration_ms=500,
             max_speech_duration_s=10.0,
             min_silence_duration_ms=100,
             speech_pad_ms=30,
         )
         assert vad.threshold == 0.5
-        assert vad.min_speech_duration_ms == 300
+        assert vad.min_speech_duration_ms == 500
         assert vad.max_speech_duration_s == 10.0
         vad.reset()
 

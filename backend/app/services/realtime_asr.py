@@ -105,7 +105,10 @@ class VADProcessor:
         Audio is resampled to 8 kHz internally for VAD if a different rate
         is passed, but the returned *audio_bytes* stay at *sample_rate*.
     window_size_ms : int
-        Target window in ms (informational — the model uses fixed 32 ms).
+        Target window in ms.  Informational only — Silero-VAD natively
+        operates on a fixed 32 ms window (256 samples @ 8 kHz, 512 samples
+        @ 16 kHz) via its VADIterator, so this parameter does not change
+        the actual processing window size.
     threshold : float
         Speech probability threshold [0, 1]. Values above are SPEECH.
     min_speech_duration_ms : int
@@ -123,7 +126,7 @@ class VADProcessor:
         sample_rate: int = 8000,
         window_size_ms: int = 30,
         threshold: float = 0.5,
-        min_speech_duration_ms: int = 300,
+        min_speech_duration_ms: int = 500,
         max_speech_duration_s: float = 10.0,
         min_silence_duration_ms: int = 100,
         speech_pad_ms: int = 30,
@@ -606,7 +609,7 @@ class StreamingTranscriber:
         self,
         sample_rate: int = 8000,
         vad_threshold: float = 0.5,
-        min_speech_duration_ms: int = 300,
+        min_speech_duration_ms: int = 500,
         max_speech_duration_s: float = 10.0,
         enable_pyannote_check: bool = False,
     ):
