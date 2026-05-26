@@ -1,11 +1,29 @@
+import logging
+import os
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 from .config import settings, check_secret_key
 from .database import engine, Base
-from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups
+from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups, realtime
 from .middleware.rate_limit import RateLimitMiddleware
+
+# Configure logging — use a handler explicitly to survive uvicorn's own logging setup
+_root = logging.getLogger()
+_root.setLevel(logging.DEBUG)
+_h = logging.StreamHandler(sys.stderr)
+_h.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-7s  %(name)s  %(message)s", datefmt="%H:%M:%S"))
+_root.handlers.clear()
+_root.addHandler(_h)
+
+# Keep noisy libs quiet
+logging.getLogger("faster_whisper").setLevel(logging.WARNING)
+logging.getLogger("silero_vad").setLevel(logging.WARNING)
+logging.getLogger("pyannote").setLevel(logging.WARNING)
+logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Security: ensure JWT secret is not the default value
 check_secret_key()
@@ -14,7 +32,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Sales Assistant", version="0.1.0")
 
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",")
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180").split(",")
 
 # Rate limiter: 5/min login, 60/min global per IP
 app.add_middleware(RateLimitMiddleware)
@@ -37,6 +55,7 @@ app.include_router(instructor.router, prefix="/api/instructor", tags=["instructo
 app.include_router(post_sales.router, prefix="/api/post-sales", tags=["post-sales"])
 app.include_router(feedback.router, prefix="/api", tags=["feedback"])
 app.include_router(groups.router, prefix="/api", tags=["groups"])
+app.include_router(realtime.router, tags=["realtime"])
 
 
 @app.get("/api/health")

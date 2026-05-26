@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { getCustomers, deleteCustomer, getCustomer, generatePresalesPrep } from '../services/api';
 import type { Customer } from '../types';
 import CustomerForm from '../components/CustomerForm';
@@ -75,8 +75,8 @@ export default function CustomerAnalysis() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-6 animate-in" style={{ animationDelay: '0ms' }}>
         <div>
-          <h2 className="text-xl font-bold text-[#e6edf3]">客户分析</h2>
-          <p className="text-sm text-[#8b949e] mt-1">导入客户信息，AI 深度生成客户画像与分析建议</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">客户分析</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">导入客户信息，AI 深度生成客户画像与分析建议</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn btn-primary">
           <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
@@ -99,11 +99,11 @@ export default function CustomerAnalysis() {
           <div className="space-y-1.5">
             {customers.length === 0 && (
               <div className="card p-8 text-center">
-                <svg className="w-10 h-10 text-[#21262d] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
+                <svg className="w-10 h-10 text-[var(--text-placeholder)] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.07.75.75 0 0 1-1.497.108 4.505 4.505 0 0 0-8.992 0 .75.75 0 0 1-1.497-.108 6.004 6.004 0 0 1 3.431-5.07 4 4 0 1 1 5.123 0ZM12 4.5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
                 </svg>
-                <p className="text-sm text-[#484f58]">暂无客户数据</p>
-                <p className="text-xs text-[#30363d] mt-1">点击右上角"新增客户"开始</p>
+                <p className="text-sm text-[var(--text-placeholder)]">暂无客户数据</p>
+                <p className="text-xs text-[var(--border-default)] mt-1">点击右上角"新增客户"开始</p>
               </div>
             )}
             {customers.map(cust => (
@@ -112,19 +112,19 @@ export default function CustomerAnalysis() {
                   onClick={() => handleSelect(cust.id)}
                   className={`card card-hover p-4 cursor-pointer transition-all duration-100 ${
                     selectedId === cust.id
-                      ? 'border-[#58a6ff] shadow-[0_0_0_1px_#58a6ff] bg-[#1c2128]'
+                      ? 'border-[var(--accent-blue)] shadow-[0_0_0_1px_var(--accent-blue)] bg-[var(--bg-overlay)]'
                       : ''
                   }`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-[#21262d] border border-[#30363d] flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium text-[#8b949e]">
+                      <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-medium text-[var(--text-secondary)]">
                           {cust.name.charAt(0)}
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-sm font-semibold text-[#e6edf3] truncate">{cust.name}</h4>
-                        <p className="text-[11px] text-[#6e7681] mt-0.5">
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)] truncate">{cust.name}</h4>
+                        <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
                           {new Date(cust.updated_at).toLocaleDateString('zh-CN')}
                         </p>
                       </div>
@@ -138,7 +138,7 @@ export default function CustomerAnalysis() {
                     </button>
                   </div>
                   {cust.raw_input && (
-                    <p className="text-xs text-[#484f58] mt-2.5 truncate font-mono">
+                    <p className="text-xs text-[var(--text-placeholder)] mt-2.5 truncate font-mono">
                       {cust.raw_input.slice(0, 80)}{cust.raw_input.length > 80 ? '...' : ''}
                     </p>
                   )}
@@ -161,7 +161,7 @@ export default function CustomerAnalysis() {
               <button
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
-                className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 &laquo;
               </button>
@@ -182,25 +182,25 @@ export default function CustomerAnalysis() {
                       onClick={() => handlePageChange(p)}
                       className={`w-7 h-7 text-xs rounded transition-colors ${
                         p === page
-                          ? 'bg-[#1f6feb] text-white border border-[#388bfd]'
-                          : 'border border-transparent text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22]'
+                          ? 'bg-[var(--btn-blue)] text-white border border-[var(--btn-blue-hover)]'
+                          : 'border border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
                       }`}
                     >
                       {p}
                     </button>
                   ) : (
-                    <span key={`dots-${idx}`} className="px-0.5 text-[10px] text-[#484f58] select-none">&hellip;</span>
+                    <span key={`dots-${idx}`} className="px-0.5 text-[10px] text-[var(--text-placeholder)] select-none">&hellip;</span>
                   )
                 );
               })()}
               <button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= totalPages}
-                className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 &raquo;
               </button>
-              <span className="text-[10px] text-[#484f58] ml-2">
+              <span className="text-[10px] text-[var(--text-placeholder)] ml-2">
                 {page}/{totalPages} 页
               </span>
               <input
@@ -209,7 +209,7 @@ export default function CustomerAnalysis() {
                 onChange={e => setJumpPage(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={handleJumpPage}
                 placeholder="跳转"
-                className="ml-1 w-12 bg-[#0d1117] border border-[#30363d] rounded px-1.5 py-0.5 text-[11px] text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] outline-none transition-colors"
+                className="ml-1 w-12 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none transition-colors"
               />
             </div>
           )}
@@ -223,11 +223,11 @@ export default function CustomerAnalysis() {
             </div>
           ) : (
             <div className="card p-12 text-center">
-              <svg className="w-12 h-12 text-[#21262d] mx-auto mb-4" viewBox="0 0 16 16" fill="currentColor">
+              <svg className="w-12 h-12 text-[var(--text-placeholder)] mx-auto mb-4" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.07.75.75 0 0 1-1.497.108 4.505 4.505 0 0 0-8.992 0 .75.75 0 0 1-1.497-.108 6.004 6.004 0 0 1 3.431-5.07 4 4 0 1 1 5.123 0ZM12 4.5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
               </svg>
-              <p className="text-sm text-[#484f58]">选择左侧客户查看画像分析</p>
-              <p className="text-xs text-[#30363d] mt-1">AI 将自动生成客户画像、财务需求分析与沟通建议</p>
+              <p className="text-sm text-[var(--text-placeholder)]">选择左侧客户查看画像分析</p>
+              <p className="text-xs text-[var(--border-default)] mt-1">AI 将自动生成客户画像、财务需求分析与沟通建议</p>
             </div>
           )}
         </div>

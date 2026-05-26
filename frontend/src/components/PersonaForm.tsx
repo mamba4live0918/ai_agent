@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { Persona } from '../types';
 
 const FIELDS: { key: keyof Persona; label: string; placeholder: string }[] = [
@@ -46,26 +46,26 @@ export default function PersonaForm({ visible, onClose, onSubmit, loading }: Pro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#21262d]">
-          <h3 className="text-sm font-semibold text-[#e6edf3]">手动创建数字人</h3>
-          <button onClick={onClose} className="text-[#8b949e] hover:text-[#e6edf3]">✕</button>
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">手动创建数字人</h3>
+          <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-3">
           {FIELDS.map(f => (
             <div key={f.key}>
-              <label className="block text-[10px] font-medium text-[#8b949e] uppercase mb-1">{f.label}</label>
+              <label className="block text-[10px] font-medium text-[var(--text-secondary)] uppercase mb-1">{f.label}</label>
               <input
                 type="text"
                 placeholder={f.placeholder}
                 value={form[f.key] || ''}
                 onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                className="w-full bg-[#0d1117] border border-[#21262d] rounded px-2.5 py-1.5 text-xs text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
               />
             </div>
           ))}
           <div>
-            <label className="block text-[10px] font-medium text-[#8b949e] uppercase mb-1">训练场景</label>
+            <label className="block text-[10px] font-medium text-[var(--text-secondary)] uppercase mb-1">训练场景</label>
             <div className="flex gap-2">
               {['客诉处理', '产品讲解', '异议处理'].map(s => (
                 <button
@@ -74,8 +74,8 @@ export default function PersonaForm({ visible, onClose, onSubmit, loading }: Pro
                   onClick={() => setScenario(s)}
                   className={`flex-1 px-2 py-1.5 rounded text-[11px] border transition-colors ${
                     scenario === s
-                      ? 'border-[#58a6ff] bg-[#1f6feb]/20 text-[#58a6ff]'
-                      : 'border-[#21262d] text-[#8b949e] hover:text-[#e6edf3]'
+                      ? 'border-[var(--accent-blue)] bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]'
+                      : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {s}
@@ -84,14 +84,14 @@ export default function PersonaForm({ visible, onClose, onSubmit, loading }: Pro
             </div>
           </div>
         </form>
-        <div className="px-4 py-3 border-t border-[#21262d] flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] text-[#8b949e] hover:text-[#e6edf3] border border-[#30363d] rounded">
+        <div className="px-4 py-3 border-t border-[var(--border-subtle)] flex justify-end gap-2">
+          <button onClick={onClose} className="px-3 py-1.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)] rounded">
             取消
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !form.name?.trim()}
-            className="px-4 py-1.5 text-[11px] bg-[#238636] text-white rounded hover:bg-[#2ea043] disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 text-[11px] bg-[var(--btn-primary)] text-white rounded hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
           >
             {loading ? '创建中...' : '创建并开始训练'}
           </button>

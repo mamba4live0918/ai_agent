@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   getGroups, createGroup, updateGroup, deleteGroup,
   getGroupMembers, addGroupMember, removeGroupMember,
@@ -163,7 +163,7 @@ export default function AdminGroups() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-        <p className="text-sm text-[#8b949e]">加载中...</p>
+        <p className="text-sm text-[var(--text-secondary)]">加载中...</p>
       </div>
     );
   }
@@ -172,15 +172,15 @@ export default function AdminGroups() {
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[#e6edf3] mb-1">分组管理</h2>
-          <p className="text-sm text-[#8b949e]">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">分组管理</h2>
+          <p className="text-sm text-[var(--text-secondary)]">
             {isSuperAdmin ? '管理所有分组与分组管理员' : '管理您的分组'}
           </p>
         </div>
         {isSuperAdmin && (
           <button
             onClick={openCreate}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
           >
             创建分组
           </button>
@@ -190,56 +190,56 @@ export default function AdminGroups() {
       {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowForm(false)}>
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-[#e6edf3] mb-4">
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
               {editingGroup ? '编辑分组' : '创建分组'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-[#8b949e] mb-1">组名</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">组名</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                   placeholder="输入组名"
                 />
               </div>
               <div>
-                <label className="block text-xs text-[#8b949e] mb-1">描述</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">描述</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] resize-none"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none"
                   rows={2}
                   placeholder="输入描述（可选）"
                 />
               </div>
               {isSuperAdmin && (
                 <div>
-                  <label className="block text-xs text-[#8b949e] mb-1">分组管理员</label>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">分组管理员</label>
                   <input
                     type="text"
                     value={formData.admin_id}
                     onChange={(e) => setFormData((f) => ({ ...f, admin_id: e.target.value }))}
-                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                     placeholder="输入管理员用户 ID（可选）"
                   />
                 </div>
               )}
-              {formError && <p className="text-sm text-[#f85149]">{formError}</p>}
+              {formError && <p className="text-sm text-[var(--accent-red)]">{formError}</p>}
             </div>
             <div className="flex items-center justify-end gap-2 mt-4">
               <button
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 text-sm rounded-md border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors"
+                className="px-3 py-1.5 text-sm rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 取消
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-1.5 text-sm font-medium rounded-md bg-[#238636] text-white hover:bg-[#2ea043] disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
               >
                 {saving ? '保存中...' : '保存'}
               </button>
@@ -253,7 +253,7 @@ export default function AdminGroups() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#21262d] text-[#8b949e] text-left">
+              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)] text-left">
                 <th className="px-4 py-3 font-medium">组名</th>
                 <th className="px-4 py-3 font-medium">描述</th>
                 <th className="px-4 py-3 font-medium">管理员</th>
@@ -265,30 +265,30 @@ export default function AdminGroups() {
             <tbody>
               {groups.map((g) => (
                 <>
-                  <tr key={g.id} className="border-b border-[#21262d] hover:bg-[#161b22] transition-colors">
-                    <td className="px-4 py-3 text-[#e6edf3] font-medium">{g.name}</td>
-                    <td className="px-4 py-3 text-[#8b949e] max-w-[200px] truncate">
+                  <tr key={g.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors">
+                    <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{g.name}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)] max-w-[200px] truncate">
                       {g.description || '—'}
                     </td>
-                    <td className="px-4 py-3 text-[#8b949e]">
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
                       {g.admin_name || (g.admin_id ? g.admin_id.slice(0, 8) + '...' : '—')}
                     </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => toggleExpand(g.id)}
-                        className="text-[#58a6ff] hover:text-[#79c0ff] text-xs font-mono transition-colors"
+                        className="text-[var(--accent-blue)] hover:text-[var(--accent-blue)] text-xs font-mono transition-colors"
                       >
                         {g.member_count} 人
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-[#484f58] text-xs">
+                    <td className="px-4 py-3 text-[var(--text-placeholder)] text-xs">
                       {new Date(g.created_at).toLocaleDateString('zh-CN')}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(g)}
-                          className="px-2 py-0.5 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors"
+                          className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                           编辑
                         </button>
@@ -297,13 +297,13 @@ export default function AdminGroups() {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleDelete(g.id)}
-                                className="px-2 py-0.5 text-xs rounded bg-[#da3633] text-white hover:bg-[#f85149]"
+                                className="px-2 py-0.5 text-xs rounded bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)]"
                               >
                                 确认
                               </button>
                               <button
                                 onClick={() => setConfirmDelete(null)}
-                                className="px-2 py-0.5 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3]"
+                                className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                               >
                                 取消
                               </button>
@@ -311,7 +311,7 @@ export default function AdminGroups() {
                           ) : (
                             <button
                               onClick={() => setConfirmDelete(g.id)}
-                              className="px-2 py-0.5 text-xs rounded border border-[#30363d] text-[#f85149] hover:bg-[#da3633]/20 transition-colors"
+                              className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-colors"
                             >
                               删除
                             </button>
@@ -323,38 +323,38 @@ export default function AdminGroups() {
                   {/* Expanded members row */}
                   {expandedGroup === g.id && (
                     <tr key={`${g.id}-members`}>
-                      <td colSpan={6} className="px-4 py-3 bg-[#0d1117] border-b border-[#21262d]">
+                      <td colSpan={6} className="px-4 py-3 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)]">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-[#8b949e]">组成员</p>
+                          <p className="text-xs font-semibold text-[var(--text-secondary)]">组成员</p>
                           <button
                             onClick={openAddMember}
-                            className="px-2 py-0.5 text-xs rounded bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+                            className="px-2 py-0.5 text-xs rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
                           >
                             添加成员
                           </button>
                         </div>
                         {membersLoading ? (
-                          <p className="text-xs text-[#484f58]">加载中...</p>
+                          <p className="text-xs text-[var(--text-placeholder)]">加载中...</p>
                         ) : members.length === 0 ? (
-                          <p className="text-xs text-[#484f58]">暂无成员</p>
+                          <p className="text-xs text-[var(--text-placeholder)]">暂无成员</p>
                         ) : (
                           <div className="space-y-1">
                             {members.map((m) => (
-                              <div key={m.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-[#161b22]">
+                              <div key={m.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-[var(--bg-secondary)]">
                                 <div className="flex items-center gap-3">
-                                  <span className="text-xs text-[#e6edf3]">{m.username}</span>
-                                  <span className="text-[10px] text-[#484f58]">{m.email}</span>
+                                  <span className="text-xs text-[var(--text-primary)]">{m.username}</span>
+                                  <span className="text-[10px] text-[var(--text-placeholder)]">{m.email}</span>
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    m.role === 'admin' ? 'bg-[#1f6feb]/20 text-[#58a6ff]' :
-                                    m.role === 'instructor' ? 'bg-[#a371f7]/20 text-[#a371f7]' :
-                                    'bg-[#3fb950]/20 text-[#3fb950]'
+                                    m.role === 'admin' ? 'bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]' :
+                                    m.role === 'instructor' ? 'bg-[var(--accent-purple)]/20 text-[var(--accent-purple)]' :
+                                    'bg-[var(--accent-green)]/20 text-[var(--accent-green)]'
                                   }`}>
                                     {m.role === 'admin' ? '管理员' : m.role === 'instructor' ? '讲师' : '销售'}
                                   </span>
                                 </div>
                                 <button
                                   onClick={() => handleRemoveMember(m.id)}
-                                  className="px-2 py-0.5 text-xs rounded border border-[#30363d] text-[#f85149] hover:bg-[#da3633]/20 transition-colors"
+                                  className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-colors"
                                 >
                                   移除
                                 </button>
@@ -369,7 +369,7 @@ export default function AdminGroups() {
               ))}
               {groups.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#484f58]">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--text-placeholder)]">
                     暂无分组
                   </td>
                 </tr>
@@ -379,21 +379,21 @@ export default function AdminGroups() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#21262d]">
-            <span className="text-xs text-[#484f58]">共 {total} 个分组</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)]">
+            <span className="text-xs text-[var(--text-placeholder)]">共 {total} 个分组</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
               >
                 上一页
               </button>
-              <span className="text-xs text-[#8b949e] px-2">{page} / {totalPages}</span>
+              <span className="text-xs text-[var(--text-secondary)] px-2">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-2 py-1 text-xs rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
               >
                 下一页
               </button>
@@ -405,24 +405,24 @@ export default function AdminGroups() {
       {/* Add member modal */}
       {showAddMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => { setShowAddMember(false); setAddMemberError(''); }}>
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-md mx-4 p-6 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-[#e6edf3] mb-4">添加成员</h3>
-            {addMemberError && <p className="text-sm text-[#f85149] mb-2">{addMemberError}</p>}
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg w-full max-w-md mx-4 p-6 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">添加成员</h3>
+            {addMemberError && <p className="text-sm text-[var(--accent-red)] mb-2">{addMemberError}</p>}
             {usersLoading ? (
-              <p className="text-sm text-[#8b949e]">加载用户列表...</p>
+              <p className="text-sm text-[var(--text-secondary)]">加载用户列表...</p>
             ) : allUsers.length === 0 ? (
-              <p className="text-sm text-[#484f58]">没有可添加的用户</p>
+              <p className="text-sm text-[var(--text-placeholder)]">没有可添加的用户</p>
             ) : (
               <div className="overflow-y-auto flex-1 space-y-1">
                 {allUsers.map((u) => (
-                  <div key={u.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-[#0d1117]">
+                  <div key={u.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-[var(--bg-primary)]">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#e6edf3]">{u.username}</span>
-                      <span className="text-[10px] text-[#484f58]">{u.email}</span>
+                      <span className="text-xs text-[var(--text-primary)]">{u.username}</span>
+                      <span className="text-[10px] text-[var(--text-placeholder)]">{u.email}</span>
                     </div>
                     <button
                       onClick={() => handleAddMember(u.id)}
-                      className="px-2 py-0.5 text-xs rounded bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+                      className="px-2 py-0.5 text-xs rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
                     >
                       添加
                     </button>
@@ -430,10 +430,10 @@ export default function AdminGroups() {
                 ))}
               </div>
             )}
-            <div className="flex justify-end mt-4 pt-3 border-t border-[#21262d]">
+            <div className="flex justify-end mt-4 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 onClick={() => { setShowAddMember(false); setAddMemberError(''); }}
-                className="px-3 py-1.5 text-sm rounded-md border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors"
+                className="px-3 py-1.5 text-sm rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 关闭
               </button>

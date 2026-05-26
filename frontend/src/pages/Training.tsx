@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { TrainingSession, TrainingSessionDetail, Persona } from '../types';
 import {
@@ -134,7 +134,7 @@ export default function Training() {
   return (
     <div className="flex h-full">
       {/* Left: Session list */}
-      <div className="w-[268px] flex-shrink-0 border-r-2 border-[#30363d] flex flex-col bg-[#0d1117]">
+      <div className="w-[268px] flex-shrink-0 border-r-2 border-[var(--border-default)] flex flex-col bg-[var(--bg-primary)]">
         <SessionList
           sessions={sessions}
           selectedId={selectedId}
@@ -145,16 +145,16 @@ export default function Training() {
       </div>
 
       {/* Right: Chat area or empty state */}
-      <div className="flex-1 min-w-0 bg-[#0d1117]">
+      <div className="flex-1 min-w-0 bg-[var(--bg-primary)]">
         {creating ? (
-          <div className="flex items-center justify-center h-full text-[#8b949e] text-sm">
+          <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
             <div className="text-center">
-              <div className="animate-spin w-6 h-6 border-2 border-[#58a6ff] border-t-transparent rounded-full mx-auto mb-3" />
+              <div className="animate-spin w-6 h-6 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full mx-auto mb-3" />
               <p>正在创建训练场景...</p>
             </div>
           </div>
         ) : detailLoading ? (
-          <div className="flex items-center justify-center h-full text-[#484f58] text-sm">加载中...</div>
+          <div className="flex items-center justify-center h-full text-[var(--text-placeholder)] text-sm">加载中...</div>
         ) : detail ? (
           <TrainingSessionComponent
             key={detail.id}
@@ -165,13 +165,13 @@ export default function Training() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="text-4xl mb-4">🎯</div>
-              <p className="text-sm text-[#e6edf3] font-medium mb-1">仿真培训 — AI 数字人对练</p>
-              <p className="text-xs text-[#484f58] mb-4">
+              <p className="text-sm text-[var(--text-primary)] font-medium mb-1">仿真培训 — AI 数字人对练</p>
+              <p className="text-xs text-[var(--text-placeholder)] mb-4">
                 {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
               </p>
               <button
                 onClick={() => setShowPersonaForm(true)}
-                className="px-4 py-2 bg-[#238636] text-white text-xs rounded-md hover:bg-[#2ea043] transition-colors"
+                className="px-4 py-2 bg-[var(--btn-primary)] text-white text-xs rounded-md hover:bg-[var(--btn-primary-hover)] transition-colors"
               >
                 + 新建训练
               </button>
@@ -186,6 +186,7 @@ export default function Training() {
         onSubmit={handleCreateFromPersona}
         loading={creating}
       />
+
     </div>
   );
 }

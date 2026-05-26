@@ -1,4 +1,4 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+﻿import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { NavPoint } from '../types';
 
 interface Props {
@@ -11,8 +11,8 @@ export default function ProductNavChart({ data, source }: Props) {
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-sm text-[#f0883e] font-medium">该产品未获得实时数据或实时数据未公开</p>
-        {source === 'eastmoney' && <p className="text-[10px] text-[#484f58] mt-1">数据来源：东方财富</p>}
+        <p className="text-sm text-[var(--accent-orange)] font-medium">该产品未获得实时数据或实时数据未公开</p>
+        {source === 'eastmoney' && <p className="text-[10px] text-[var(--text-placeholder)] mt-1">数据来源：东方财富</p>}
       </div>
     );
   }
@@ -29,15 +29,15 @@ export default function ProductNavChart({ data, source }: Props) {
         <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3fb950" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#3fb950" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--accent-green)" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="var(--accent-green)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#484f58' }} axisLine={false} tickLine={false} interval={2} />
-          <YAxis domain={['dataMin - 0.02', 'dataMax + 0.02']} tick={{ fontSize: 9, fill: '#484f58' }} axisLine={false} tickLine={false} width={36} />
+          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-placeholder)' }} axisLine={false} tickLine={false} interval={2} />
+          <YAxis domain={['dataMin - 0.02', 'dataMax + 0.02']} tick={{ fontSize: 9, fill: 'var(--text-placeholder)' }} axisLine={false} tickLine={false} width={36} />
           <Tooltip
-            contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, fontSize: 11 }}
-            labelStyle={{ color: '#8b949e' }}
+            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 6, fontSize: 11 }}
+            labelStyle={{ color: 'var(--text-secondary)' }}
             formatter={(value: unknown, name: unknown) => {
               const num = value as number;
               const n = name as string;
@@ -45,7 +45,7 @@ export default function ProductNavChart({ data, source }: Props) {
               return [`${num.toFixed(2)}%`, '收益率'];
             }}
           />
-          <Area type="monotone" dataKey="nav" stroke="#3fb950" strokeWidth={1.5} fill="url(#navGradient)" dot={false} />
+          <Area type="monotone" dataKey="nav" stroke="var(--accent-green)" strokeWidth={1.5} fill="url(#navGradient)" dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
