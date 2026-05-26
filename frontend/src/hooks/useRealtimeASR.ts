@@ -19,6 +19,8 @@ export interface UseRealtimeASRState {
   error: string | null;
   start: () => Promise<void>;
   stop: () => void;
+  sendInterrupt: () => void;
+  mediaStream: MediaStream | null;
 }
 
 const MAX_RECONNECT = 3;
@@ -43,6 +45,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [partialText, setPartialText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   // Mutable refs to avoid stale closures in event handlers
   const wsRef = useRef<WebSocket | null>(null);
@@ -75,6 +78,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      setMediaStream(null);
     }
 
     if (wsRef.current) {
@@ -176,6 +180,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setMediaStream(stream);
 
       // Select a supported MIME type, falling back to browser default
       let mimeType = '';
@@ -249,6 +254,13 @@ export function useRealtimeASR(): UseRealtimeASRState {
     };
   }, []);
 
+  /** Send an interrupt signal to the backend (user started speaking during TTS). */
+  const sendInterrupt = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'interrupt' }));
+    }
+  }, []);
+
   return {
     isRecording,
     connectionState,
@@ -257,5 +269,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
     error,
     start,
     stop,
+    sendInterrupt,
+    mediaStream,
   };
 }
