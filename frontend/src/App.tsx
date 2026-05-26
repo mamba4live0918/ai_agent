@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -8,6 +9,7 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import CustomerAnalysis from './pages/CustomerAnalysis';
 import Products from './pages/Products';
 import Training from './pages/Training';
+import RealTimeVoice from './pages/RealTimeVoice';
 import PostSalesAnalysis from './pages/PostSalesAnalysis';
 import FeedbackPage from './pages/Feedback';
 import InstructorDashboard from './pages/InstructorDashboard';
@@ -20,8 +22,9 @@ import Register from './pages/Register';
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <div className="flex flex-col h-screen overflow-hidden">
+      <ThemeProvider>
+        <AuthProvider>
+          <div className="flex flex-col h-screen overflow-hidden">
           <TauriTitlebar />
           <div className="flex-1 min-h-0">
             <Routes>
@@ -42,6 +45,7 @@ export default function App() {
                         <Route path="/products" element={<Products />} />
                         <Route path="/training" element={<Training />} />
                         <Route path="/post-sales" element={<PostSalesAnalysis />} />
+                        <Route path="/realtime" element={<RealTimeVoice />} />
                         <Route path="/feedback" element={<FeedbackPage />} />
                         <Route path="/instructor" element={<InstructorDashboard />} />
                         <Route path="/admin/users" element={<AdminUsers />} />
@@ -56,7 +60,8 @@ export default function App() {
             </Routes>
           </div>
         </div>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

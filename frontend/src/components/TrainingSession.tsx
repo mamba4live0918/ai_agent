@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { TrainingSessionDetail, CoachTip, SendMessageResult, TrainingReview as TrainingReviewType } from '../types';
@@ -6,10 +6,10 @@ import { sendTrainingMessage, getQuickReplies, endTrainingSession, getTrainingSe
 import TrainingReviewComponent from './TrainingReview';
 
 const TIP_CONFIG: { key: keyof CoachTip; label: string; icon: string; color: string; borderColor: string }[] = [
-  { key: 'strategy', label: '策略建议', icon: '💡', color: '#58a6ff', borderColor: '#58a6ff' },
-  { key: 'phrasing', label: '话术矫正', icon: '🔧', color: '#3fb950', borderColor: '#3fb950' },
-  { key: 'golden_quote', label: '销售金句', icon: '⭐', color: '#d29922', borderColor: '#d29922' },
-  { key: 'emotion', label: '情绪感知', icon: '🎯', color: '#f0883e', borderColor: '#f0883e' },
+  { key: 'strategy', label: '策略建议', icon: '💡', color: 'var(--accent-blue)', borderColor: 'var(--accent-blue)' },
+  { key: 'phrasing', label: '话术矫正', icon: '🔧', color: 'var(--accent-green)', borderColor: 'var(--accent-green)' },
+  { key: 'golden_quote', label: '销售金句', icon: '⭐', color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' },
+  { key: 'emotion', label: '情绪感知', icon: '🎯', color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' },
 ];
 
 interface Props {
@@ -119,7 +119,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   const handleExportPDF = async () => {
     if (!reviewRef.current) return;
     try {
-      const canvas = await html2canvas(reviewRef.current, { scale: 3, useCORS: true, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(reviewRef.current, { scale: 3, useCORS: true, backgroundColor: 'var(--color-white)' });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -160,15 +160,15 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
   if (ending && !review) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#0d1117]">
+      <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
         <div className="text-center max-w-sm">
           <div className="text-3xl mb-4">📊</div>
-          <p className="text-sm text-[#e6edf3] font-medium mb-2">正在生成复盘报告...</p>
-          <p className="text-xs text-[#484f58] mb-5">AI 教练正在分析你的全部对话记录，预计需要 30-60 秒</p>
-          <div className="w-full bg-[#21262d] rounded-full h-2 overflow-hidden mb-2">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#58a6ff] via-[#a371f7] to-[#3fb950] animate-loading-bar" style={{ width: '100%' }} />
+          <p className="text-sm text-[var(--text-primary)] font-medium mb-2">正在生成复盘报告...</p>
+          <p className="text-xs text-[var(--text-placeholder)] mb-5">AI 教练正在分析你的全部对话记录，预计需要 30-60 秒</p>
+          <div className="w-full bg-[var(--bg-tertiary)] rounded-full h-2 overflow-hidden mb-2">
+            <div className="h-full rounded-full bg-gradient-to-r from-[var(--accent-blue)] via-[var(--accent-purple)] to-[var(--accent-green)] animate-loading-bar" style={{ width: '100%' }} />
           </div>
-          <p className="text-[10px] text-[#484f58]">请耐心等待，不要关闭页面</p>
+          <p className="text-[10px] text-[var(--text-placeholder)]">请耐心等待，不要关闭页面</p>
         </div>
       </div>
     );
@@ -182,29 +182,29 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   return (
     <div className="flex h-full relative">
       {/* Chat area */}
-      <div className="flex-1 flex flex-col bg-[#0d1117] border-r-2 border-[#30363d] min-w-0">
+      <div className="flex-1 flex flex-col bg-[var(--bg-primary)] border-r-2 border-[var(--border-default)] min-w-0">
         {/* Persona header */}
-        <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#161b22] border-b-2 border-[#21262d] flex-shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[var(--bg-secondary)] border-b-2 border-[var(--border-subtle)] flex-shrink-0">
           <div ref={personaRef} className="relative flex-shrink-0">
             <button
               onClick={() => setShowPersonaPopover(v => !v)}
-              className="w-8 h-8 rounded-full bg-[#30363d] border-2 border-[#d29922] flex items-center justify-center text-sm hover:border-[#e0a832] hover:bg-[#3a404a] transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-[var(--border-default)] border-2 border-[var(--accent-orange)] flex items-center justify-center text-sm hover:border-[var(--accent-orange)] hover:bg-[var(--border-default)] transition-colors cursor-pointer"
               title="点击查看客户信息"
             >
               👤
             </button>
             {showPersonaPopover && (
-              <div className="absolute top-full left-0 mt-2 w-72 bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[#21262d]">
+              <div className="absolute top-full left-0 mt-2 w-72 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-2xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--border-subtle)]">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[#30363d] border border-[#d29922] flex items-center justify-center text-xs">
+                    <div className="w-7 h-7 rounded-full bg-[var(--border-default)] border border-[var(--accent-orange)] flex items-center justify-center text-xs">
                       👤
                     </div>
-                    <span className="text-sm font-semibold text-[#e6edf3]">{detail.persona?.name || '未知'}</span>
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">{detail.persona?.name || '未知'}</span>
                   </div>
                   <button
                     onClick={() => setShowPersonaPopover(false)}
-                    className="text-[#484f58] hover:text-[#e6edf3] text-sm leading-none"
+                    className="text-[var(--text-placeholder)] hover:text-[var(--text-primary)] text-sm leading-none"
                   >
                     ✕
                   </button>
@@ -212,50 +212,50 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
                 <div className="px-3.5 py-3 space-y-2.5 max-h-80 overflow-y-auto">
                   {detail.persona?.age != null && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">年龄</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.age}岁</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">年龄</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.age}岁</div>
                     </div>
                   )}
                   {detail.persona?.gender && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">性别</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.gender}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">性别</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.gender}</div>
                     </div>
                   )}
                   {detail.persona?.occupation && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">职业</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.occupation}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">职业</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.occupation}</div>
                     </div>
                   )}
                   {detail.persona?.investment_experience && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">投资经验</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.investment_experience}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">投资经验</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.investment_experience}</div>
                     </div>
                   )}
                   {detail.persona?.wealth_level && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">资产状况</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.wealth_level}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">资产状况</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.wealth_level}</div>
                     </div>
                   )}
                   {detail.persona?.risk_preference && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">风险偏好</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.risk_preference}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">风险偏好</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.risk_preference}</div>
                     </div>
                   )}
                   {detail.persona?.goals && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">理财目标</div>
-                      <div className="text-xs text-[#e6edf3]">{detail.persona.goals}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">理财目标</div>
+                      <div className="text-xs text-[var(--text-primary)]">{detail.persona.goals}</div>
                     </div>
                   )}
                   {detail.persona?.personality && (
                     <div>
-                      <div className="text-[9px] font-semibold text-[#6e7681] uppercase tracking-wider">性格特征</div>
-                      <div className="text-xs text-[#e6edf3] leading-relaxed">{detail.persona.personality}</div>
+                      <div className="text-[9px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">性格特征</div>
+                      <div className="text-xs text-[var(--text-primary)] leading-relaxed">{detail.persona.personality}</div>
                     </div>
                   )}
                 </div>
@@ -263,17 +263,17 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-[#e6edf3] font-semibold truncate">
+            <div className="text-xs text-[var(--text-primary)] font-semibold truncate">
               {detail.persona?.name || '未知'} · {detail.persona?.age || '?'}岁 · {detail.persona?.occupation || '未知'} · {detail.persona?.risk_preference || ''}
             </div>
-            <div className="text-[10px] text-[#484f58] truncate mt-0.5">
+            <div className="text-[10px] text-[var(--text-placeholder)] truncate mt-0.5">
               场景：{detail.scenario}{detail.scenario_context ? ` — "${detail.scenario_context.slice(0, 40)}..."` : ''}
             </div>
           </div>
           <span className={`text-[10px] rounded-full px-2 py-0.5 border flex-shrink-0 ${
-            detail.status === 'completed' ? 'bg-[#1c2128] border-[#3fb950] text-[#3fb950]' :
-            detail.status === 'active' ? 'bg-[#1c2128] border-[#d29922] text-[#d29922]' :
-            'bg-[#1c2128] border-[#484f58] text-[#484f58]'
+            detail.status === 'completed' ? 'bg-[var(--bg-overlay)] border-[var(--accent-green)] text-[var(--accent-green)]' :
+            detail.status === 'active' ? 'bg-[var(--bg-overlay)] border-[var(--accent-orange)] text-[var(--accent-orange)]' :
+            'bg-[var(--bg-overlay)] border-[var(--text-placeholder)] text-[var(--text-placeholder)]'
           }`}>
             {detail.status === 'completed' ? '已完成' : detail.status === 'active' ? '进行中' : '未开始'}
           </span>
@@ -281,9 +281,9 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
         {/* Scenario briefing banner (shown when no messages yet) */}
         {messages.length === 0 && detail.scenario_context && (
-          <div className="mx-3 mt-3 p-3 bg-[#161b22] border border-[#30363d] rounded-lg">
-            <div className="text-[10px] font-semibold text-[#58a6ff] uppercase tracking-wider mb-1.5">训练简报</div>
-            <p className="text-[11px] text-[#8b949e] leading-relaxed whitespace-pre-wrap">{detail.scenario_context}</p>
+          <div className="mx-3 mt-3 p-3 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg">
+            <div className="text-[10px] font-semibold text-[var(--accent-blue)] uppercase tracking-wider mb-1.5">训练简报</div>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{detail.scenario_context}</p>
           </div>
         )}
 
@@ -292,19 +292,19 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
           {messages.map(m => (
             <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : 'items-flex-start'}`}>
               <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs ${
-                m.role === 'user' ? 'bg-[#1f6feb]' : 'bg-[#30363d]'
+                m.role === 'user' ? 'bg-[var(--btn-blue)]' : 'bg-[var(--border-default)]'
               }`}>
                 {m.role === 'user' ? '🧑' : '👤'}
               </div>
               <div className={`max-w-[70%] ${m.role === 'user' ? 'items-end' : ''}`}>
                 <div className={`rounded-lg px-3 py-2 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'bg-[#0d419d] border border-[#1f6feb] text-[#e6edf3]'
-                    : 'bg-[#161b22] border border-[#30363d] text-[#e6edf3]'
+                    ? 'bg-[var(--btn-blue)] border border-[var(--btn-blue-hover)] text-white'
+                    : 'bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)]'
                 }`}>
                   {m.content}
                 </div>
-                <div className={`text-[9px] text-[#484f58] mt-1 ${m.role === 'user' ? 'text-right' : ''}`}>
+                <div className={`text-[9px] text-[var(--text-placeholder)] mt-1 ${m.role === 'user' ? 'text-right' : ''}`}>
                   {m.role === 'user' ? '我' : '数字人客户'} · {new Date(m.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
@@ -314,9 +314,9 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
           {/* AI ending hint */}
           {showEndingHint && detail.status !== 'completed' && (
             <div className="flex justify-center">
-              <div className="bg-[#161b22] border border-[#d29922] rounded-lg px-3 py-2 text-center">
-                <p className="text-[11px] text-[#d29922] mb-1.5">对话似乎已自然结束，是否生成复盘？</p>
-                <button onClick={handleEnd} disabled={ending} className="px-3 py-1 bg-[#d29922] text-black text-[10px] rounded font-medium hover:bg-[#e0a832] disabled:opacity-50">
+              <div className="bg-[var(--bg-secondary)] border border-[var(--accent-orange)] rounded-lg px-3 py-2 text-center">
+                <p className="text-[11px] text-[var(--accent-orange)] mb-1.5">对话似乎已自然结束，是否生成复盘？</p>
+                <button onClick={handleEnd} disabled={ending} className="px-3 py-1 bg-[var(--accent-orange)] text-black text-[10px] rounded font-medium hover:bg-[var(--accent-orange)] disabled:opacity-50">
                   {ending ? '生成中...' : '生成复盘报告'}
                 </button>
               </div>
@@ -326,7 +326,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         </div>
 
         {/* Input bar */}
-        <div className="p-2.5 border-t-2 border-[#21262d] bg-[#161b22] flex gap-2 items-center flex-shrink-0">
+        <div className="p-2.5 border-t-2 border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex gap-2 items-center flex-shrink-0">
           <input
             ref={inputRef}
             type="text"
@@ -335,19 +335,19 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={detail.status === 'completed'}
-            className="flex-1 bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2 text-xs text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] disabled:opacity-50"
+            className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)] disabled:opacity-50"
           />
           <button
             onClick={handleSend}
             disabled={sending || !input.trim() || detail.status === 'completed'}
-            className="px-4 py-2 bg-[#1f6feb] border border-[#388bfd] rounded-md text-white text-[11px] font-medium hover:bg-[#2569d0] disabled:opacity-50 transition-colors flex-shrink-0"
+            className="px-4 py-2 bg-[var(--btn-blue)] border border-[var(--btn-blue-hover)] rounded-md text-white text-[11px] font-medium hover:bg-[var(--btn-blue-hover)] disabled:opacity-50 transition-colors flex-shrink-0"
           >
             {sending ? '发送中...' : '发送'}
           </button>
           {detail.status === 'completed' && detail.review ? (
             <button
               onClick={() => setReview(detail.review)}
-              className="px-3 py-2 bg-[#21262d] border border-[#a371f7] rounded-md text-[#a371f7] text-[11px] hover:bg-[#1f1b2e] transition-colors flex-shrink-0"
+              className="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--accent-purple)] rounded-md text-[var(--accent-purple)] text-[11px] hover:bg-[var(--bg-overlay)] transition-colors flex-shrink-0"
             >
               查看复盘
             </button>
@@ -355,7 +355,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             <button
               onClick={handleEnd}
               disabled={ending || detail.status === 'completed'}
-              className="px-3 py-2 bg-[#21262d] border border-[#f85149] rounded-md text-[#f85149] text-[11px] hover:bg-[#2a1f1f] disabled:opacity-50 transition-colors flex-shrink-0"
+              className="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--accent-red)] rounded-md text-[var(--accent-red)] text-[11px] hover:bg-[var(--color-danger-hover-bg)] disabled:opacity-50 transition-colors flex-shrink-0"
             >
               {ending ? '生成中...' : '结束训练'}
             </button>
@@ -364,8 +364,8 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
       </div>
 
       {/* Coach sidebar */}
-      <div className="w-[260px] bg-[#0d1117] border-t-[3px] border-t-[#a371f7] flex flex-col flex-shrink-0">
-        <div className="px-3 py-2.5 text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider border-b border-[#21262d]">
+      <div className="w-[260px] bg-[var(--bg-primary)] border-t-[3px] border-t-[var(--accent-purple)] flex flex-col flex-shrink-0">
+        <div className="px-3 py-2.5 text-[10px] font-semibold text-[var(--accent-purple)] uppercase tracking-wider border-b border-[var(--border-subtle)]">
           教练实时提示
         </div>
         <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
@@ -374,15 +374,15 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
               const content = lastCoachTip[key];
               if (!content) return null;
               return (
-                <div key={key} className="bg-[#161b22] border border-[#30363d] rounded-md p-2.5" style={{ borderLeft: `3px solid ${borderColor}` }}>
+                <div key={key} className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-md p-2.5" style={{ borderLeft: `3px solid ${borderColor}` }}>
                   <div className="text-[9px] font-semibold uppercase mb-1" style={{ color }}>{icon} {label}</div>
-                  <p className="text-[11px] text-[#8b949e] leading-relaxed">{content}</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{content}</p>
                 </div>
               );
             })
           ) : (
             <div className="text-center py-6">
-              <p className="text-[11px] text-[#484f58]">
+              <p className="text-[11px] text-[var(--text-placeholder)]">
                 {messages.length === 0 ? '开始对话后，教练提示将在这里显示' : '发送消息以获取教练提示'}
               </p>
             </div>
@@ -390,13 +390,13 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
           {/* Quick replies */}
           {quickReplies.length > 0 && detail.status !== 'completed' && (
-            <div className="bg-[#161b22] border border-[#a371f7]/40 rounded-md p-2.5 mt-2">
-              <div className="text-[9px] font-semibold text-[#a371f7] uppercase mb-2">💭 回复思路建议</div>
+            <div className="bg-[var(--bg-secondary)] border border-[var(--accent-purple)]/40 rounded-md p-2.5 mt-2">
+              <div className="text-[9px] font-semibold text-[var(--accent-purple)] uppercase mb-2">💭 回复思路建议</div>
               {quickReplies.map((suggestion, i) => (
                 <button
                   key={i}
                   onClick={() => { setInput(suggestion); inputRef.current?.focus(); setQuickReplies([]); }}
-                  className="w-full text-left text-[10px] text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] rounded px-2 py-1 mb-1 last:mb-0 transition-colors"
+                  className="w-full text-left text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded px-2 py-1 mb-1 last:mb-0 transition-colors"
                 >
                   {i + 1}. {suggestion}
                 </button>
@@ -408,7 +408,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
       {/* Error toast */}
       {error && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#f85149]/90 text-white text-xs px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--accent-red)]/90 text-white text-xs px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-white/80 hover:text-white font-bold">✕</button>
         </div>
@@ -419,8 +419,8 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         <div className="absolute inset-0 z-40 flex items-start justify-center bg-black/70 overflow-y-auto py-8">
           <div className="relative w-full max-w-4xl mx-4">
             {/* Modal toolbar */}
-            <div className="sticky top-0 z-10 flex items-center justify-between bg-[#161b22] border border-[#30363d] rounded-t-lg px-4 py-2.5">
-              <span className="text-sm text-[#e6edf3] font-semibold">训练复盘报告</span>
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-t-lg px-4 py-2.5">
+              <span className="text-sm text-[var(--text-primary)] font-semibold">训练复盘报告</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleExportPDF}
@@ -433,14 +433,14 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
                 </button>
                 <button
                   onClick={handleCloseReview}
-                  className="text-[#8b949e] hover:text-[#e6edf3] text-lg leading-none px-1"
+                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg leading-none px-1"
                 >
                   ✕
                 </button>
               </div>
             </div>
             {/* Modal body */}
-            <div ref={reviewRef} className="bg-[#010409] border-x border-b border-[#30363d] rounded-b-lg overflow-hidden pdf-export">
+            <div ref={reviewRef} className="bg-[var(--bg-primary)] border-x border-b border-[var(--border-default)] rounded-b-lg overflow-hidden pdf-export">
               <TrainingReviewComponent review={review} session={detail} />
             </div>
           </div>

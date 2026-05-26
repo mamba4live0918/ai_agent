@@ -174,12 +174,13 @@ class VADProcessor:
         self._speech_probs: list[float] = []  # probabilities during current segment
         self._total_samples_in = 0  # total input samples received
         self._last_window: Optional[np.ndarray] = None  # most recent VAD window
+        self._input_trim_offset = 0  # cumulative input samples trimmed from _audio_buffer
 
         # Window-size samples for VAD at vad rate
         self._window_samples = WINDOW_SIZE_8K if self._vad_rate == 8000 else WINDOW_SIZE_16K
 
-        # Prevent unbounded memory growth (30 s max buffer)
-        self._max_buffer_samples = self._input_rate * 30
+        # Prevent unbounded memory growth (120 s max buffer for long utterances)
+        self._max_buffer_samples = self._input_rate * 120
 
     # -- public API ---------------------------------------------------------
 
@@ -211,8 +212,11 @@ class VADProcessor:
             overflow = len(self._audio_buffer) - self._max_buffer_samples
             self._audio_buffer = self._audio_buffer[overflow:]
             self._total_samples_in -= overflow
+            self._input_trim_offset += overflow
             if self._segment_start is not None:
-                self._segment_start -= overflow
+                # _segment_start is at vad_rate; overflow is at input_rate
+                ratio = self._vad_rate / self._input_rate
+                self._segment_start -= int(overflow * ratio)
             logger.debug("VAD buffer trimmed by %d samples (max %d s)",
                          overflow, self._max_buffer_samples // self._input_rate)
 
@@ -230,12 +234,28 @@ class VADProcessor:
                     self._segment_start = result["start"]
                     self._speech_probs = [self._get_last_prob()]
                     self._current_sample += self._window_samples
+                    logger.debug(
+                        "VAD start detected at sample=%d, prob=%.3f, total_in=%.1fs",
+                        result["start"], self._speech_probs[0], self.total_seconds,
+                    )
                 elif "end" in result and self._segment_start is not None:
                     end_sample = result["end"]
+                    logger.debug(
+                        "VAD end detected at sample=%d (duration=%.2fs), total_in=%.1fs",
+                        end_sample,
+                        (end_sample - self._segment_start) / self._vad_rate,
+                        self.total_seconds,
+                    )
                     # Extract segment audio from buffer
                     seg = self._extract_segment(self._segment_start, end_sample)
                     if seg is not None:
+                        logger.info(
+                            "VAD segment extracted: %.2fs-%.2fs (%.2fs), audio_bytes=%d",
+                            seg.start, seg.end, seg.end - seg.start, len(seg.audio_bytes),
+                        )
                         completed.append(seg)
+                    else:
+                        logger.debug("VAD segment rejected (too short or empty)")
                     self._segment_start = None
                     self._speech_probs = []
                     self._current_sample += self._window_samples
@@ -275,6 +295,7 @@ class VADProcessor:
         self._speech_probs.clear()
         self._total_samples_in = 0
         self._last_window = None
+        self._input_trim_offset = 0
 
     @property
     def total_seconds(self) -> float:
@@ -332,16 +353,23 @@ class VADProcessor:
                          duration_s * 1000, self.min_speech_duration_ms)
             return None
 
-        # Convert VAD-rate indices to input-rate indices
+        # Convert VAD-rate indices to input-rate indices, then adjust for
+        # any samples already trimmed from the front of _audio_buffer.
         ratio = self._input_rate / self._vad_rate
-        start_in = int(start_vad * ratio)
-        end_in = int(end_vad * ratio)
+        start_in = int(start_vad * ratio) - self._input_trim_offset
+        end_in = int(end_vad * ratio) - self._input_trim_offset
 
         # Clamp to available audio
         start_in = max(0, start_in)
         end_in = min(len(self._audio_buffer), end_in)
 
         if end_in <= start_in:
+            logger.warning(
+                "VAD segment mapping failed: start_vad=%d end_vad=%d → "
+                "start_in=%d end_in=%d (trim_offset=%d, buf_len=%d)",
+                start_vad, end_vad, start_in, end_in,
+                self._input_trim_offset, len(self._audio_buffer),
+            )
             return None
 
         # Extract audio
@@ -367,10 +395,11 @@ class VADProcessor:
     def _trim_audio_buffer(self, end_vad: int) -> None:
         """Remove audio samples that have already been emitted as segments."""
         ratio = self._input_rate / self._vad_rate
-        end_in = int(end_vad * ratio)
-        end_in = min(len(self._audio_buffer), end_in)
+        end_in = int(end_vad * ratio) - self._input_trim_offset
+        end_in = max(0, min(len(self._audio_buffer), end_in))
         if end_in > 0:
             self._audio_buffer = self._audio_buffer[end_in:]
+            self._input_trim_offset += end_in
         # Also trim VAD buffer: account for samples already consumed
         # via window processing (_current_sample has been advanced past
         # the triggering window). Only trim remaining samples that fall
@@ -405,10 +434,12 @@ class ASRProcessor:
 
     def __init__(
         self,
-        model_size: str = "large-v3-turbo",
+        model_size: str | None = None,
         device: str = "cpu",
         compute_type: str = "int8",
     ):
+        if model_size is None:
+            model_size = getattr(settings, "asr_model_size", None) or "small"
         from faster_whisper import WhisperModel
 
         logger.info("Loading faster-whisper model %s (device=%s, compute=%s) ...",
@@ -642,7 +673,7 @@ class StreamingTranscriber:
         self._speaker_clustering = None
         if enable_speaker_clustering:
             from .speaker_clustering import OnlineSpeakerClustering
-            self._speaker_clustering = OnlineSpeakerClustering()
+            self._speaker_clustering = OnlineSpeakerClustering(similarity_threshold=0.55)
 
         # Track cumulative time offset for segments
         self._processed_seconds = 0.0
@@ -705,6 +736,15 @@ class StreamingTranscriber:
     def total_seconds(self) -> float:
         """Total audio processed (seconds)."""
         return self._vad.total_seconds
+
+    def get_speaker_names(self) -> dict[str, str]:
+        """Return the current speaker ID → role name mapping.
+
+        Returns an empty dict if speaker clustering is disabled.
+        """
+        if self._speaker_clustering is not None:
+            return self._speaker_clustering.assign_speaker_roles()
+        return {}
 
     def transcribe_file(
         self, file_path: str, chunk_duration_s: float = 0.5

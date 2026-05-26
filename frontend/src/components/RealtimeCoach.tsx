@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── Types ───
 
@@ -31,13 +31,13 @@ const TRIGGER_LABELS: Record<string, string> = {
 };
 
 const TRIGGER_BORDERS: Record<string, string> = {
-  coach_tip: '#58a6ff',
-  strategy_alert: '#d29922',
-  closing_guide: '#238636',
+  coach_tip: 'var(--accent-blue)',
+  strategy_alert: 'var(--accent-orange)',
+  closing_guide: 'var(--btn-primary)',
   objection_handle: '#db6d28',
-  break_tip: '#a371f7',
+  break_tip: 'var(--accent-purple)',
   role_analysis: '#39d2c0',
-  emotion_alert: '#f85149',
+  emotion_alert: 'var(--accent-red)',
 };
 
 const MAX_TIPS = 20;
@@ -57,7 +57,7 @@ function getTriggerLabel(trigger: string): string {
 }
 
 function getBorderColor(tipType: string): string {
-  return TRIGGER_BORDERS[tipType] || '#6e7681';
+  return TRIGGER_BORDERS[tipType] || 'var(--text-tertiary)';
 }
 
 function formatTime(ts: number): string {
@@ -310,19 +310,18 @@ export default function RealtimeCoach({
 
   return (
     <div
-      className="fixed right-4 top-20 z-50 flex flex-col rounded-lg border shadow-xl"
+      className="flex flex-col h-full"
       style={{
-        width: 340,
-        maxHeight: 'calc(100vh - 100px)',
-        backgroundColor: '#0d1117',
-        borderColor: '#30363d',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        backgroundColor: 'var(--bg-primary)',
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3 py-2.5 border-b cursor-pointer select-none"
-        style={{ borderColor: '#30363d' }}
+        className="flex items-center justify-between px-3 py-2.5 border-b select-none flex-shrink-0"
+        style={{
+          borderColor: 'var(--border-default)',
+          cursor: 'pointer',
+        }}
         onClick={() => setCollapsed((v) => !v)}
       >
         <div className="flex items-center gap-2">
@@ -331,19 +330,19 @@ export default function RealtimeCoach({
             <span
               className="inline-block w-2 h-2 rounded-full flex-shrink-0"
               style={{
-                backgroundColor: '#238636',
-                boxShadow: '0 0 6px #238636',
+                backgroundColor: 'var(--btn-primary)',
+                boxShadow: '0 0 6px var(--btn-primary)',
               }}
             />
           )}
           <span
             className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: '#e6edf3' }}
+            style={{ color: 'var(--text-primary)' }}
           >
             实时教练
           </span>
           {isConnected && (
-            <span className="text-[10px]" style={{ color: '#2ea043' }}>
+            <span className="text-[10px]" style={{ color: 'var(--btn-primary-hover)' }}>
               LIVE
             </span>
           )}
@@ -357,8 +356,8 @@ export default function RealtimeCoach({
               }}
               className="text-[10px] px-2 py-1 rounded font-medium transition-colors"
               style={{
-                backgroundColor: '#238636',
-                color: '#ffffff',
+                backgroundColor: 'var(--btn-primary)',
+                color: 'var(--color-white)',
               }}
             >
               连接
@@ -371,8 +370,8 @@ export default function RealtimeCoach({
               }}
               className="text-[10px] px-2 py-1 rounded font-medium transition-colors"
               style={{
-                backgroundColor: '#30363d',
-                color: '#e6edf3',
+                backgroundColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             >
               断开
@@ -381,7 +380,7 @@ export default function RealtimeCoach({
           <span
             className="text-xs transition-transform duration-200"
             style={{
-              color: '#8b949e',
+              color: 'var(--text-secondary)',
               transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             }}
           >
@@ -395,7 +394,7 @@ export default function RealtimeCoach({
         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
           {tips.length === 0 ? (
             <div className="flex items-center justify-center py-12 px-4">
-              <span className="text-xs" style={{ color: '#8b949e' }}>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 {isConnected
                   ? '等待教练建议...'
                   : '点击"连接"接收实时教练建议'}
@@ -414,7 +413,7 @@ export default function RealtimeCoach({
                     key={tip.id}
                     className="px-3 py-2.5 border-b relative group"
                     style={{
-                      borderColor: '#21262d',
+                      borderColor: 'var(--border-subtle)',
                       borderLeftWidth: 3,
                       borderLeftStyle: 'solid',
                       borderLeftColor: borderColor,
@@ -434,7 +433,7 @@ export default function RealtimeCoach({
                         </span>
                         <span
                           className="text-[10px]"
-                          style={{ color: '#6e7681' }}
+                          style={{ color: 'var(--text-tertiary)' }}
                         >
                           {formatTime(tip.timestamp)}
                         </span>
@@ -443,9 +442,9 @@ export default function RealtimeCoach({
                         {/* Pin button */}
                         <button
                           onClick={() => handleTogglePin(tip.id)}
-                          className="text-xs px-1 rounded hover:bg-[#30363d]"
+                          className="text-xs px-1 rounded hover:bg-[var(--border-default)]"
                           style={{
-                            color: isPinned ? '#d29922' : '#6e7681',
+                            color: isPinned ? 'var(--accent-orange)' : 'var(--text-tertiary)',
                           }}
                           title={isPinned ? '取消固定' : '固定'}
                         >
@@ -454,8 +453,8 @@ export default function RealtimeCoach({
                         {/* Dismiss button */}
                         <button
                           onClick={() => handleDismiss(tip.id)}
-                          className="text-xs px-1 rounded hover:bg-[#30363d]"
-                          style={{ color: '#6e7681' }}
+                          className="text-xs px-1 rounded hover:bg-[var(--border-default)]"
+                          style={{ color: 'var(--text-tertiary)' }}
                           title="关闭"
                         >
                           ✕
@@ -466,14 +465,14 @@ export default function RealtimeCoach({
                     {/* Content */}
                     <div
                       className="text-xs leading-relaxed whitespace-pre-wrap"
-                      style={{ color: '#c9d1d9' }}
+                      style={{ color: 'var(--text-primary)' }}
                     >
                       {displayed}
                       {tip.isStreaming && (
                         <span
                           className="inline-block w-[1px] h-3 ml-0.5 align-middle"
                           style={{
-                            backgroundColor: '#58a6ff',
+                            backgroundColor: 'var(--accent-blue)',
                             animation: 'blink-cursor 1s step-end infinite',
                           }}
                         />

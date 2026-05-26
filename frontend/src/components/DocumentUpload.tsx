@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import type { Category } from '../types';
 
 interface DocumentUploadProps {
@@ -40,7 +40,7 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
       <select
         value={categoryId}
         onChange={e => setCategoryId(e.target.value)}
-        className="h-[32px] bg-[#0d1117] border border-[#30363d] rounded-md px-2.5 text-xs text-[#e6edf3] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
+        className="h-[32px] bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
       >
         {categories.map(cat => (
           <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
@@ -56,12 +56,12 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
           onChange={handleUpload} disabled={uploading} />
       </label>
       {uploading && (
-        <div className="w-24 h-1.5 bg-[#161b22] rounded-full overflow-hidden">
-          <div className="h-full bg-[#1f6feb] rounded-full transition-all duration-150" style={{ width: `${progress}%` }} />
+        <div className="w-24 h-1.5 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+          <div className="h-full bg-[var(--btn-blue)] rounded-full transition-all duration-150" style={{ width: `${progress}%` }} />
         </div>
       )}
       {message && (
-        <span className={`text-xs font-mono ${message.includes('失败') ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
+        <span className={`text-xs font-mono ${message.includes('失败') ? 'text-[var(--accent-red)]' : 'text-[var(--accent-green)]'}`}>
           {message}
         </span>
       )}

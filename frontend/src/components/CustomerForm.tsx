@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { analyzeCustomer, createCustomer } from '../services/api';
 import type { CustomerProfile } from '../types';
 
@@ -63,22 +63,22 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-2">
-        <h3 className="text-sm font-semibold text-[#e6edf3]">新建客户</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">新建客户</h3>
         {/* Mode tabs */}
-        <div className="flex rounded-md border border-[#30363d] overflow-hidden">
+        <div className="flex rounded-md border border-[var(--border-default)] overflow-hidden">
           <button onClick={() => setMode('text')}
             className={`px-3 py-1 text-xs font-medium transition-colors ${
               mode === 'text'
-                ? 'bg-[#1f6feb] text-white'
-                : 'bg-transparent text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22]'
+                ? 'bg-[var(--btn-blue)] text-white'
+                : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
             }`}>
             自由文本
           </button>
           <button onClick={() => setMode('form')}
-            className={`px-3 py-1 text-xs font-medium border-l border-[#30363d] transition-colors ${
+            className={`px-3 py-1 text-xs font-medium border-l border-[var(--border-default)] transition-colors ${
               mode === 'form'
-                ? 'bg-[#1f6feb] text-white'
-                : 'bg-transparent text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22]'
+                ? 'bg-[var(--btn-blue)] text-white'
+                : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
             }`}>
             表单录入
           </button>
@@ -92,7 +92,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
             onChange={e => setRawText(e.target.value)}
             placeholder="粘贴客户描述文字... 例如：张总，45岁，私企老板，两个孩子，保守型投资者，资产规模500万以上..."
             rows={5}
-            className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2.5 text-sm text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none resize-none transition-all font-mono"
+            className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none resize-none transition-all font-mono"
           />
           <div className="flex gap-2">
             <button onClick={handleAnalyze} disabled={loading || !rawText.trim()} className="btn btn-secondary text-sm">
@@ -116,38 +116,38 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">姓名</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">姓名</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">年龄</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">年龄</label>
               <input type="text" value={age} onChange={e => setAge(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">性别</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">性别</label>
               <select value={gender} onChange={e => setGender(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
                 <option value="">未知</option>
                 <option value="男">男</option>
                 <option value="女">女</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">职业</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">职业</label>
               <input type="text" value={occupation} onChange={e => setOccupation(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">资产状况</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">资产状况</label>
               <input type="text" value={assets} onChange={e => setAssets(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] placeholder-[#484f58] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#8b949e] mb-1">风险偏好</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">风险偏好</label>
               <select value={riskPreference} onChange={e => setRiskPreference(e.target.value)}
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#e6edf3] focus:border-[#58a6ff] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
                 <option value="">未知</option>
                 <option value="保守">保守</option>
                 <option value="稳健">稳健</option>
@@ -165,7 +165,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#da3633]/10 border border-[#da3633]/30 text-sm text-[#f85149]">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--btn-danger)]/10 border border-[var(--btn-danger)]/30 text-sm text-[var(--accent-red)]">
           <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
             <path d="M7.25 5a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0V5Zm.75 5.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z"/>

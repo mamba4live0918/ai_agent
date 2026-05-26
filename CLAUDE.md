@@ -103,6 +103,13 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `pages/AdminUsers.tsx` — 管理员用户管理（列表/角色修改/添加/删除）
 - `pages/AdminFeedback.tsx` — 管理员反馈总览（全部反馈展开查看 + 统计）
 - `pages/AdminGroups.tsx` — 分组管理（创建/编辑/删除分组 + 成员管理 + 权限控制）
+- `pages/RealTimeVoice.tsx` — 实时语音陪跑主页面（转录面板 + 教练侧边栏 + 录音控制）
+- `components/RealtimeTranscript.tsx` — 实时转录面板（说话人彩色标签 + 可折叠）
+- `components/RealtimeCoach.tsx` — 实时教练提示侧边栏（打字机效果 + 钉住/自动消失）
+- `hooks/useRealtimeASR.ts` — 实时 ASR Hook（MediaRecorder + WebSocket + 自动重连）
+- `hooks/useVoiceInterrupt.ts` — 语音打断检测 Hook（AudioContext RMS 音量监测）
+- `components/SessionSidebar.tsx` — 通用会话侧边栏组件
+- `context/ThemeContext.tsx` — 主题切换上下文（暗色 + 奶油色 Light Mode）
 - `hooks/useRealtimeASR.ts` — 实时语音识别 Hook（MediaRecorder + WebSocket + 自动重连）
 - `hooks/useVoiceInterrupt.ts` — 语音打断检测 Hook（AudioContext RMS 音量监测，阈值 0.08）
 - `components/RealtimeTranscript.tsx` — 实时转录面板（固定右下角，可折叠，说话人标签）
@@ -284,7 +291,7 @@ curl http://localhost:8000/api/health
                                    ▼                  ▼                  ▼
                               Silero-VAD         Speaker             Trigger
                               (8kHz, 32ms)       Clustering          Engine
-                                   │             (cosine≥0.65)       (8 rules)
+                                   │             (cosine≥0.45)       (8 rules)
                                    ▼                  │                  │
                               faster-whisper         │                  │
                               large-v3-turbo          │                  │
@@ -307,8 +314,10 @@ curl http://localhost:8000/api/health
 ### 说话人聚类
 
 - **SpeakerEmbedder**：pyannote/embedding 模型（512 维向量），LRU 缓存 200 条
-- **OnlineSpeakerClustering**：增量余弦相似度匹配，threshold=0.65，max_speakers=4
-- **质心更新**：移动平均 + L2 归一化
+- **OnlineSpeakerClustering**：增量余弦相似度匹配，threshold=0.45，max_speakers=4
+- **质心更新**：EMA 指数移动平均 (alpha=0.3) + L2 归一化
+- **短片段过滤**：min_segment_duration_ms=1000，低于阈值的片段归入上一个说话人
+- **角色映射**：按发言频次自动分配 销售/客户/其他 角色标签
 - **回退**：无 HF token 时使用随机 embedding
 
 ### 教练触发器引擎
@@ -327,8 +336,8 @@ curl http://localhost:8000/api/health
 ### 前端组件
 
 - **useRealtimeASR**：MediaRecorder 录音（audio/webm;codecs=opus，100ms 分片），WebSocket 连接管理，自动重连（3 次，指数退避 1s/2s/4s）
-- **RealtimeTranscript**：固定右下角浮窗（`fixed bottom-4 right-4 z-50`），可折叠，红色录音脉冲点，滚动区域 max-h-280px，说话人标签 `[说话人0]`
-- **RealtimeCoach**：独立 WebSocket 连接，打字机效果（~25ms 间隔），7 种触发器类型颜色，8 个中文标签，自动消失（10s）+ 钉住，历史 20 条，绿色 "LIVE" 连接按钮
+- **RealtimeTranscript**：中部转录面板，可折叠，红色录音脉冲点，说话人彩色标签（销售=绿色、客户=蓝色、其他=紫色）
+- **RealtimeCoach**：右侧固定侧边栏（w-[320px]），打字机效果（~25ms 间隔），7 种触发器类型颜色，8 个中文标签，自动消失（10s）+ 钉住，历史 20 条，绿色 "LIVE" 连接按钮
 - **实验入口**：Training.tsx 右上角 "实验：实时语音" 按钮
 
 ### 数据持久化

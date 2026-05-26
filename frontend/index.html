@@ -1,6 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="">
   <head>
+    <script>
+      (function() {
+        if (localStorage.getItem('theme') === 'light') {
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />

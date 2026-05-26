@@ -10,7 +10,10 @@ WebSocket handshake using the existing JWT infrastructure.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError
@@ -114,25 +117,34 @@ async def realtime_session(
 
     # ---- Step 3: create the transcription pipeline -------------------------
     transcriber = StreamingTranscriber(
-        sample_rate=8000,
-        vad_threshold=0.5,
-        min_speech_duration_ms=500,
+        sample_rate=16000,
+        vad_threshold=0.3,
+        min_speech_duration_ms=800,
         enable_speaker_clustering=True,
     )
 
     # ---- Step 4: process audio chunks --------------------------------------
+    loop = asyncio.get_running_loop()
+    accumulated_segments: list[dict] = []
+    speaker_ids: set[str] = set()
+    session_started_at = datetime.utcnow()
+
+    # Notify client of the new session ID (generated client-side for now;
+    # we'll create the DB record on disconnect).
+    session_id = str(uuid.uuid4())
+    await websocket.send_json({"type": "session_start", "session_id": session_id})
+
     try:
         while True:
-            # Block until the next binary frame arrives.  ``receive_bytes``
-            # raises WebSocketDisconnect when the client goes away.
             audio_bytes: bytes = await websocket.receive_bytes()
 
             if not audio_bytes:
                 continue
 
-            # Feed the chunk through the VAD + ASR pipeline
             try:
-                segments = transcriber.feed_chunk(audio_bytes)
+                segments = await loop.run_in_executor(
+                    None, transcriber.feed_chunk, audio_bytes
+                )
             except Exception:
                 logger.exception(
                     "Transcription failure for user=%s at stream offset %.1f s",
@@ -141,38 +153,142 @@ async def realtime_session(
                 await _send_error(websocket, "Transcription processing failed")
                 continue
 
-            # Emit a JSON message for each completed segment
             for seg in segments:
-                await websocket.send_json(
-                    {
-                        "type": "transcript",
-                        "start": seg.start,
-                        "end": seg.end,
-                        "text": seg.text,
-                        "confidence": seg.confidence,
-                        "speaker": seg.speaker,
-                        "is_partial": False,
-                    }
+                speaker_name = transcriber.get_speaker_names().get(
+                    seg.speaker, seg.speaker
                 )
+                seg_dict = {
+                    "start": seg.start,
+                    "end": seg.end,
+                    "text": seg.text,
+                    "speaker": seg.speaker,
+                    "speaker_name": speaker_name,
+                    "confidence": seg.confidence,
+                }
+                accumulated_segments.append(seg_dict)
+                if seg.speaker:
+                    speaker_ids.add(seg.speaker)
+
+                logger.info(
+                    "Emitting transcript: %.1fs-%.1fs speaker=%s (%s) text=%s",
+                    seg.start, seg.end, seg.speaker, speaker_name, seg.text[:80],
+                )
+                await websocket.send_json({
+                    "type": "transcript",
+                    **seg_dict,
+                    "session_id": session_id,
+                    "is_partial": False,
+                })
 
     except WebSocketDisconnect:
         logger.info("Realtime session disconnected: user=%s", user_id)
     except Exception:
-        logger.exception(
-            "Unexpected error in realtime session: user=%s", user_id
-        )
+        logger.exception("Unexpected error in realtime session: user=%s", user_id)
     finally:
-        # ---- Step 5: cleanup -----------------------------------------------
+        # ---- Step 5: archive session & cleanup -----------------------------
         try:
             transcriber.reset()
         except Exception:
             pass
+
+        if accumulated_segments:
+            db_archive = SessionLocal()
+            try:
+                sid = archive_session(
+                    db_archive,
+                    user_id=user_id,
+                    segments=accumulated_segments,
+                    speaker_count=len(speaker_ids),
+                )
+                # Override the generated start/end times with actual values
+                s = db_archive.query(RealtimeSession).filter(
+                    RealtimeSession.id == sid
+                ).first()
+                if s:
+                    s.started_at = session_started_at
+                    s.ended_at = datetime.utcnow()
+                    db_archive.commit()
+                logger.info(
+                    "Session archived: id=%s segments=%d speakers=%d",
+                    sid, len(accumulated_segments), len(speaker_ids),
+                )
+            except Exception:
+                logger.exception("Failed to archive session for user=%s", user_id)
+            finally:
+                db_archive.close()
+
         logger.info("Realtime session cleaned up: user=%s", user_id)
 
 
 # ---------------------------------------------------------------------------
 # HTTP endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.get("/api/realtime/sessions")
+def list_sessions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return a paginated list of the current user's real-time sessions.
+
+    Sessions are ordered by ``started_at`` descending (newest first).
+    """
+    query = (
+        db.query(RealtimeSession)
+        .filter(RealtimeSession.user_id == current_user.id)
+        .order_by(RealtimeSession.started_at.desc())
+    )
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "items": [
+            {
+                "id": str(s.id),
+                "status": s.status,
+                "speaker_count": s.speaker_count,
+                "segment_count": len(s.segments) if s.segments else 0,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "preview": _session_preview(s),
+            }
+            for s in items
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max((total + page_size - 1) // page_size, 1),
+    }
+
+
+@router.delete("/api/realtime/sessions/{session_id}")
+def delete_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a real-time session and all its segments.
+
+    The caller must own the session.
+    """
+    session = (
+        db.query(RealtimeSession)
+        .filter(
+            RealtimeSession.id == session_id,
+            RealtimeSession.user_id == current_user.id,
+        )
+        .first()
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    db.delete(session)
+    db.commit()
+    return {"detail": "deleted"}
 
 
 @router.get("/api/realtime/sessions/{session_id}")
@@ -241,3 +357,12 @@ async def _send_error(websocket: WebSocket, message: str) -> None:
         await websocket.send_json({"type": "error", "message": message})
     except Exception:
         pass
+
+
+def _session_preview(session: RealtimeSession) -> str | None:
+    """Return the first 80 chars of the first segment's text, or None."""
+    if session.segments:
+        first = session.segments[0]
+        if first.text:
+            return first.text[:80]
+    return None

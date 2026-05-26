@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+﻿import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -6,8 +6,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d1117]">
-        <div className="text-[#8b949e] text-sm">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="text-[var(--text-secondary)] text-sm">Loading...</div>
       </div>
     );
   }

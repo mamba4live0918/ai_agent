@@ -257,13 +257,21 @@ class OnlineSpeakerClustering:
         Maximum number of distinct speakers to track (default 4).
     similarity_threshold : float
         Cosine similarity threshold for assigning to an existing cluster
-        (default 0.65).
+        (default 0.55 — lower threshold produces fewer, purer clusters).
+    min_segment_duration_ms : int
+        Minimum segment duration in ms for reliable embedding extraction.
+        Segments shorter than this are assigned to the nearest existing
+        speaker instead of creating a new cluster (default 800).
     """
+
+    # Role labels assigned by speech frequency (most → least)
+    ROLE_LABELS = ["销售", "客户", "其他", "其他"]
 
     def __init__(
         self,
         max_speakers: int = 4,
-        similarity_threshold: float = 0.65,
+        similarity_threshold: float = 0.45,
+        min_segment_duration_ms: int = 1000,
     ):
         if max_speakers < 1:
             raise ValueError("max_speakers must be >= 1")
@@ -272,9 +280,11 @@ class OnlineSpeakerClustering:
 
         self._max_speakers = max_speakers
         self._threshold = similarity_threshold
+        self._min_segment_ms = min_segment_duration_ms
         self._embedder = SpeakerEmbedder()
         self._clusters: list[SpeakerCluster] = []
         self._next_speaker_id = 0
+        self._last_speaker_id: str | None = None
 
     # -- public API -----------------------------------------------------------
 
@@ -293,6 +303,26 @@ class OnlineSpeakerClustering:
         str
             Speaker identifier, e.g. ``"speaker_0"``, ``"speaker_1"``, etc.
         """
+        # Compute segment duration
+        duration_ms = (len(audio_bytes) / (sample_rate * 2)) * 1000
+
+        # Short segments produce unreliable embeddings — assign to last
+        # speaker or the dominant cluster instead of creating a new one.
+        if duration_ms < self._min_segment_ms and self._clusters:
+            if self._last_speaker_id is not None:
+                logger.debug(
+                    "Short segment (%.0f ms) — reusing last speaker %s",
+                    duration_ms, self._last_speaker_id,
+                )
+                return self._last_speaker_id
+            # Fallback: assign to the cluster with the most segments
+            dominant = max(self._clusters, key=lambda c: len(c.embeddings))
+            logger.debug(
+                "Short segment (%.0f ms) — assigned to dominant %s",
+                duration_ms, dominant.speaker_id,
+            )
+            return dominant.speaker_id
+
         # Extract embedding
         embedding = self._embedder.extract_embedding(audio_bytes, sample_rate)
 
@@ -305,6 +335,7 @@ class OnlineSpeakerClustering:
             )
             self._clusters.append(cluster)
             self._next_speaker_id += 1
+            self._last_speaker_id = cluster.speaker_id
             logger.debug(
                 "Created first cluster: %s (threshold=%.2f)",
                 cluster.speaker_id,
@@ -325,6 +356,7 @@ class OnlineSpeakerClustering:
         if best_sim >= self._threshold and best_cluster is not None:
             best_cluster.embeddings.append(embedding)
             self._update_centroid(best_cluster)
+            self._last_speaker_id = best_cluster.speaker_id
             logger.debug(
                 "Assigned segment to %s (sim=%.3f, n=%d)",
                 best_cluster.speaker_id,
@@ -342,6 +374,7 @@ class OnlineSpeakerClustering:
             )
             self._clusters.append(cluster)
             self._next_speaker_id += 1
+            self._last_speaker_id = cluster.speaker_id
             logger.info(
                 "Created new cluster: %s (best_sim=%.3f < threshold=%.2f, n_clusters=%d)",
                 cluster.speaker_id,
@@ -355,6 +388,7 @@ class OnlineSpeakerClustering:
         if best_cluster is not None:
             best_cluster.embeddings.append(embedding)
             self._update_centroid(best_cluster)
+            self._last_speaker_id = best_cluster.speaker_id
             logger.debug(
                 "Assigned segment to %s at max speakers (sim=%.3f, fallback)",
                 best_cluster.speaker_id,
@@ -369,6 +403,7 @@ class OnlineSpeakerClustering:
         """Clear all clusters and the embedding cache for a new session."""
         self._clusters.clear()
         self._next_speaker_id = 0
+        self._last_speaker_id = None
         self._embedder.clear_cache()
         logger.info("OnlineSpeakerClustering: reset")
 
@@ -398,6 +433,43 @@ class OnlineSpeakerClustering:
     def similarity_threshold(self) -> float:
         return self._threshold
 
+    def assign_speaker_roles(self) -> dict[str, str]:
+        """Map speaker IDs to human-readable role names based on speech frequency.
+
+        The speaker with the most segments is labeled "销售" (salesperson),
+        the second-most is "客户" (customer), and any additional speakers
+        are labeled "其他" (other).
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping from ``speaker_id`` (e.g. ``"speaker_0"``) to role name
+            (e.g. ``"销售"``).
+        """
+        if not self._clusters:
+            return {}
+
+        # Sort clusters by segment count descending
+        sorted_clusters = sorted(
+            self._clusters, key=lambda c: len(c.embeddings), reverse=True
+        )
+
+        role_map: dict[str, str] = {}
+        for i, cluster in enumerate(sorted_clusters):
+            label = self.ROLE_LABELS[i] if i < len(self.ROLE_LABELS) else "其他"
+            role_map[cluster.speaker_id] = label
+
+        logger.debug("Speaker roles assigned: %s", role_map)
+        return role_map
+
+    def get_speaker_name(self, speaker_id: str) -> str:
+        """Return the human-readable role name for a speaker ID.
+
+        If no clusters exist yet, returns the raw *speaker_id*.
+        """
+        role_map = self.assign_speaker_roles()
+        return role_map.get(speaker_id, speaker_id)
+
     # -- internals ------------------------------------------------------------
 
     @staticmethod
@@ -406,12 +478,28 @@ class OnlineSpeakerClustering:
         return _cosine_similarity(a, b)
 
     @staticmethod
-    def _update_centroid(cluster: SpeakerCluster) -> None:
-        """Recompute the centroid as the mean of all embeddings."""
+    def _update_centroid(cluster: SpeakerCluster, alpha: float = 0.3) -> None:
+        """Update centroid via exponential moving average (EMA) for stability.
+
+        EMA prevents a single noisy embedding from pulling the centroid away
+        from the true speaker identity, reducing the chance that the same
+        person is split across multiple clusters.
+
+        Parameters
+        ----------
+        alpha : float
+            Weight for the newest embedding (0 < alpha <= 1). Lower values
+            make the centroid more conservative (default 0.3).
+        """
         if not cluster.embeddings:
             return
-        stacked = np.stack(cluster.embeddings, axis=0)
-        cluster.centroid = stacked.mean(axis=0).astype(np.float32)
+        newest = cluster.embeddings[-1]
+        if cluster.centroid.size == 0:
+            cluster.centroid = newest.copy()
+        else:
+            cluster.centroid = (
+                alpha * newest + (1.0 - alpha) * cluster.centroid
+            ).astype(np.float32)
         # L2-normalize for consistent comparison
         norm = np.linalg.norm(cluster.centroid)
         if norm > 0:

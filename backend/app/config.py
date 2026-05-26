@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     embed_model: str = "jina-embeddings-v3"
     audio_upload_dir: str = "./audio_uploads"
     huggingface_token: str = ""
+    asr_model_size: str = "large-v3-turbo"  # faster-whisper model: tiny, small, medium, large-v3-turbo
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 

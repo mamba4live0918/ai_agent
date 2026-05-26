@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+﻿import { useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -18,12 +18,12 @@ interface Props {
 type TabKey = 'analysis' | 'presales' | 'allocation';
 
 const DIMENSION_META: Record<string, { label: string; color: string }> = {
-  wealth_scale:           { label: '财富规模', color: '#3fb950' },
-  risk_tolerance:         { label: '风险承受力', color: '#d29922' },
-  investment_experience:  { label: '投资经验', color: '#58a6ff' },
-  need_urgency:           { label: '需求紧迫度', color: '#f85149' },
-  customer_potential:     { label: '客户潜力', color: '#a371f7' },
-  communication_difficulty: { label: '沟通难度', color: '#8b949e' },
+  wealth_scale:           { label: '财富规模', color: 'var(--accent-green)' },
+  risk_tolerance:         { label: '风险承受力', color: 'var(--accent-orange)' },
+  investment_experience:  { label: '投资经验', color: 'var(--accent-blue)' },
+  need_urgency:           { label: '需求紧迫度', color: 'var(--accent-red)' },
+  customer_potential:     { label: '客户潜力', color: 'var(--accent-purple)' },
+  communication_difficulty: { label: '沟通难度', color: 'var(--text-secondary)' },
 };
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -47,9 +47,9 @@ function parseScores(scores: Record<string, unknown> | null | undefined): ScoreD
 }
 
 function getScoreColor(v: number): string {
-  if (v >= 8) return '#3fb950';
-  if (v >= 5) return '#d29922';
-  return '#f85149';
+  if (v >= 8) return 'var(--accent-green)';
+  if (v >= 5) return 'var(--accent-orange)';
+  return 'var(--accent-red)';
 }
 
 export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
@@ -84,23 +84,23 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const ap = localCustomer.ai_profile as Record<string, string> | null || {};
 
   const apSections = ([
-    ['客户画像', ap.persona_summary || '', '#58a6ff'],
-    ['财务需求分析', ap.financial_needs_analysis || '', '#3fb950'],
-    ['沟通建议', ap.communication_suggestions || '', '#d29922'],
-    ['风险提示', ap.risk_warnings || '', '#f85149'],
-    ['产品推荐', ap.product_recommendations || '', '#a371f7'],
-    ['跟进建议', ap.next_steps || '', '#79c0ff'],
+    ['客户画像', ap.persona_summary || '', 'var(--accent-blue)'],
+    ['财务需求分析', ap.financial_needs_analysis || '', 'var(--accent-green)'],
+    ['沟通建议', ap.communication_suggestions || '', 'var(--accent-orange)'],
+    ['风险提示', ap.risk_warnings || '', 'var(--accent-red)'],
+    ['产品推荐', ap.product_recommendations || '', 'var(--accent-purple)'],
+    ['跟进建议', ap.next_steps || '', 'var(--accent-blue)'],
   ] as [string, string, string][]).filter(([, v]) => v && v !== '未知');
 
   const dimensions = parseScores(localCustomer.scores);
 
   const pp = (localCustomer as Customer).presales_prep || {};
   const ppSections = ([
-    ['客户生命周期分析', pp.lifecycle_analysis || '', '#58a6ff'],
-    ['潜在难点与顾虑', pp.potential_difficulties || '', '#f85149'],
-    ['应对话术', pp.response_scripts || '', '#3fb950'],
-    ['心态准备', pp.mindset_preparation || '', '#a371f7'],
-    ['维护动作与跟进', pp.maintenance_actions || '', '#d29922'],
+    ['客户生命周期分析', pp.lifecycle_analysis || '', 'var(--accent-blue)'],
+    ['潜在难点与顾虑', pp.potential_difficulties || '', 'var(--accent-red)'],
+    ['应对话术', pp.response_scripts || '', 'var(--accent-green)'],
+    ['心态准备', pp.mindset_preparation || '', 'var(--accent-purple)'],
+    ['维护动作与跟进', pp.maintenance_actions || '', 'var(--accent-orange)'],
   ] as [string, string, string][]).filter(([, v]) => v);
 
   const hasPrepData = ppSections.length > 0;
@@ -180,7 +180,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
         const label = secEl.getAttribute('data-pdf-section') || '';
         const canvas = await html2canvas(secEl, {
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--color-white)',
           scale: 3,
           logging: false,
         });
@@ -207,7 +207,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           const secEl = kycEls[k];
           if (!secEl.children.length && !(secEl.textContent || '').trim()) continue;
           const canvas = await html2canvas(secEl, {
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--color-white)',
             scale: 3,
             logging: false,
           });
@@ -257,12 +257,12 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   }, [localCustomer.name, showKyc, isHighValue, apSections.length]);
 
   const sectionBlock = (title: string, content: string, color: string) => (
-    <div key={title} className="bg-[#0d1117] border border-[#21262d] rounded-md p-3.5">
+    <div key={title} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-3.5">
       <div className="flex items-center gap-2 mb-1.5">
         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-        <h5 className="text-xs font-semibold text-[#e6edf3]">{title}</h5>
+        <h5 className="text-xs font-semibold text-[var(--text-primary)]">{title}</h5>
       </div>
-      <p className="text-sm text-[#8b949e] leading-relaxed whitespace-pre-wrap">{content}</p>
+      <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{content}</p>
     </div>
   );
 
@@ -271,12 +271,12 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1f6feb] to-[#58a6ff] flex items-center justify-center flex-shrink-0 shadow-glow-green">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--btn-blue)] to-[var(--accent-blue)] flex items-center justify-center flex-shrink-0 shadow-glow-green">
             <span className="text-sm font-bold text-white">{localCustomer.name.charAt(0)}</span>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-[#e6edf3]">{localCustomer.name}</h3>
-            <p className="text-xs text-[#6e7681] font-mono">
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">{localCustomer.name}</h3>
+            <p className="text-xs text-[var(--text-tertiary)] font-mono">
               {'structured_data' in localCustomer && 'updated_at' in localCustomer
                 ? `更新于 ${new Date((localCustomer as Customer).updated_at).toLocaleDateString('zh-CN')}`
                 : '新客户'}
@@ -303,15 +303,15 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-[#21262d]">
+      <div className="flex border-b border-[var(--border-subtle)]">
         {TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-[1px] ${
               activeTab === tab.key
-                ? 'text-[#e6edf3] border-[#58a6ff]'
-                : 'text-[#6e7681] border-transparent hover:text-[#c9d1d9] hover:border-[#30363d]'
+                ? 'text-[var(--text-primary)] border-[var(--accent-blue)]'
+                : 'text-[var(--text-tertiary)] border-transparent hover:text-[var(--text-primary)] hover:border-[var(--border-default)]'
             }`}
           >
             {tab.label}
@@ -326,7 +326,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           <div className="space-y-5">
             {/* Basic info always shows 9-grid */}
             <div data-pdf-section="基本信息">
-              <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2.5">基本信息</h4>
+              <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2.5">基本信息</h4>
               <div className="grid grid-cols-3 gap-2">
                 {fields.map(([label, value, key]) => {
                   const displayValue = fieldEdits[key] !== undefined ? fieldEdits[key] : value;
@@ -337,28 +337,28 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                     <div
                       key={key}
                       className={`relative rounded-md border p-2.5 min-h-[72px] flex flex-col ${
-                        isEmpty ? 'border-[#30363d]/50 bg-[#161b22]/50' : 'border-[#21262d] bg-[#0d1117]'
+                        isEmpty ? 'border-[var(--border-default)]/50 bg-[var(--bg-secondary)]/50' : 'border-[var(--border-subtle)] bg-[var(--bg-primary)]'
                       }`}
                     >
-                      <div className="text-[10px] font-medium text-[#6e7681] uppercase tracking-wider mb-1">{label}</div>
+                      <div className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">{label}</div>
                       {isEditing ? (
                         <textarea
-                          className="flex-1 w-full bg-[#161b22] border border-[#30363d] rounded p-1.5 text-xs text-[#e6edf3] resize-none focus:outline-none focus:border-[#58a6ff]"
+                          className="flex-1 w-full bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded p-1.5 text-xs text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent-blue)]"
                           value={fieldEdits[key] || ''}
                           onChange={e => handleFieldEdit(key, e.target.value)}
                           rows={2}
                         />
                       ) : !isEmpty ? (
-                        <p className="text-sm text-[#e6edf3] font-medium flex-1">{displayValue}</p>
+                        <p className="text-sm text-[var(--text-primary)] font-medium flex-1">{displayValue}</p>
                       ) : (
-                        <p className="text-sm text-[#30363d] flex-1">—</p>
+                        <p className="text-sm text-[var(--border-default)] flex-1">—</p>
                       )}
 
                       <div className="flex items-center justify-end mt-1">
                         {isEditing ? (
                           <button
                             onClick={() => saveFieldEdits()}
-                            className="text-[10px] px-2 py-0.5 rounded bg-[#238636] text-white hover:bg-[#2ea043] transition-colors"
+                            className="text-[10px] px-2 py-0.5 rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
                           >
                             保存
                           </button>
@@ -368,7 +368,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                               setFieldEdits(prev => ({ ...prev, [key]: displayValue }));
                               setEditingField(key);
                             }}
-                            className="text-[10px] px-1.5 py-0.5 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors pdf-hide"
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors pdf-hide"
                           >
                             ✎
                           </button>
@@ -382,27 +382,27 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {dimensions.length > 0 && (
               <div data-pdf-section="评分总览" className="space-y-4">
-                <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">
+                <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
                   评分总览
-                  <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+                  <span className="ml-2 font-normal normal-case text-[10px] text-[var(--text-placeholder)]">由 DeepSeek 生成</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {dimensions.map(d => (
-                    <div key={d.key} className="bg-[#0d1117] border border-[#21262d] rounded-md px-3 py-2.5">
+                    <div key={d.key} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-3 py-2.5">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-medium text-[#8b949e] uppercase tracking-wider">{d.label}</span>
+                        <span className="text-[10px] font-medium text-[var(--text-secondary)] uppercase tracking-wider">{d.label}</span>
                         <span className="text-xs font-bold font-mono tabular-nums" style={{ color: getScoreColor(d.value) }}>
-                          {d.value}<span className="text-[10px] font-normal text-[#484f58]">/10</span>
+                          {d.value}<span className="text-[10px] font-normal text-[var(--text-placeholder)]">/10</span>
                         </span>
                       </div>
-                      <div className="w-full h-1 bg-[#161b22] rounded-full mb-1.5 overflow-hidden">
+                      <div className="w-full h-1 bg-[var(--bg-secondary)] rounded-full mb-1.5 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{ width: `${d.value * 10}%`, backgroundColor: getScoreColor(d.value) }}
                         />
                       </div>
-                      <p className="text-[10px] text-[#484f58] leading-relaxed">
+                      <p className="text-[10px] text-[var(--text-placeholder)] leading-relaxed">
                         {d.reasoning}
                       </p>
                     </div>
@@ -416,13 +416,13 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             {apSections.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
+                  <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
                     AI 分析报告
-                    <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+                    <span className="ml-2 font-normal normal-case text-[10px] text-[var(--text-placeholder)]">由 DeepSeek 生成</span>
                   </h4>
                   <div className="flex items-center gap-2">
                     {'id' in localCustomer && (
-                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#484f58] transition-colors disabled:opacity-50 pdf-hide">
+                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-colors disabled:opacity-50 pdf-hide">
                         {regenerating ? '生成中...' : '⟳ 重新生成'}
                       </button>
                     )}
@@ -431,8 +431,8 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                         onClick={() => setShowKyc(!showKyc)}
                         className={`text-[10px] px-2 py-1 rounded border transition-colors pdf-hide ${
                           showKyc
-                            ? 'border-[#d29922]/40 text-[#d29922] bg-[#d29922]/10'
-                            : 'border-[#30363d] text-[#8b949e] hover:text-[#d29922] hover:border-[#d29922]/30'
+                            ? 'border-[var(--accent-orange)]/40 text-[var(--accent-orange)] bg-[var(--accent-orange)]/10'
+                            : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--accent-orange)] hover:border-[var(--accent-orange)]/30'
                         }`}
                       >
                         {showKyc ? '回到 AI 分析' : 'KYC 九宫格'}
@@ -456,9 +456,9 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             {apSections.length === 0 && isHighValue && (
               <div data-pdf-section="KYC 九宫格">
                 <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">KYC 九宫格</h4>
+                  <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">KYC 九宫格</h4>
                   {'id' in localCustomer && (
-                    <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors disabled:opacity-50">
+                    <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50">
                       {regenerating ? '生成中...' : '⟳ 先生成 AI 分析'}
                     </button>
                   )}
@@ -469,7 +469,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {fields.length === 0 && apSections.length === 0 && dimensions.length === 0 && (
               <div className="text-center py-6">
-                <p className="text-sm text-[#484f58]">暂无分析数据</p>
+                <p className="text-sm text-[var(--text-placeholder)]">暂无分析数据</p>
               </div>
             )}
           </div>
@@ -481,9 +481,9 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             {hasPrepData ? (
               <div data-pdf-section="售前准备报告">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider">
+                  <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
                     售前准备报告
-                    <span className="ml-2 font-normal normal-case text-[10px] text-[#484f58]">由 DeepSeek 生成</span>
+                    <span className="ml-2 font-normal normal-case text-[10px] text-[var(--text-placeholder)]">由 DeepSeek 生成</span>
                   </h4>
                   {onPresalesPrep && (
                     <button onClick={handlePrep} disabled={prepLoading} className="btn btn-secondary text-xs pdf-hide">
@@ -501,17 +501,17 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
               </div>
             ) : (
               <div className="text-center py-8">
-                <svg className="w-10 h-10 text-[#21262d] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
+                <svg className="w-10 h-10 text-[var(--text-placeholder)] mx-auto mb-3" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
                   <path d="M5.5 5.5a.75.75 0 0 1 1.5 0v.75h.75a.75.75 0 0 1 0 1.5H7v.75a.75.75 0 0 1-1.5 0v-.75h-.75a.75.75 0 0 1 0-1.5h.75v-.75Z"/>
                 </svg>
-                <p className="text-sm text-[#484f58] mb-3">暂无售前准备报告</p>
+                <p className="text-sm text-[var(--text-placeholder)] mb-3">暂无售前准备报告</p>
                 {onPresalesPrep ? (
                   <button onClick={handlePrep} disabled={prepLoading} className="btn btn-primary text-xs">
                     {prepLoading ? 'AI 生成中...' : '生成售前准备报告'}
                   </button>
                 ) : (
-                  <p className="text-xs text-[#30363d]">保存客户后即可生成</p>
+                  <p className="text-xs text-[var(--border-default)]">保存客户后即可生成</p>
                 )}
               </div>
             )}
@@ -527,7 +527,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             {'structured_data' in localCustomer && (
               (localCustomer as Customer).allocation_plan ? (
                 <div data-pdf-section="资产配置方案">
-                  <h4 className="text-[11px] font-semibold text-[#6e7681] uppercase tracking-wider mb-2">资产配置方案</h4>
+                  <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">资产配置方案</h4>
                   <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
                 </div>
               ) : (
@@ -540,7 +540,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
       {!hasAnyData && !hasPrepData && (
         <div className="text-center py-6">
-          <p className="text-sm text-[#484f58]">暂无分析数据</p>
+          <p className="text-sm text-[var(--text-placeholder)]">暂无分析数据</p>
         </div>
       )}
     </div>

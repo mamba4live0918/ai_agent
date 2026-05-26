@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import type { TranscriptSegment, ConnectionState } from '../hooks/useRealtimeASR';
 
 interface RealtimeTranscriptProps {
@@ -19,11 +19,29 @@ const STATUS_LABELS: Record<ConnectionState, string> = {
 };
 
 const STATUS_COLORS: Record<ConnectionState, string> = {
-  idle: '#484f58',
-  connecting: '#d29922',
-  streaming: '#3fb950',
-  disconnected: '#f85149',
+  idle: 'var(--text-placeholder)',
+  connecting: 'var(--accent-orange)',
+  streaming: 'var(--accent-green)',
+  disconnected: 'var(--accent-red)',
 };
+
+// Distinct colors for speaker roles to make conversation flow easy to follow
+const SPEAKER_COLORS: Record<string, string> = {
+  '销售': 'var(--accent-green)',
+  '客户': 'var(--accent-blue)',
+  '其他': 'var(--accent-purple)',
+};
+
+function getSpeakerColor(speakerName: string): string {
+  return SPEAKER_COLORS[speakerName] || 'var(--text-secondary)';
+}
+
+function getSpeakerLabel(seg: TranscriptSegment): string {
+  if (seg.speaker_name && seg.speaker_name !== seg.speaker) {
+    return seg.speaker_name;
+  }
+  return seg.speaker.replace('speaker_', '说话人');
+}
 
 export default function RealtimeTranscript({
   segments,
@@ -47,18 +65,18 @@ export default function RealtimeTranscript({
   const hasContent = segments.length > 0 || partialText.length > 0;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#21262d] bg-[#0d1117] flex-shrink-0">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] flex-shrink-0">
         <div className="flex items-center gap-2">
           {/* Recording indicator */}
           {isRecording && (
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f85149] opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#f85149]" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-red)] opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent-red)]" />
             </span>
           )}
-          <span className="text-xs font-semibold text-[#e6edf3]">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
             实验：实时语音
           </span>
         </div>
@@ -78,7 +96,7 @@ export default function RealtimeTranscript({
           {/* Collapse toggle */}
           <button
             onClick={() => setCollapsed((v) => !v)}
-            className="text-[#8b949e] hover:text-[#e6edf3] text-sm leading-none px-1 transition-colors"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm leading-none px-1 transition-colors"
             title={collapsed ? '展开' : '收起'}
           >
             {collapsed ? '▸' : '▾'}
@@ -91,16 +109,16 @@ export default function RealtimeTranscript({
           {/* Transcript area */}
           <div
             ref={scrollRef}
-            className="flex-1 min-h-[120px] max-h-[280px] overflow-y-auto px-3 py-2 space-y-1.5 bg-[#0d1117]"
+            className="flex-1 min-h-[120px] max-h-[280px] overflow-y-auto px-3 py-2 space-y-1.5 bg-[var(--bg-primary)]"
           >
             {error && (
-              <div className="text-[11px] text-[#f85149] bg-[#2a1f1f] border border-[#f85149]/30 rounded px-2 py-1.5">
+              <div className="text-[11px] text-[var(--accent-red)] bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded px-2 py-1.5">
                 {error}
               </div>
             )}
 
             {!hasContent && !error && (
-              <div className="text-[11px] text-[#484f58] text-center py-6">
+              <div className="text-[11px] text-[var(--text-placeholder)] text-center py-6">
                 {isRecording
                   ? '等待语音输入...'
                   : '点击下方按钮开始实时语音转录'}
@@ -111,11 +129,14 @@ export default function RealtimeTranscript({
             {segments.map((seg, i) => (
               <p
                 key={`${seg.start}-${i}`}
-                className="text-[12px] text-[#e6edf3] leading-relaxed"
+                className="text-[12px] text-[var(--text-primary)] leading-relaxed"
               >
                 {seg.speaker && (
-                  <span className="text-[#58a6ff] font-medium mr-1">
-                    [{seg.speaker.replace('speaker_', '说话人')}]
+                  <span
+                    className="font-medium mr-1"
+                    style={{ color: getSpeakerColor(seg.speaker_name || seg.speaker) }}
+                  >
+                    [{getSpeakerLabel(seg)}]
                   </span>
                 )}
                 {seg.text}
@@ -124,7 +145,7 @@ export default function RealtimeTranscript({
 
             {/* Partial text */}
             {partialText && (
-              <p className="text-[12px] text-[#8b949e] italic leading-relaxed">
+              <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
                 {partialText}
               </p>
             )}
@@ -134,11 +155,11 @@ export default function RealtimeTranscript({
           </div>
 
           {/* Bottom bar */}
-          <div className="px-3 py-2 border-t border-[#21262d] bg-[#0d1117] flex items-center gap-2 flex-shrink-0">
+          <div className="px-3 py-2 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] flex items-center gap-2 flex-shrink-0">
             {isRecording ? (
               <button
                 onClick={onStop}
-                className="flex-1 px-3 py-1.5 bg-[#2a1f1f] border border-[#f85149] rounded-md text-[#f85149] text-[11px] font-medium hover:bg-[#3a2222] transition-colors"
+                className="flex-1 px-3 py-1.5 bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-md text-[var(--accent-red)] text-[11px] font-medium hover:bg-[var(--color-danger-hover-bg)] transition-colors"
               >
                 停止录制
               </button>
@@ -146,7 +167,7 @@ export default function RealtimeTranscript({
               <button
                 onClick={onStart}
                 disabled={connectionState === 'connecting'}
-                className="flex-1 px-3 py-1.5 bg-[#238636] border border-[#2ea043] rounded-md text-white text-[11px] font-medium hover:bg-[#2ea043] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-3 py-1.5 bg-[var(--btn-primary)] border border-[var(--btn-primary-hover)] rounded-md text-white text-[11px] font-medium hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {connectionState === 'connecting' ? '连接中...' : '开始录制'}
               </button>
@@ -154,7 +175,7 @@ export default function RealtimeTranscript({
 
             {/* Segment counter */}
             {segments.length > 0 && (
-              <span className="text-[10px] text-[#484f58] flex-shrink-0">
+              <span className="text-[10px] text-[var(--text-placeholder)] flex-shrink-0">
                 {segments.length} 段
               </span>
             )}

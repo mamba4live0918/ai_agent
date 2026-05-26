@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { TrainingSession, TrainingSessionDetail, Persona } from '../types';
 import {
@@ -7,8 +7,6 @@ import {
 import SessionList from '../components/SessionList';
 import PersonaForm from '../components/PersonaForm';
 import TrainingSessionComponent from '../components/TrainingSession';
-import { useRealtimeASR } from '../hooks/useRealtimeASR';
-import RealtimeTranscript from '../components/RealtimeTranscript';
 
 const STORAGE_KEY = 'trainingActiveSessionId';
 
@@ -23,13 +21,9 @@ export default function Training() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showPersonaForm, setShowPersonaForm] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [showRealtime, setShowRealtime] = useState(false);
 
   const autoCreatedRef = useRef(false);
   const restoredRef = useRef(false);
-
-  // Real-time ASR hook (always called, only rendered when showRealtime is true)
-  const realtimeASR = useRealtimeASR();
 
   // Always fetch all sessions — don't filter by customerId so manual personas appear
   const fetchSessions = useCallback(async () => {
@@ -140,7 +134,7 @@ export default function Training() {
   return (
     <div className="flex h-full">
       {/* Left: Session list */}
-      <div className="w-[268px] flex-shrink-0 border-r-2 border-[#30363d] flex flex-col bg-[#0d1117]">
+      <div className="w-[268px] flex-shrink-0 border-r-2 border-[var(--border-default)] flex flex-col bg-[var(--bg-primary)]">
         <SessionList
           sessions={sessions}
           selectedId={selectedId}
@@ -151,16 +145,16 @@ export default function Training() {
       </div>
 
       {/* Right: Chat area or empty state */}
-      <div className="flex-1 min-w-0 bg-[#0d1117]">
+      <div className="flex-1 min-w-0 bg-[var(--bg-primary)]">
         {creating ? (
-          <div className="flex items-center justify-center h-full text-[#8b949e] text-sm">
+          <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
             <div className="text-center">
-              <div className="animate-spin w-6 h-6 border-2 border-[#58a6ff] border-t-transparent rounded-full mx-auto mb-3" />
+              <div className="animate-spin w-6 h-6 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full mx-auto mb-3" />
               <p>正在创建训练场景...</p>
             </div>
           </div>
         ) : detailLoading ? (
-          <div className="flex items-center justify-center h-full text-[#484f58] text-sm">加载中...</div>
+          <div className="flex items-center justify-center h-full text-[var(--text-placeholder)] text-sm">加载中...</div>
         ) : detail ? (
           <TrainingSessionComponent
             key={detail.id}
@@ -171,28 +165,16 @@ export default function Training() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="text-4xl mb-4">🎯</div>
-              <p className="text-sm text-[#e6edf3] font-medium mb-1">仿真培训 — AI 数字人对练</p>
-              <p className="text-xs text-[#484f58] mb-4">
+              <p className="text-sm text-[var(--text-primary)] font-medium mb-1">仿真培训 — AI 数字人对练</p>
+              <p className="text-xs text-[var(--text-placeholder)] mb-4">
                 {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
               </p>
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => setShowPersonaForm(true)}
-                  className="px-4 py-2 bg-[#238636] text-white text-xs rounded-md hover:bg-[#2ea043] transition-colors"
-                >
-                  + 新建训练
-                </button>
-                <button
-                  onClick={() => setShowRealtime((v) => !v)}
-                  className={`px-4 py-2 text-xs rounded-md transition-colors border ${
-                    showRealtime
-                      ? 'bg-[#1c2128] border-[#58a6ff] text-[#58a6ff]'
-                      : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#58a6ff]/50'
-                  }`}
-                >
-                  实验：实时语音
-                </button>
-              </div>
+              <button
+                onClick={() => setShowPersonaForm(true)}
+                className="px-4 py-2 bg-[var(--btn-primary)] text-white text-xs rounded-md hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                + 新建训练
+              </button>
             </div>
           </div>
         )}
@@ -205,18 +187,6 @@ export default function Training() {
         loading={creating}
       />
 
-      {/* Real-time ASR Transcript Panel */}
-      {showRealtime && (
-        <RealtimeTranscript
-          segments={realtimeASR.transcript}
-          partialText={realtimeASR.partialText}
-          isRecording={realtimeASR.isRecording}
-          connectionState={realtimeASR.connectionState}
-          error={realtimeASR.error}
-          onStart={realtimeASR.start}
-          onStop={realtimeASR.stop}
-        />
-      )}
     </div>
   );
 }

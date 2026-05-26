@@ -1,4 +1,4 @@
-import { useTauri } from '../hooks/useTauri';
+﻿import { useTauri } from '../hooks/useTauri';
 
 export default function TauriTitlebar() {
   const tauri = useTauri();
@@ -7,18 +7,18 @@ export default function TauriTitlebar() {
   return (
     <div
       data-tauri-drag-region
-      className="sticky top-0 z-50 flex items-center justify-between h-10 bg-[#161b22] border-b border-[#21262d] select-none flex-shrink-0 cursor-grab"
+      className="sticky top-0 z-50 flex items-center justify-between h-10 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] select-none flex-shrink-0 cursor-grab"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       <div className="flex items-center gap-2 px-3">
-        <div className="w-3 h-3 rounded-sm bg-[#3fb950]" />
-        <span className="text-[11px] font-semibold text-[#e6edf3]">SalesMate</span>
-        <span className="text-[9px] text-[#484f58] ml-1">Docker · DeepSeek</span>
+        <div className="w-3 h-3 rounded-sm bg-[var(--accent-green)]" />
+        <span className="text-[11px] font-semibold text-[var(--text-primary)]">SalesMate</span>
+        <span className="text-[9px] text-[var(--text-placeholder)] ml-1">Docker · DeepSeek</span>
       </div>
       <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           onClick={tauri.minimize}
-          className="w-11 h-full flex items-center justify-center text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors cursor-pointer"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
           title="最小化"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
@@ -27,7 +27,7 @@ export default function TauriTitlebar() {
         </button>
         <button
           onClick={tauri.toggleMaximize}
-          className="w-11 h-full flex items-center justify-center text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
           title="最大化"
         >
           {tauri.isMaximized ? (
@@ -43,7 +43,7 @@ export default function TauriTitlebar() {
         </button>
         <button
           onClick={tauri.close}
-          className="w-11 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#f85149] transition-colors"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[var(--accent-red)] transition-colors"
           title="关闭"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">

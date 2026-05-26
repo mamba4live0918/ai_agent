@@ -1,4 +1,4 @@
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+﻿import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { TrainingReview as TrainingReviewType, TrainingSessionDetail } from '../types';
 
 interface Props {
@@ -8,10 +8,10 @@ interface Props {
 }
 
 function getScoreColor(v: number): string {
-  if (v >= 8) return '#3fb950';
-  if (v >= 6) return '#d29922';
-  if (v >= 4) return '#f0883e';
-  return '#f85149';
+  if (v >= 8) return 'var(--accent-green)';
+  if (v >= 6) return 'var(--accent-orange)';
+  if (v >= 4) return 'var(--accent-orange)';
+  return 'var(--accent-red)';
 }
 
 export default function TrainingReview({ review, session, onBack }: Props) {
@@ -44,31 +44,31 @@ export default function TrainingReview({ review, session, onBack }: Props) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#010409]">
+    <div className="flex flex-col h-full bg-[var(--bg-primary)]">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-[#010409] border-b-2 border-[#21262d] flex-shrink-0">
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-[var(--bg-primary)] border-b-2 border-[var(--border-subtle)] flex-shrink-0">
         {onBack && (
-          <button onClick={onBack} className="text-[#8b949e] hover:text-[#e6edf3] text-xs">← 返回</button>
+          <button onClick={onBack} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs">← 返回</button>
         )}
-        <span className="text-sm text-[#e6edf3] font-semibold">复盘报告</span>
-        <span className="text-[10px] text-[#484f58]">|</span>
-        <span className="text-[11px] text-[#8b949e]">👤 {session.persona?.name || '未知'} · {session.scenario}</span>
-        <span className="text-[10px] text-[#484f58]">{new Date(review.created_at).toLocaleString('zh-CN')}</span>
+        <span className="text-sm text-[var(--text-primary)] font-semibold">复盘报告</span>
+        <span className="text-[10px] text-[var(--text-placeholder)]">|</span>
+        <span className="text-[11px] text-[var(--text-secondary)]">👤 {session.persona?.name || '未知'} · {session.scenario}</span>
+        <span className="text-[10px] text-[var(--text-placeholder)]">{new Date(review.created_at).toLocaleString('zh-CN')}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Score overview */}
-        <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-          <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">评分概览</h3>
+        <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+          <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">评分概览</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {scoreCards.map(card => (
-              <div key={card.key} className={`rounded-lg p-3 text-center ${card.primary ? 'bg-[#1c2128] border border-[#30363d]' : 'bg-[#161b22] border border-[#30363d]'}`}>
-                <div className="text-[10px] text-[#6e7681] mb-1">{card.label}</div>
-                <div className={`text-2xl font-bold ${card.primary ? 'text-[#e6edf3]' : ''}`} style={{ color: card.primary ? undefined : getScoreColor(card.value || 0) }}>
+              <div key={card.key} className={`rounded-lg p-3 text-center ${card.primary ? 'bg-[var(--bg-overlay)] border border-[var(--border-default)]' : 'bg-[var(--bg-secondary)] border border-[var(--border-default)]'}`}>
+                <div className="text-[10px] text-[var(--text-tertiary)] mb-1">{card.label}</div>
+                <div className={`text-2xl font-bold ${card.primary ? 'text-[var(--text-primary)]' : ''}`} style={{ color: card.primary ? undefined : getScoreColor(card.value || 0) }}>
                   {card.value ?? '—'}
                 </div>
-                <div className="text-[9px] text-[#484f58]">/ 10</div>
-                <div className="mt-1.5 h-1 bg-[#21262d] rounded-full overflow-hidden">
+                <div className="text-[9px] text-[var(--text-placeholder)]">/ 10</div>
+                <div className="mt-1.5 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: `${(card.value || 0) * 10}%`, backgroundColor: getScoreColor(card.value || 0) }}
@@ -81,62 +81,62 @@ export default function TrainingReview({ review, session, onBack }: Props) {
 
         {/* Radar + Trend */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-            <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">能力雷达图</h3>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+            <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">能力雷达图</h3>
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={radarData}>
-                <PolarGrid stroke="#21262d" />
-                <PolarAngleAxis dataKey="dimension" tick={{ fill: '#8b949e', fontSize: 10 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: '#484f58', fontSize: 9 }} />
-                <Radar name="评分" dataKey="value" stroke="#58a6ff" fill="#58a6ff" fillOpacity={0.15} />
+                <PolarGrid stroke="var(--border-subtle)" />
+                <PolarAngleAxis dataKey="dimension" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: 'var(--text-placeholder)', fontSize: 9 }} />
+                <Radar name="评分" dataKey="value" stroke="var(--accent-blue)" fill="var(--accent-blue)" fillOpacity={0.15} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-            <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">历史趋势</h3>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+            <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">历史趋势</h3>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={trendData}>
-                <CartesianGrid stroke="#21262d" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: '#8b949e', fontSize: 10 }} />
-                <YAxis domain={[0, 10]} tick={{ fill: '#484f58', fontSize: 9 }} />
+                <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                <YAxis domain={[0, 10]} tick={{ fill: 'var(--text-placeholder)', fontSize: 9 }} />
                 <Tooltip
-                  contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, fontSize: 11 }}
-                  labelStyle={{ color: '#e6edf3' }}
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 6, fontSize: 11 }}
+                  labelStyle={{ color: 'var(--text-primary)' }}
                 />
-                <Line type="monotone" dataKey="综合" stroke="#58a6ff" strokeWidth={2} dot={{ fill: '#58a6ff', r: 4 }} />
-                <Line type="monotone" dataKey="表达逻辑" stroke="#3fb950" strokeWidth={1.5} dot={{ fill: '#3fb950', r: 3 }} />
-                <Line type="monotone" dataKey="情绪情商" stroke="#d29922" strokeWidth={1.5} dot={{ fill: '#d29922', r: 3 }} />
+                <Line type="monotone" dataKey="综合" stroke="var(--accent-blue)" strokeWidth={2} dot={{ fill: 'var(--accent-blue)', r: 4 }} />
+                <Line type="monotone" dataKey="表达逻辑" stroke="var(--accent-green)" strokeWidth={1.5} dot={{ fill: 'var(--accent-green)', r: 3 }} />
+                <Line type="monotone" dataKey="情绪情商" stroke="var(--accent-orange)" strokeWidth={1.5} dot={{ fill: 'var(--accent-orange)', r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
-            <p className="text-[9px] text-[#484f58] text-center mt-1">趋势数据将在多次训练后累积展示</p>
+            <p className="text-[9px] text-[var(--text-placeholder)] text-center mt-1">趋势数据将在多次训练后累积展示</p>
           </div>
         </div>
 
         {/* Coach overall assessment */}
         {review.overall_comment && (
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-            <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">教练总评</h3>
-            <p className="text-xs text-[#8b949e] leading-relaxed whitespace-pre-wrap">{review.overall_comment}</p>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+            <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">教练总评</h3>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{review.overall_comment}</p>
           </div>
         )}
 
         {/* Phrasing comparison */}
         {highlights.length > 0 && (
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-            <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">话术点评</h3>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+            <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">话术点评</h3>
             <div className="space-y-2.5">
               {highlights.map((h, i) => (
-                <div key={i} className="border border-[#21262d] rounded-md overflow-hidden">
-                  <div className={`px-3 py-1.5 text-[10px] border-b border-[#21262d] ${h.type === 'good' ? 'bg-[#161b22] text-[#3fb950]' : 'bg-[#161b22] text-[#f85149]'}`}>
+                <div key={i} className="border border-[var(--border-subtle)] rounded-md overflow-hidden">
+                  <div className={`px-3 py-1.5 text-[10px] border-b border-[var(--border-subtle)] ${h.type === 'good' ? 'bg-[var(--bg-secondary)] text-[var(--accent-green)]' : 'bg-[var(--bg-secondary)] text-[var(--accent-red)]'}`}>
                     {h.type === 'good' ? '👍 表现好的回复' : '👎 需要改进的回复'}
                   </div>
-                  <div className="px-3 py-2 text-[11px] text-[#e6edf3] leading-relaxed">{h.message_content}</div>
-                  <div className={`px-3 py-1.5 text-[10px] border-t border-[#21262d] ${h.type === 'good' ? 'bg-[#0d1117] text-[#3fb950]' : 'bg-[#0d1117] text-[#f85149]'}`}>
+                  <div className="px-3 py-2 text-[11px] text-[var(--text-primary)] leading-relaxed">{h.message_content}</div>
+                  <div className={`px-3 py-1.5 text-[10px] border-t border-[var(--border-subtle)] ${h.type === 'good' ? 'bg-[var(--bg-primary)] text-[var(--accent-green)]' : 'bg-[var(--bg-primary)] text-[var(--accent-red)]'}`}>
                     {h.type === 'good' ? '✓ ' : '✗ '}{h.comment}
                   </div>
                   {h.improved_version && (
-                    <div className="px-3 py-2 text-[11px] text-[#58a6ff] leading-relaxed border-t border-[#30363d] bg-[#0d1117]">
-                      <span className="text-[10px] text-[#58a6ff] font-semibold">🔧 改进版话术：</span>{h.improved_version}
+                    <div className="px-3 py-2 text-[11px] text-[var(--accent-blue)] leading-relaxed border-t border-[var(--border-default)] bg-[var(--bg-primary)]">
+                      <span className="text-[10px] text-[var(--accent-blue)] font-semibold">🔧 改进版话术：</span>{h.improved_version}
                     </div>
                   )}
                 </div>
@@ -148,22 +148,22 @@ export default function TrainingReview({ review, session, onBack }: Props) {
         {/* Skill gap + Next steps */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {weakness.length > 0 && (
-            <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-              <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">技能短板</h3>
+            <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+              <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">技能短板</h3>
               <div className="space-y-2">
                 {weakness.map((w, i) => {
-                  const levelColors: Record<string, string> = { '弱': '#f85149', '待提升': '#f0883e', '一般': '#d29922', '强': '#3fb950' };
+                  const levelColors: Record<string, string> = { '弱': 'var(--accent-red)', '待提升': 'var(--accent-orange)', '一般': 'var(--accent-orange)', '强': 'var(--accent-green)' };
                   const levelWidths: Record<string, string> = { '弱': '25%', '待提升': '40%', '一般': '60%', '强': '85%' };
                   return (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#8b949e] min-w-[56px]">{w.skill}</span>
-                      <div className="flex-1 h-1 bg-[#21262d] rounded-full overflow-hidden">
+                      <span className="text-[10px] text-[var(--text-secondary)] min-w-[56px]">{w.skill}</span>
+                      <div className="flex-1 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
-                          style={{ width: levelWidths[w.level] || '40%', backgroundColor: levelColors[w.level] || '#f0883e' }}
+                          style={{ width: levelWidths[w.level] || '40%', backgroundColor: levelColors[w.level] || 'var(--accent-orange)' }}
                         />
                       </div>
-                      <span className="text-[9px] min-w-[32px]" style={{ color: levelColors[w.level] || '#8b949e' }}>{w.level}</span>
+                      <span className="text-[9px] min-w-[32px]" style={{ color: levelColors[w.level] || 'var(--text-secondary)' }}>{w.level}</span>
                     </div>
                   );
                 })}
@@ -171,12 +171,12 @@ export default function TrainingReview({ review, session, onBack }: Props) {
             </div>
           )}
           {nextSteps.length > 0 && (
-            <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-3.5">
-              <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-wider mb-3">下一步建议</h3>
-              <div className="text-[11px] text-[#8b949e] leading-relaxed space-y-2">
+            <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3.5">
+              <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">下一步建议</h3>
+              <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-2">
                 {nextSteps.sort((a, b) => a.priority - b.priority).map((ns, i) => (
                   <p key={i} className="ml-1">
-                    <span className="text-[#e6edf3] font-medium">{ns.priority}.</span> {ns.action}
+                    <span className="text-[var(--text-primary)] font-medium">{ns.priority}.</span> {ns.action}
                   </p>
                 ))}
               </div>

@@ -396,3 +396,48 @@ export interface GroupMember {
   group_id: string | null;
   created_at: string;
 }
+
+// ─── Realtime Sessions ───
+export interface RealtimeSessionSummary {
+  id: string;
+  status: string;
+  speaker_count: number;
+  segment_count: number;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string | null;
+  preview: string | null;
+}
+
+export interface RealtimeSessionList {
+  items: RealtimeSessionSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface RealtimeSegmentDetail {
+  id: string;
+  session_id: string;
+  start: number;
+  end: number;
+  text: string;
+  speaker: string;
+  confidence: number;
+  asr_model: string;
+  created_at: string | null;
+}
+
+export interface RealtimeSessionDetail {
+  session: {
+    id: string;
+    user_id: string;
+    status: string;
+    speaker_count: number;
+    started_at: string | null;
+    ended_at: string | null;
+    created_at: string | null;
+  };
+  segments: RealtimeSegmentDetail[];
+}

@@ -11,6 +11,10 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **ORM** | SQLAlchemy + Alembic (迁移) |
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Jina AI (`jina-embeddings-v3`) |
+| **语音转录** | faster-whisper `large-v3-turbo` + OpenCC `t2s` 简繁转换 + ffmpeg |
+| **说话人分离** | pyannote.audio `speaker-diarization-3.1` + 在线聚类 (cosine similarity + EMA centroid) |
+| **VAD** | Silero-VAD ONNX (8kHz, 32ms 窗口) |
+| **TTS** | edge-tts (`zh-CN-XiaoxiaoNeural`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 
@@ -24,22 +28,33 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   ├── config.py            # 环境变量配置
 │   │   ├── database.py          # SQLAlchemy engine + session
 │   │   ├── models/              # ORM 模型
-│   │   │   ├── user.py          # User (含 hashed_password, role)
+│   │   │   ├── user.py          # User (含 hashed_password, role, group_id)
+│   │   │   ├── group.py         # Group (含 admin_id FK→users)
 │   │   │   ├── knowledge.py     # Category, Document
 │   │   │   ├── customer.py      # Customer (含 presales_prep, allocation_plan JSONB)
 │   │   │   ├── product.py       # Product (含 nav_history JSONB)
-│   │   │   └── training.py      # TrainingSession / Message / Review
+│   │   │   ├── training.py      # TrainingSession / Message / Review
+│   │   │   ├── post_sales.py    # PostSalesSession / PostSalesMessage
+│   │   │   ├── feedback.py      # Feedback (评分 + 评价)
+│   │   │   └── realtime_session.py  # RealtimeSession / RealtimeSegment / RealtimeCoachEvent
 │   │   ├── schemas/             # Pydantic 请求/响应
 │   │   │   ├── auth.py          # UserRegister, UserLogin, UserResponse, TokenResponse
 │   │   │   ├── instructor.py    # TrainingStatsOverview, PerUserStats, TrainingTrendPoint
-│   │   │   └── training.py      # 训练相关 Pydantic 模型
+│   │   │   ├── training.py      # 训练相关 Pydantic 模型
+│   │   │   ├── post_sales.py    # 售后分析 Pydantic 模型
+│   │   │   ├── feedback.py      # 反馈 Pydantic 模型
+│   │   │   └── group.py         # 分组管理 Pydantic 模型
 │   │   ├── routers/             # API 路由
-│   │   │   ├── auth.py          # 注册/登录/当前用户
+│   │   │   ├── auth.py          # 注册/登录/当前用户/用户管理
 │   │   │   ├── knowledge.py     # 知识库 CRUD + 文档上传/删除（含 ChromaDB 清理）
 │   │   │   ├── customer.py      # 客户 CRUD + AI 分析 + 售前准备 + 配置方案
 │   │   │   ├── product.py       # 产品库 CRUD + CSV 批量导入
 │   │   │   ├── training.py      # 仿真培训 API（7 端点）
 │   │   │   ├── instructor.py    # 讲师端口统计 + CSV 导出
+│   │   │   ├── post_sales.py    # 售后分析（会话 + 音频上传 + 报告生成）
+│   │   │   ├── feedback.py      # 用户反馈（提交/统计/管理员查看）
+│   │   │   ├── groups.py        # 分组管理 CRUD + 成员管理
+│   │   │   ├── realtime.py      # WebSocket 实时语音陪跑（ASR + 教练 + TTS）
 │   │   │   └── chat.py          # RAG 问答
 │   │   ├── services/
 │   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
@@ -47,7 +62,13 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── customer_service.py   # 客户 AI 画像 + 售前准备生成（KB 优先）
 │   │   │   ├── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
 │   │   │   ├── training_service.py   # 客户模拟 + 教练提示 + 复盘报告（KB 优先）
-│   │   │   └── fund_service.py       # 东方财富 API 获取真实基金净值走势
+│   │   │   ├── fund_service.py       # 东方财富 API 获取真实基金净值走势
+│   │   │   ├── post_sales_service.py # 音频转录 + 售后报告 + KB 匹配
+│   │   │   ├── realtime_asr.py       # 实时 ASR 流水线（VAD + faster-whisper）
+│   │   │   ├── speaker_clustering.py # 在线说话人聚类（pyannote embedding）
+│   │   │   ├── trigger_engine.py     # 触发器引擎（YAML 规则 + DeepSeek 教练提示）
+│   │   │   ├── realtime_service.py   # 实时会话归档（bulk persist）
+│   │   │   └── tts_service.py        # edge-tts 语音合成 + 流式输出
 │   │   └── utils/
 │   │       ├── auth.py              # JWT + bcrypt + 认证依赖注入 + 用户/文档过滤
 │   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
@@ -60,9 +81,16 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── Dashboard.tsx    # 首页统计
 │   │   │   ├── KnowledgeBase.tsx    # 知识库（分类筛选 + 上传 + RAG 对话）
 │   │   │   ├── CustomerAnalysis.tsx # 客户列表（搜索 + 分页 + CRUD）
-│   │   │   └── Training.tsx         # 仿真培训（会话列表 + 聊天 + 复盘弹窗）
+│   │   │   ├── Training.tsx         # 仿真培训（会话列表 + 聊天 + 复盘弹窗）
+│   │   │   ├── PostSalesAnalysis.tsx # 售后分析（会话列表 + 新建）
+│   │   │   ├── RealTimeVoice.tsx    # 实时语音陪跑主页面
+│   │   │   ├── Feedback.tsx         # 用户反馈（星级评分 + 统计）
+│   │   │   ├── AdminUsers.tsx       # 用户管理（列表/角色/添加/删除）
+│   │   │   ├── AdminFeedback.tsx    # 反馈总览（管理员查看全部）
+│   │   │   ├── AdminGroups.tsx      # 分组管理（CRUD + 成员管理）
+│   │   │   └── InstructorDashboard.tsx # 讲师统计面板 + CSV 导出
 │   │   ├── components/
-│   │   │   ├── Layout.tsx       # GitHub 风格侧边栏布局
+│   │   │   ├── Layout.tsx       # GitHub 风格侧边栏布局（含主题切换）
 │   │   │   ├── ChatPanel.tsx    # RAG 问答面板
 │   │   │   ├── CustomerForm.tsx # 客户录入（自由文本/表单）
 │   │   │   ├── CustomerProfile.tsx   # 客户详情（3 Tab：分析/售前准备/配置方案）
@@ -74,9 +102,15 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── DocumentUpload.tsx    # 文档上传（带进度条）
 │   │   │   ├── SearchBar.tsx    # 搜索栏
 │   │   │   ├── SessionList.tsx      # 训练记录侧边栏
+│   │   │   ├── SessionSidebar.tsx   # 会话侧边栏（共享组件）
 │   │   │   ├── PersonaForm.tsx      # 手动创建数字人客户
 │   │   │   ├── TrainingSession.tsx  # 训练聊天 + 教练实时提示
-│   │   │   └── TrainingReview.tsx   # 复盘报告（雷达图 + 话术 + PDF）
+│   │   │   ├── TrainingReview.tsx   # 复盘报告（雷达图 + 话术 + PDF）
+│   │   │   ├── PostSalesSession.tsx # 售后对话（录音/上传/手动输入）
+│   │   │   ├── PostSalesReport.tsx  # 售后报告（雷达图/情绪轨迹/PDF）
+│   │   │   ├── RealtimeTranscript.tsx # 实时转录面板（说话人彩色标签）
+│   │   │   ├── RealtimeCoach.tsx    # 实时教练提示（打字机效果）
+│   │   │   └── FeedbackForm.tsx     # 反馈表单（星级 + 评价）
 │   │   ├── services/api.ts      # API 调用封装（含上传进度跟踪）
 │   │   └── types/index.ts       # TypeScript 类型定义
 │   ├── tailwind.config.js       # GitHub Primer 暗色主题配置
@@ -226,6 +260,33 @@ npm run dev
 |------|------|------|
 | POST | `/api/chat` | `{"message", "conversation_id"?}` → `{"answer", "sources", "conversation_id"}` |
 
+### 售后分析
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/post-sales/sessions` | 创建售后会话（可选 `customer_id` 关联客户） |
+| GET | `/api/post-sales/sessions` | 会话列表 `?status=&page=&page_size=` |
+| GET | `/api/post-sales/sessions/{id}` | 会话详情（含消息 + 报告） |
+| PATCH | `/api/post-sales/sessions/{id}` | 更新会话（关联/解除客户） |
+| DELETE | `/api/post-sales/sessions/{id}` | 删除会话 |
+| POST | `/api/post-sales/sessions/{id}/messages` | 添加对话消息（text / role） |
+| POST | `/api/post-sales/sessions/{id}/audio` | 上传音频文件（自动转录 + 说话人分离） |
+| POST | `/api/post-sales/sessions/{id}/end` | 结束通话 → AI 生成分析报告 |
+
+### 用户反馈
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/feedback` | 提交反馈 `{"rating": 1-5, "comment"?}` |
+| GET | `/api/feedback/my` | 我的反馈列表 |
+| GET | `/api/feedback/statistics` | 反馈统计（总数/平均分/分布） |
+| GET | `/api/feedback/admin` | 管理员查看全部反馈（分组管理员仅看组内） |
+
+### 实时语音陪跑
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| WS | `/ws/realtime/session` | WebSocket 实时语音会话（二进制音频 + JSON 消息） |
+| GET | `/api/realtime/sessions` | 历史会话列表 |
+| GET | `/api/realtime/sessions/{id}` | 会话回放（含分段 + 教练事件） |
+
 ### 仿真培训
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -333,6 +394,35 @@ npm run dev
 - 文档/客户/产品 三项统计 + 3 大功能模块快捷入口
 - 独立产品库页面（`/products`），侧边栏导航
 - 系统组件健康状态
+
+**售后分析（Post-Sales Analysis）**
+- 录音/上传/手动输入三种方式记录销售对话
+- faster-whisper `large-v3-turbo` 自动语音转录 + OpenCC 繁→简转换
+- pyannote.audio 说话人分离（最多 4 人，按发言时长映射为 销售/客户/其他）
+- 客户关联：`PATCH /sessions/{id}` 支持关联/解除客户
+- AI 分析报告浮窗弹窗：综合评分 + 通话摘要 + 情绪轨迹图 + 对话占比饼图 + 能力评估雷达图 + 成交概率仪表盘 + 关键时刻时间线 + 错失机会 + 优势/待改进 + 知识库匹配
+- 报告支持 html2canvas + jsPDF 导出
+
+**实时语音陪跑（Real-time Voice AI）**
+- WebSocket 实时音频流传输（MediaRecorder API → 100ms 分片 → 服务端处理）
+- 四阶段流水线：Silero-VAD 语音检测 → faster-whisper 实时转录 → 说话人在线聚类 → 教练触发器引擎
+- ASR：faster-whisper `large-v3-turbo` INT8 CPU 推理，OpenCC 简繁转换
+- 说话人聚类：pyannote embedding (512 维) + 增量余弦相似度匹配 + EMA 质心更新 (alpha=0.3)
+- 教练触发器引擎：8 条 YAML 规则（犹豫/价格异议/竞品提及/承诺信号/反对/长静默/多人讨论/情绪转变），DeepSeek 流式生成提示
+- TTS 语音合成：edge-tts (`zh-CN-XiaoxiaoNeural`) + 语音打断检测（RMS 音量监测，阈值 0.08）
+- 前端：实时转录面板（说话人彩色标签）+ 教练提示侧边栏（打字机效果 + 自动消失/钉住）
+- 会话归档：WebSocket 断开后 bulk persist 到 PostgreSQL，支持历史回放
+
+**用户反馈系统**
+- 星级评分（1-5 星）+ 文字评价
+- 用户查看自己的反馈记录 + 展开查看详情
+- 管理员查看全部反馈（分组管理员仅看组内）
+- 反馈统计：总数/平均分/评分分布
+
+**主题切换**
+- CSS 自定义属性驱动的双主题（暗色 GitHub-dark + 奶油色 Light Mode）
+- ThemeContext 持久化到 localStorage，刷新保持主题偏好
+- 侧边栏底部一键切换太阳/月亮图标
 
 ## License
 

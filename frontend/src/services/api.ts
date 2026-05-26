@@ -321,3 +321,13 @@ export const addGroupMember = (groupId: string, userId: string) =>
 
 export const removeGroupMember = (groupId: string, userId: string) =>
   request<void>(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' });
+
+// ─── Realtime Sessions ───
+export const getRealtimeSessions = (page = 1, pageSize = 20) =>
+  request<import('../types').RealtimeSessionList>(`/realtime/sessions?page=${page}&page_size=${pageSize}`);
+
+export const getRealtimeSession = (id: string) =>
+  request<import('../types').RealtimeSessionDetail>(`/realtime/sessions/${id}`);
+
+export const deleteRealtimeSession = (id: string) =>
+  request<void>(`/realtime/sessions/${id}`, { method: 'DELETE' });
