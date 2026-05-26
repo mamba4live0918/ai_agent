@@ -24,10 +24,13 @@ from typing import Optional
 
 import numpy as np
 import torch
+from opencc import OpenCC
 
 from ..config import settings
 
 logger = logging.getLogger(__name__)
+
+_cc = OpenCC("t2s")  # Traditional Chinese → Simplified Chinese
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -367,8 +370,12 @@ class VADProcessor:
         end_in = min(len(self._audio_buffer), end_in)
         if end_in > 0:
             self._audio_buffer = self._audio_buffer[end_in:]
-        # Also trim vad buffer proportionally
-        vad_trim = min(len(self._vad_buffer), end_vad)
+        # Also trim VAD buffer: account for samples already consumed
+        # via window processing (_current_sample has been advanced past
+        # the triggering window). Only trim remaining samples that fall
+        # within [0, end_vad].
+        remaining_to_trim = max(0, end_vad - self._current_sample)
+        vad_trim = min(len(self._vad_buffer), remaining_to_trim)
         if vad_trim > 0:
             self._vad_buffer = self._vad_buffer[vad_trim:]
 
@@ -462,7 +469,7 @@ class ASRProcessor:
                 if hasattr(seg, "end"):
                     seg_end = max(seg_end, seg.end)
 
-            text = "".join(texts)
+            text = _cc.convert("".join(texts))
             # Convert log-prob to confidence in [0, 1]
             if confidences:
                 avg_logprob = float(np.mean(confidences))
