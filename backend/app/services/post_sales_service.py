@@ -122,7 +122,7 @@ def transcribe_audio(file_path: str) -> list[dict]:
     # Whisper transcription
     try:
         from faster_whisper import WhisperModel
-        model = WhisperModel("large-v3", device="cpu", compute_type="int8")
+        model = WhisperModel("large-v3-turbo", device="cpu", compute_type="int8")
         whisper_segments, _ = model.transcribe(wav_path, beam_size=5)
         segments = [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in whisper_segments]
     except ImportError:

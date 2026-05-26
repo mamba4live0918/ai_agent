@@ -193,7 +193,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - **向量存储**: ChromaDB（本地持久化）
 - **Embedding**: Jina AI `jina-embeddings-v3`（OpenAI 兼容，免费额度 100 万 token/天）
 - **LLM**: DeepSeek API（`deepseek-reasoner`，OpenAI 兼容客户端）
-- **语音转录**: faster-whisper `large-v3` + OpenCC `t2s` 简繁转换 + ffmpeg 音频预处理
+- **语音转录**: faster-whisper `large-v3-turbo` + OpenCC `t2s` 简繁转换 + ffmpeg 音频预处理
 - **文档加载**: PyMuPDF (PDF)、Docx2txtLoader (DOCX)、TextLoader (TXT/MD)、UnstructuredPowerPointLoader (PPTX)
 
 ## 启动命令
@@ -228,7 +228,7 @@ curl http://localhost:8000/api/health
 
 - **创建方式**：从客户分析页一键发起（带 customerId），或从售后分析页独立创建
 - **录音功能**：支持在 app 内直接录制（MediaRecorder API → `.webm`）、上传音频文件、手动输入对话
-- **音频转录**：ffmpeg 转 16kHz WAV → faster-whisper `large-v3` 模型自动转录（中英文）
+- **音频转录**：ffmpeg 转 16kHz WAV → faster-whisper `large-v3-turbo` 模型自动转录（中英文）
 - **对话记录**：转录结果按 segments 分条展示，区分销售/客户/系统角色
 - **客户关联**：`PATCH /sessions/{id}` 支持关联/解除客户，session 左侧列表实时更新
 - **报告浮窗**：结束通话后 AI 分析报告以浮窗弹窗展示（html2canvas + jsPDF 导出），不替换对话视图
@@ -238,7 +238,7 @@ curl http://localhost:8000/api/health
 ### 语音转录（Audio Transcription）
 
 - **前端录制**：MediaRecorder API 录制 `audio/webm` 格式，支持实时录制和文件上传两种方式
-- **后端处理**：`post_sales_service.transcribe_audio()` — ffmpeg 转 16kHz 单声道 WAV → faster-whisper `large-v3` (CPU int8) 转录
+- **后端处理**：`post_sales_service.transcribe_audio()` — ffmpeg 转 16kHz 单声道 WAV → faster-whisper `large-v3-turbo` (CPU int8) 转录
 - **简繁转换**：OpenCC `t2s` 自动将转录文本从繁体转简体中文
 - **存储路径**：音频文件保存在 `audio_uploads/` 目录，上传后立即转录并存入 PostgreSQL
 - **错误处理**：转录失败不阻塞流程，用户仍可手动输入对话内容
