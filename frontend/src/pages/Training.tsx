@@ -7,6 +7,8 @@ import {
 import SessionList from '../components/SessionList';
 import PersonaForm from '../components/PersonaForm';
 import TrainingSessionComponent from '../components/TrainingSession';
+import { useRealtimeASR } from '../hooks/useRealtimeASR';
+import RealtimeTranscript from '../components/RealtimeTranscript';
 
 const STORAGE_KEY = 'trainingActiveSessionId';
 
@@ -21,9 +23,13 @@ export default function Training() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showPersonaForm, setShowPersonaForm] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showRealtime, setShowRealtime] = useState(false);
 
   const autoCreatedRef = useRef(false);
   const restoredRef = useRef(false);
+
+  // Real-time ASR hook (always called, only rendered when showRealtime is true)
+  const realtimeASR = useRealtimeASR();
 
   // Always fetch all sessions — don't filter by customerId so manual personas appear
   const fetchSessions = useCallback(async () => {
@@ -169,12 +175,24 @@ export default function Training() {
               <p className="text-xs text-[#484f58] mb-4">
                 {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
               </p>
-              <button
-                onClick={() => setShowPersonaForm(true)}
-                className="px-4 py-2 bg-[#238636] text-white text-xs rounded-md hover:bg-[#2ea043] transition-colors"
-              >
-                + 新建训练
-              </button>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setShowPersonaForm(true)}
+                  className="px-4 py-2 bg-[#238636] text-white text-xs rounded-md hover:bg-[#2ea043] transition-colors"
+                >
+                  + 新建训练
+                </button>
+                <button
+                  onClick={() => setShowRealtime((v) => !v)}
+                  className={`px-4 py-2 text-xs rounded-md transition-colors border ${
+                    showRealtime
+                      ? 'bg-[#1c2128] border-[#58a6ff] text-[#58a6ff]'
+                      : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-[#e6edf3] hover:border-[#58a6ff]/50'
+                  }`}
+                >
+                  实验：实时语音
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -186,6 +204,19 @@ export default function Training() {
         onSubmit={handleCreateFromPersona}
         loading={creating}
       />
+
+      {/* Real-time ASR Transcript Panel */}
+      {showRealtime && (
+        <RealtimeTranscript
+          segments={realtimeASR.transcript}
+          partialText={realtimeASR.partialText}
+          isRecording={realtimeASR.isRecording}
+          connectionState={realtimeASR.connectionState}
+          error={realtimeASR.error}
+          onStart={realtimeASR.start}
+          onStop={realtimeASR.stop}
+        />
+      )}
     </div>
   );
 }
