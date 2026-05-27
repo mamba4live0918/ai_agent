@@ -14,7 +14,7 @@ export default function CategoryNav({ categories, selectedId, onSelect }: Catego
       <span className="text-[11px] font-semibold text-[var(--text-placeholder)] uppercase tracking-wider mr-1">分类</span>
       <button
         onClick={() => onSelect(null)}
-        className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-100 border ${
+        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border ${
           selectedId === null
             ? 'bg-[var(--btn-blue)] text-white border-[var(--btn-blue-hover)]'
             : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
@@ -29,7 +29,7 @@ export default function CategoryNav({ categories, selectedId, onSelect }: Catego
         <button
           key={cat.id}
           onClick={() => onSelect(cat.id)}
-          className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-100 border ${
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border ${
             selectedId === cat.id
               ? 'bg-[var(--btn-blue)] text-white border-[var(--btn-blue-hover)]'
               : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'

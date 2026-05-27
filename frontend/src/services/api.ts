@@ -87,14 +87,43 @@ export const createCategory = (data: { name: string; description?: string; icon?
   request<import('../types').Category>('/knowledge/categories', { method: 'POST', body: JSON.stringify(data) });
 
 // Documents
-export const getDocuments = (categoryId?: string, q?: string) => {
+export const getDocuments = (categoryId?: string, q?: string, page = 1, pageSize = 20) => {
   const params = new URLSearchParams();
   if (categoryId) params.set('category_id', categoryId);
   if (q) params.set('q', q);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
   return request<import('../types').DocumentList>(`/knowledge/documents?${params}`);
 };
 export const getDocument = (id: string) =>
   request<import('../types').Document>(`/knowledge/documents/${id}`);
+export const getDocumentContent = (id: string) =>
+  request<import('../types').DocumentContent>(`/knowledge/documents/${id}/content`);
+export const downloadDocument = (id: string, title: string) => {
+  const token = localStorage.getItem('token');
+  const url = `${BASE}/knowledge/documents/${id}/download`;
+  // Create a temporary link to trigger download with auth
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = title;
+  // Use fetch to get the blob with auth header
+  fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    .then(res => res.blob())
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    })
+    .catch(() => {
+      // Fallback: open directly
+      window.open(url, '_blank');
+    });
+};
 export const uploadDocument = async (file: File, categoryId: string, _onProgress?: (pct: number) => void) => {
   const form = new FormData();
   form.append('file', file);

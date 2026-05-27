@@ -44,7 +44,7 @@ Return ONLY valid JSON, no other text. Use this exact structure:
         "allocations": [...]
     }},
     "aggressive": {{
-        "plan_type": "进取型",
+        "plan_type": "激进型",
         "overall_rationale": "...",
         "risk_return_profile": "...",
         "allocations": [...]

@@ -35,7 +35,7 @@ export default function Dashboard() {
 
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 animate-in" style={{ animationDelay: '80ms' }}>
-        <div className="card p-5">
+        <div className="card p-6 rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">知识库文档</span>
             <svg className="w-4 h-4 text-[var(--text-placeholder)]" viewBox="0 0 16 16" fill="currentColor">
@@ -48,7 +48,7 @@ export default function Dashboard() {
           <p className="text-xs text-[var(--text-tertiary)] mt-1">已索引的销售辅助文档</p>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-6 rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">客户档案</span>
             <svg className="w-4 h-4 text-[var(--text-placeholder)]" viewBox="0 0 16 16" fill="currentColor">
@@ -61,7 +61,7 @@ export default function Dashboard() {
           <p className="text-xs text-[var(--text-tertiary)] mt-1">AI 画像分析的客户</p>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-6 rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">金融产品</span>
             <svg className="w-4 h-4 text-[var(--text-placeholder)]" viewBox="0 0 16 16" fill="currentColor">
@@ -77,9 +77,9 @@ export default function Dashboard() {
 
       {/* Module cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in" style={{ animationDelay: '150ms' }}>
-        <Link to="/knowledge" className="card card-hover p-6 group transition-colors duration-150">
+        <Link to="/knowledge" className="card card-hover p-6 rounded-xl group transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)] flex items-center justify-center group-hover:border-[var(--accent-blue)]/40 transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-tertiary)] flex items-center justify-center group-hover:bg-[var(--accent-blue)]/10 transition-all duration-200">
               <svg className="w-5 h-5 text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v3.5A1.75 1.75 0 0 1 14.25 7H8.828l-3.063 2.757A.75.75 0 0 1 4.5 9.25V7h-.25A1.75 1.75 0 0 1 2.5 5.25v-3.5Z"/>
               </svg>
@@ -96,9 +96,9 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <Link to="/customers" className="card card-hover p-6 group transition-colors duration-150">
+        <Link to="/customers" className="card card-hover p-6 rounded-xl group transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)] flex items-center justify-center group-hover:border-[var(--accent-green)]/40 transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-tertiary)] flex items-center justify-center group-hover:bg-[var(--accent-green)]/10 transition-all duration-200">
               <svg className="w-5 h-5 text-[var(--accent-green)]" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.07.75.75 0 0 1-1.497.108 4.505 4.505 0 0 0-8.992 0 .75.75 0 0 1-1.497-.108 6.004 6.004 0 0 1 3.431-5.07 4 4 0 1 1 5.123 0ZM12 4.5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
               </svg>
@@ -115,9 +115,9 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <Link to="/products" className="card card-hover p-6 group transition-colors duration-150">
+        <Link to="/products" className="card card-hover p-6 rounded-xl group transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)] flex items-center justify-center group-hover:border-[var(--accent-orange)]/40 transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-tertiary)] flex items-center justify-center group-hover:bg-[var(--accent-orange)]/10 transition-all duration-200">
               <svg className="w-5 h-5 text-[var(--accent-orange)]" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M1.5 1.75a.75.75 0 0 0-1.5 0v12.5c0 .414.336.75.75.75h14.5a.75.75 0 0 0 0-1.5H1.5V1.75Zm14.28 2.53a.75.75 0 0 0-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 0 0-1.06 0L3.22 8.72a.75.75 0 0 0 1.06 1.06L7 7.06l2.47 2.47a.75.75 0 0 0 1.06 0l5.25-5.25Z"/>
               </svg>

@@ -18,7 +18,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-md px-3 py-2 shadow-git-lg">
+    <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-xl px-3 py-2 shadow-git-lg">
       <p className="text-xs font-semibold text-[var(--text-primary)] mb-1">{d.label}</p>
       <p className="text-lg font-bold text-[var(--accent-blue)] font-mono tabular-nums">{d.value}<span className="text-xs text-[var(--text-tertiary)]">/10</span></p>
       <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 max-w-[200px] leading-relaxed">{d.reasoning}</p>
@@ -35,7 +35,7 @@ export default function CustomerRadar({ dimensions }: Props) {
   }));
 
   return (
-    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-4">
+    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-4">
       <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
         客户评分雷达
         <span className="ml-2 font-normal normal-case text-[10px] text-[var(--text-placeholder)]">1-10分制</span>

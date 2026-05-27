@@ -110,14 +110,14 @@ export default function CustomerAnalysis() {
               <div key={cust.id}>
                 <div
                   onClick={() => handleSelect(cust.id)}
-                  className={`card card-hover p-4 cursor-pointer transition-all duration-100 ${
+                  className={`card card-hover p-4 cursor-pointer transition-all duration-200 ${
                     selectedId === cust.id
-                      ? 'border-[var(--accent-blue)] shadow-[0_0_0_1px_var(--accent-blue)] bg-[var(--bg-overlay)]'
+                      ? 'shadow-[var(--shadow-card-hover)] ring-1 ring-inset ring-[var(--accent-blue)] bg-[var(--bg-overlay)]'
                       : ''
                   }`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center flex-shrink-0">
                         <span className="text-xs font-medium text-[var(--text-secondary)]">
                           {cust.name.charAt(0)}
                         </span>
@@ -157,11 +157,11 @@ export default function CustomerAnalysis() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center gap-1 pt-1">
+            <div className="flex items-center gap-1 pt-1 flex-wrap">
               <button
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               >
                 &laquo;
               </button>
@@ -180,10 +180,10 @@ export default function CustomerAnalysis() {
                     <button
                       key={p}
                       onClick={() => handlePageChange(p)}
-                      className={`w-7 h-7 text-xs rounded transition-colors ${
+                      className={`w-7 h-7 text-xs rounded-full transition-all duration-200 ${
                         p === page
-                          ? 'bg-[var(--btn-blue)] text-white border border-[var(--btn-blue-hover)]'
-                          : 'border border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
+                          ? 'bg-[var(--btn-blue)] text-white shadow-[var(--shadow-btn)]'
+                          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
                       }`}
                     >
                       {p}
@@ -196,7 +196,7 @@ export default function CustomerAnalysis() {
               <button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= totalPages}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               >
                 &raquo;
               </button>
@@ -209,7 +209,7 @@ export default function CustomerAnalysis() {
                 onChange={e => setJumpPage(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={handleJumpPage}
                 placeholder="跳转"
-                className="ml-1 w-12 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none transition-colors"
+                className="hidden sm:block ml-1 w-12 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200"
               />
             </div>
           )}

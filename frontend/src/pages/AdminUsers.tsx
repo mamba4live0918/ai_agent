@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { User, Group } from '../types';
@@ -86,15 +86,15 @@ export default function AdminUsers() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 sm:mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">用户管理</h2>
-          <p className="text-sm text-[var(--text-secondary)]">管理平台用户与角色分配</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1">用户管理</h2>
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)]">管理平台用户与角色分配</p>
         </div>
         {isSuperAdmin && (
           <button
             onClick={() => setShowAdd(true)}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
           >
             添加用户
           </button>
@@ -103,8 +103,8 @@ export default function AdminUsers() {
 
       {/* Add user modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowAdd(false)}>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowAdd(false)}>
+          <div className="bg-[var(--bg-secondary)] rounded-2xl w-full max-w-md mx-4 p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">添加新用户</h3>
             <div className="space-y-3">
               <div>
@@ -113,7 +113,7 @@ export default function AdminUsers() {
                   type="text"
                   value={addForm.username}
                   onChange={(e) => setAddForm((f) => ({ ...f, username: e.target.value }))}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                   placeholder="输入用户名"
                 />
               </div>
@@ -123,7 +123,7 @@ export default function AdminUsers() {
                   type="email"
                   value={addForm.email}
                   onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                   placeholder="输入邮箱"
                 />
               </div>
@@ -133,7 +133,7 @@ export default function AdminUsers() {
                   type="password"
                   value={addForm.password}
                   onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                   placeholder="输入密码"
                 />
               </div>
@@ -142,14 +142,14 @@ export default function AdminUsers() {
             <div className="flex items-center justify-end gap-2 mt-4">
               <button
                 onClick={() => { setShowAdd(false); setAddError(''); }}
-                className="px-3 py-1.5 text-sm rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
               >
                 取消
               </button>
               <button
                 onClick={handleAdd}
                 disabled={adding}
-                className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-all duration-200"
               >
                 {adding ? '创建中...' : '创建'}
               </button>
@@ -158,7 +158,86 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="card overflow-hidden">
+      {/* ============ MOBILE: Card layout (sm:hidden) ============ */}
+      <div className="sm:hidden space-y-3">
+        {users.map((u) => {
+          const isSelf = u.id === me?.id;
+          const isAdmin = u.role === 'admin';
+          return (
+            <div key={u.id} className="card p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                    {u.username}
+                    {isSelf && <span className="ml-1.5 text-[10px] text-[var(--accent-blue)]">(你)</span>}
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{u.email}</p>
+                </div>
+                <div className="ml-2 shrink-0">
+                  {isSuperAdmin && !isSelf && !isAdmin && (
+                    confirmDelete === u.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleDelete(u.id)}
+                          className="px-2 py-0.5 text-[11px] rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-all duration-200"
+                        >
+                          确认
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(u.id)}
+                        className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200"
+                      >
+                        删除
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {u.group_id && groupMap[u.group_id] ? (
+                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">
+                    {groupMap[u.group_id]}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-[var(--text-placeholder)]">未分组</span>
+                )}
+                {isSelf || !isSuperAdmin ? (
+                  <span className="text-xs text-[var(--text-secondary)]">{ROLE_LABELS[u.role]}</span>
+                ) : (
+                  <select
+                    value={u.role}
+                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                    className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="text-[11px] text-[var(--text-placeholder)]">
+                {new Date(u.created_at).toLocaleDateString('zh-CN')}
+              </div>
+            </div>
+          );
+        })}
+        {users.length === 0 && (
+          <div className="card p-8 text-center text-sm text-[var(--text-placeholder)]">暂无用户</div>
+        )}
+      </div>
+
+      {/* ============ DESKTOP: Table layout (hidden sm:block) ============ */}
+      <div className="hidden sm:block card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -184,7 +263,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{u.email}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">
                       {u.group_id && groupMap[u.group_id] ? (
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">{groupMap[u.group_id]}</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">{groupMap[u.group_id]}</span>
                       ) : (
                         <span className="text-[var(--text-placeholder)]">—</span>
                       )}
@@ -196,7 +275,7 @@ export default function AdminUsers() {
                         <select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-blue)]"
+                          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                         >
                           {ROLES.map((r) => (
                             <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -213,13 +292,13 @@ export default function AdminUsers() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => handleDelete(u.id)}
-                              className="px-2 py-0.5 text-xs rounded bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)]"
+                              className="px-2 py-0.5 text-xs rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-all duration-200"
                             >
                               确认
                             </button>
                             <button
                               onClick={() => setConfirmDelete(null)}
-                              className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                              className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
                             >
                               取消
                             </button>
@@ -227,7 +306,7 @@ export default function AdminUsers() {
                         ) : (
                           <button
                             onClick={() => setConfirmDelete(u.id)}
-                            className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-colors"
+                            className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200"
                           >
                             删除
                           </button>
@@ -248,7 +327,7 @@ export default function AdminUsers() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
               >
                 上一页
               </button>
@@ -256,7 +335,7 @@ export default function AdminUsers() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
               >
                 下一页
               </button>
@@ -264,6 +343,30 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {/* Mobile pagination */}
+      {totalPages > 1 && (
+        <div className="sm:hidden flex items-center justify-between mt-3 px-1">
+          <span className="text-xs text-[var(--text-placeholder)]">共 {total} 个用户</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
+            >
+              上一页
+            </button>
+            <span className="text-xs text-[var(--text-secondary)] px-2">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

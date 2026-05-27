@@ -9,7 +9,7 @@ interface Props {
 }
 
 const PLAN_KEYS = ['conservative', 'balanced', 'aggressive'] as const;
-const PLAN_LABELS: Record<string, string> = { conservative: '保守型', balanced: '稳健型', aggressive: '进取型' };
+const PLAN_LABELS: Record<string, string> = { conservative: '保守型', balanced: '稳健型', aggressive: '激进型' };
 const PRODUCT_COLORS = ['var(--accent-blue)', 'var(--accent-green)', 'var(--accent-orange)', 'var(--accent-red)', 'var(--accent-purple)', 'var(--accent-blue)'];
 
 export default function AllocationPlan({ customer, onUpdate }: Props) {
@@ -29,7 +29,7 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
         </svg>
         <p className="text-sm text-[var(--text-placeholder)] mb-3">暂无配置方案</p>
         <button onClick={async () => { setGenerating(true); const updated = await generateAllocationPlan(customer.id) as Customer; onUpdate(updated); setGenerating(false); }}
-          disabled={generating} className="btn btn-primary text-xs">
+          disabled={generating} className="btn btn-primary text-xs rounded-full transition-all duration-200">
           {generating ? 'AI 生成中...' : '生成配置方案'}
         </button>
       </div>
@@ -104,33 +104,33 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
         <div className="flex gap-1">
           {PLAN_KEYS.map(k => (
             <button key={k} onClick={() => { setPlanTab(k); setEditing(false); }}
-              className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+              className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-200 ${
                 planTab === k ? 'border-[var(--accent-blue)] text-[var(--text-primary)] bg-[var(--bg-overlay)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}>{PLAN_LABELS[k]}</button>
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded p-0.5">
+          <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-full p-0.5">
             <button onClick={() => setViewMode('ai')}
-              className={`px-2.5 py-1 text-[10px] rounded transition-colors ${viewMode === 'ai' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>AI 方案</button>
+              className={`px-2.5 py-1 text-[10px] rounded-full transition-all duration-200 ${viewMode === 'ai' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>AI 方案</button>
             <button onClick={() => setViewMode('user')}
-              className={`px-2.5 py-1 text-[10px] rounded transition-colors ${viewMode === 'user' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>我的调整</button>
+              className={`px-2.5 py-1 text-[10px] rounded-full transition-all duration-200 ${viewMode === 'user' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>我的调整</button>
           </div>
           {!editing ? (
-            <button onClick={startEditing} className="btn btn-secondary text-xs">编辑配置</button>
+            <button onClick={startEditing} className="btn btn-secondary text-xs rounded-full transition-all duration-200">编辑配置</button>
           ) : (
             <div className="flex gap-1.5">
-              <button onClick={resetToAi} className="btn btn-secondary text-xs">重置为 AI 方案</button>
+              <button onClick={resetToAi} className="btn btn-secondary text-xs rounded-full transition-all duration-200">重置为 AI 方案</button>
               <button onClick={saveEdits} disabled={!valid || saving}
                 className="btn btn-primary text-xs disabled:opacity-50">{saving ? '保存中...' : '保存调整'}</button>
-              <button onClick={() => setEditing(false)} className="btn btn-secondary text-xs">取消</button>
+              <button onClick={() => setEditing(false)} className="btn btn-secondary text-xs rounded-full transition-all duration-200">取消</button>
             </div>
           )}
         </div>
       </div>
 
       {/* Summary card */}
-      <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-3.5">
+      <div className="bg-[var(--bg-primary)] rounded-xl p-3.5 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRODUCT_COLORS[0] }} />
           <h5 className="text-xs font-semibold text-[var(--text-primary)]">{plan.plan_type} — 组合概要</h5>
@@ -161,7 +161,7 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
       <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">配置明细</h4>
       <div className="space-y-1.5">
         {plan.allocations.map(a => (
-          <div key={a.product_id} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-3 py-2.5">
+          <div key={a.product_id} className="bg-[var(--bg-primary)] rounded-xl px-3 py-2.5 shadow-sm">
             {editing ? (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-[var(--text-primary)] w-24 flex-shrink-0 truncate">{a.product_name}</span>

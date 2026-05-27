@@ -34,9 +34,9 @@ const TRIGGER_BORDERS: Record<string, string> = {
   coach_tip: 'var(--accent-blue)',
   strategy_alert: 'var(--accent-orange)',
   closing_guide: 'var(--btn-primary)',
-  objection_handle: '#db6d28',
+  objection_handle: 'var(--accent-orange)',
   break_tip: 'var(--accent-purple)',
-  role_analysis: '#39d2c0',
+  role_analysis: 'var(--accent-green)',
   emotion_alert: 'var(--accent-red)',
 };
 
@@ -354,7 +354,7 @@ export default function RealtimeCoach({
                 e.stopPropagation();
                 connect();
               }}
-              className="text-[10px] px-2 py-1 rounded font-medium transition-colors"
+              className="text-[10px] px-2 py-1 rounded-full font-medium transition-all duration-200"
               style={{
                 backgroundColor: 'var(--btn-primary)',
                 color: 'var(--color-white)',
@@ -368,7 +368,7 @@ export default function RealtimeCoach({
                 e.stopPropagation();
                 disconnect();
               }}
-              className="text-[10px] px-2 py-1 rounded font-medium transition-colors"
+              className="text-[10px] px-2 py-1 rounded-full font-medium transition-all duration-200"
               style={{
                 backgroundColor: 'var(--border-default)',
                 color: 'var(--text-primary)',
@@ -423,7 +423,7 @@ export default function RealtimeCoach({
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                           style={{
                             backgroundColor: `${borderColor}22`,
                             color: borderColor,

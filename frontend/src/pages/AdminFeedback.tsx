@@ -6,12 +6,12 @@ function FeedbackRow({ fb }: { fb: FeedbackAdminResponse }) {
   const [open, setOpen] = useState(false);
   return (
     <div
-      className={`card transition-colors ${open ? 'border-[var(--accent-blue)]/40' : 'cursor-pointer hover:border-[var(--border-default)]'}`}
+      className={`card rounded-xl transition-all duration-200 ${open ? 'border-[var(--accent-blue)]/40' : 'cursor-pointer hover:border-[var(--border-default)]'}`}
       onClick={() => setOpen(!open)}
     >
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-sm text-[var(--text-primary)] font-medium">{fb.username}</span>
+          <span className="text-sm text-[var(--text-primary)] font-medium truncate max-w-[100px] sm:max-w-none">{fb.username}</span>
           <div className="flex items-center gap-0.5">
             {[1, 2, 3, 4, 5].map(i => (
               <span key={i} className={`text-xs ${i <= fb.rating ? 'text-[var(--accent-orange)]' : 'text-[var(--text-placeholder)]'}`}>★</span>
@@ -89,13 +89,13 @@ export default function AdminFeedback() {
       </div>
 
       {stats && stats.total > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          <div className="card p-4 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-6">
+          <div className="card rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-[var(--accent-orange)] font-mono">{stats.average.toFixed(1)}</p>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-1">平均评分</p>
           </div>
           {[5, 4, 3, 2].map(n => (
-            <div key={n} className="card p-4 text-center">
+            <div key={n} className="card rounded-xl p-4 text-center">
               <p className="text-lg font-bold text-[var(--text-primary)] font-mono">{stats.distribution[n]}</p>
               <p className="text-[11px] text-[var(--text-tertiary)] mt-1">{'★'.repeat(n)}{'☆'.repeat(5 - n)}</p>
             </div>
@@ -104,7 +104,7 @@ export default function AdminFeedback() {
       )}
 
       {feedbacks.length === 0 ? (
-        <div className="card p-12 text-center">
+        <div className="card rounded-xl p-12 text-center">
           <p className="text-[var(--text-secondary)] text-sm">暂无反馈记录</p>
         </div>
       ) : (
@@ -121,7 +121,7 @@ export default function AdminFeedback() {
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                  className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
                 >
                   上一页
                 </button>
@@ -129,7 +129,7 @@ export default function AdminFeedback() {
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                  className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
                 >
                   下一页
                 </button>

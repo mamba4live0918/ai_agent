@@ -15,7 +15,7 @@ export default function SearchBar({ value, onChange, placeholder = '搜索...' }
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md py-1.5 pl-8 pr-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
+        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full py-2.5 pl-8 pr-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all duration-200"
       />
       {value && (
         <button

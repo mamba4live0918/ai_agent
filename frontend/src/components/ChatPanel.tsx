@@ -42,7 +42,7 @@ export default function ChatPanel() {
   return (
     <div className="card flex flex-col h-[380px] sm:h-[480px]">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] rounded-t-md">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] rounded-t-xl">
         <span className="w-2 h-2 rounded-full bg-[var(--accent-green)]" />
         <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">知识库问答 · RAG</span>
         <span className="text-[10px] text-[var(--text-placeholder)] font-mono ml-auto">
@@ -66,10 +66,10 @@ export default function ChatPanel() {
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[82%] rounded-md px-4 py-2.5 text-sm leading-relaxed ${
+            <div className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
               msg.role === 'user'
-                ? 'bg-[var(--btn-blue)] text-white border border-[var(--btn-blue-hover)]/40'
-                : 'bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                ? 'bg-[var(--btn-blue)] text-white'
+                : 'bg-[var(--bg-primary)] text-[var(--text-primary)]'
             }`}>
               <div className="whitespace-pre-wrap">{msg.content}</div>
               {msg.sources && msg.sources.length > 0 && (
@@ -100,7 +100,7 @@ export default function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] rounded-b-md">
+      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] rounded-b-xl">
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -109,7 +109,7 @@ export default function ChatPanel() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="输入问题，Enter 发送..."
-            className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
+            className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-4 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all duration-200"
           />
           <button onClick={handleSend} disabled={loading || !input.trim()} className="btn btn-primary text-sm px-4">
             {loading ? '...' : '发送'}

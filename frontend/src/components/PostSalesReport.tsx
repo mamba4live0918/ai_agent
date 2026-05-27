@@ -185,7 +185,7 @@ export default function PostSalesReport({ report }: Props) {
                 <div key={i} className="flex gap-3 pb-4">
                   <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-1.5 ${color.replace('border', 'bg')}`} />
                   <div className={`flex-1 -ml-4 pl-7 border-l-2 ${color} pb-2`}>
-                    <div className={`${bg} border ${color} rounded-md p-3`}>
+                    <div className={`${bg} border ${color} rounded-xl p-3`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                           type === 'positive' ? 'bg-[var(--accent-green)]/20 text-[var(--accent-green)]' :
@@ -212,7 +212,7 @@ export default function PostSalesReport({ report }: Props) {
           <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-3">错失的机会</h3>
           <div className="space-y-3">
             {missedOpportunities.map((mo, i) => (
-              <div key={i} className="border border-[var(--border-default)] rounded-md p-3">
+              <div key={i} className="border border-[var(--border-default)] rounded-xl p-3">
                 <p className="text-xs text-[var(--text-primary)] mb-1">{String(mo.description || '')}</p>
                 <p className="text-[11px] text-[var(--accent-blue)]">
                   <span className="text-[var(--text-secondary)]">建议: </span>

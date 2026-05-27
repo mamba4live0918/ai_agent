@@ -59,7 +59,7 @@ export default function Register() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
                 placeholder="输入用户名"
                 required
                 autoFocus
@@ -71,7 +71,7 @@ export default function Register() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
                 placeholder="输入邮箱"
                 required
               />
@@ -82,7 +82,7 @@ export default function Register() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
                 placeholder="至少6位"
                 required
                 minLength={6}
@@ -94,14 +94,14 @@ export default function Register() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
                 placeholder="再次输入密码"
                 required
               />
             </div>
 
             {error && (
-              <div className="bg-[#490202]/20 border border-[var(--accent-red)] rounded-md px-3 py-2 text-xs text-[var(--accent-red)]">
+              <div className="bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-xl px-3 py-2 text-xs text-[var(--accent-red)]">
                 {error}
               </div>
             )}
@@ -109,7 +109,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[var(--btn-primary)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 text-white text-sm font-medium py-2 rounded-md transition-colors"
+              className="w-full bg-[var(--btn-primary)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 text-white text-sm font-medium py-2 rounded-full transition-colors"
             >
               {submitting ? '注册中...' : '注册'}
             </button>

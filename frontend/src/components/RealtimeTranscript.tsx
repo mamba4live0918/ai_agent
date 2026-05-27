@@ -65,7 +65,7 @@ export default function RealtimeTranscript({
   const hasContent = segments.length > 0 || partialText.length > 0;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-[var(--bg-secondary)] rounded-xl shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export default function RealtimeTranscript({
             className="flex-1 min-h-[120px] max-h-[280px] overflow-y-auto px-3 py-2 space-y-1.5 bg-[var(--bg-primary)]"
           >
             {error && (
-              <div className="text-[11px] text-[var(--accent-red)] bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded px-2 py-1.5">
+              <div className="text-[11px] text-[var(--accent-red)] bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-xl px-2 py-1.5">
                 {error}
               </div>
             )}
@@ -159,7 +159,7 @@ export default function RealtimeTranscript({
             {isRecording ? (
               <button
                 onClick={onStop}
-                className="flex-1 px-3 py-1.5 bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-md text-[var(--accent-red)] text-[11px] font-medium hover:bg-[var(--color-danger-hover-bg)] transition-colors"
+                className="flex-1 px-3 py-1.5 bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-full text-[var(--accent-red)] text-[11px] font-medium hover:bg-[var(--color-danger-hover-bg)] transition-all duration-200"
               >
                 停止录制
               </button>
@@ -167,7 +167,7 @@ export default function RealtimeTranscript({
               <button
                 onClick={onStart}
                 disabled={connectionState === 'connecting'}
-                className="flex-1 px-3 py-1.5 bg-[var(--btn-primary)] border border-[var(--btn-primary-hover)] rounded-md text-white text-[11px] font-medium hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-3 py-1.5 bg-[var(--btn-primary)] rounded-full text-white text-[11px] font-medium hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 {connectionState === 'connecting' ? '连接中...' : '开始录制'}
               </button>

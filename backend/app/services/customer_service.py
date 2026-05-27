@@ -31,7 +31,7 @@ Use this exact structure:
         "occupation": "职业",
         "income_level": "收入水平描述",
         "assets": "资产状况描述",
-        "risk_preference": "风险偏好(保守/稳健/进取)",
+        "risk_preference": "风险偏好(保守/稳健/激进)",
         "investment_experience": "投资经验描述",
         "family_status": "家庭状况",
         "goals": "理财目标"

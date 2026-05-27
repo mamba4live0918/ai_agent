@@ -239,7 +239,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex-shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-[var(--text-secondary)]" viewBox="0 0 16 16" fill="currentColor">
@@ -268,7 +268,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                       onChange={e => { setCustomerSearch(e.target.value); searchCustomers(e.target.value); }}
                       placeholder="搜索客户..."
                       autoFocus
-                      className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)]"
                     />
                   </div>
                   <div className="max-h-48 overflow-y-auto">
@@ -317,13 +317,13 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
             {isCompleted ? '已完成' : session.status === 'processing' ? '处理中' : '记录中'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {!isCompleted && (
             <>
               {isRecording ? (
                 <button
                   onClick={stopRecording}
-                  className="px-3 py-1.5 text-xs rounded-md bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-colors flex items-center gap-1.5 animate-pulse"
+                  className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-colors flex items-center gap-1.5 animate-pulse"
                 >
                   <span className="w-2 h-2 rounded-full bg-white" />
                   <span className="font-mono tabular-nums">{formatDuration(recordingTime)}</span>
@@ -333,7 +333,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                 <button
                   onClick={startRecording}
                   disabled={uploading}
-                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--btn-danger)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/10 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 text-xs rounded-full border border-[var(--btn-danger)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/10 disabled:opacity-50 transition-colors flex items-center gap-1.5"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M8 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm0 1.5a4 4 0 0 1-4-4V5a4 4 0 0 1 8 0v3.5a4 4 0 0 1-4 4Z"/>
@@ -345,7 +345,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading || isRecording}
-                className="px-3 py-1.5 text-xs rounded-md border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 transition-colors flex items-center gap-1.5"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
@@ -356,7 +356,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
               <button
                 onClick={handleEnd}
                 disabled={ending || messages.length === 0}
-                className="px-3 py-1.5 text-xs rounded-md bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] disabled:opacity-50 transition-colors"
+                className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] disabled:opacity-50 transition-colors"
               >
                 {ending ? '生成中...' : '结束通话'}
               </button>
@@ -365,7 +365,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
           {isCompleted && (
             <button
               onClick={() => setShowReportModal(true)}
-              className="px-3 py-1.5 text-xs rounded-md bg-[var(--btn-blue)] text-white hover:bg-[var(--btn-blue-hover)] transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-blue)] text-white hover:bg-[var(--btn-blue-hover)] transition-colors flex items-center gap-1.5"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25v-9.5ZM1.75 1.5a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25H1.75Z"/>
@@ -469,7 +469,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                 <button
                   onClick={handleExportPDF}
                   disabled={pdfExporting}
-                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 transition-colors flex items-center gap-1.5"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
                     <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Z"/>
@@ -478,7 +478,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                 </button>
                 <button
                   onClick={() => setShowReportModal(false)}
-                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors"
+                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>

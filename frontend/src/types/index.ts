@@ -76,6 +76,15 @@ export interface Document {
 export interface DocumentList {
   items: Document[];
   total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface DocumentContent {
+  title: string;
+  file_type: string;
+  content: string;
 }
 
 export interface Customer {

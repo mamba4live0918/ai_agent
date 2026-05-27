@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   getGroups, createGroup, updateGroup, deleteGroup,
   getGroupMembers, addGroupMember, removeGroupMember,
@@ -129,7 +129,6 @@ export default function AdminGroups() {
     setUsersLoading(true);
     try {
       const res = await getAllUsers(1, 200);
-      // Filter out users already in the group and super admins
       const memberIds = new Set(members.map((m) => m.id));
       setAllUsers(res.items.filter((u) => !memberIds.has(u.id) && !(u.role === 'admin' && u.group_id === null)));
     } finally {
@@ -143,7 +142,6 @@ export default function AdminGroups() {
       const member = await addGroupMember(expandedGroup, userId);
       setMembers((prev) => [...prev, member]);
       setAllUsers((prev) => prev.filter((u) => u.id !== userId));
-      // Update member count in group list
       setGroups((prev) => prev.map((g) => g.id === expandedGroup ? { ...g, member_count: g.member_count + 1 } : g));
       setAddMemberError('');
     } catch (e: unknown) {
@@ -170,17 +168,17 @@ export default function AdminGroups() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 sm:mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">分组管理</h2>
-          <p className="text-sm text-[var(--text-secondary)]">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1">分组管理</h2>
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
             {isSuperAdmin ? '管理所有分组与分组管理员' : '管理您的分组'}
           </p>
         </div>
         {isSuperAdmin && (
           <button
             onClick={openCreate}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
           >
             创建分组
           </button>
@@ -189,8 +187,8 @@ export default function AdminGroups() {
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowForm(false)}>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
+          <div className="bg-[var(--bg-secondary)] rounded-2xl w-full max-w-md mx-4 p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
               {editingGroup ? '编辑分组' : '创建分组'}
             </h3>
@@ -201,7 +199,7 @@ export default function AdminGroups() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                   placeholder="输入组名"
                 />
               </div>
@@ -210,7 +208,7 @@ export default function AdminGroups() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none"
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none transition-all duration-200"
                   rows={2}
                   placeholder="输入描述（可选）"
                 />
@@ -222,7 +220,7 @@ export default function AdminGroups() {
                     type="text"
                     value={formData.admin_id}
                     onChange={(e) => setFormData((f) => ({ ...f, admin_id: e.target.value }))}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                     placeholder="输入管理员用户 ID（可选）"
                   />
                 </div>
@@ -232,14 +230,14 @@ export default function AdminGroups() {
             <div className="flex items-center justify-end gap-2 mt-4">
               <button
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 text-sm rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
               >
                 取消
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-all duration-200"
               >
                 {saving ? '保存中...' : '保存'}
               </button>
@@ -248,8 +246,117 @@ export default function AdminGroups() {
         </div>
       )}
 
-      {/* Group list */}
-      <div className="card overflow-hidden">
+      {/* ============ MOBILE: Card layout (sm:hidden) ============ */}
+      <div className="sm:hidden space-y-3">
+        {groups.map((g) => (
+          <div key={g.id} className="card p-4 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">{g.name}</h3>
+                {g.description && (
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">{g.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 ml-2 shrink-0">
+                <button
+                  onClick={() => openEdit(g)}
+                  className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
+                >
+                  编辑
+                </button>
+                {isSuperAdmin && (
+                  confirmDelete === g.id ? (
+                    <>
+                      <button
+                        onClick={() => handleDelete(g.id)}
+                        className="px-2 py-0.5 text-[11px] rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-all duration-200"
+                      >
+                        确认
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
+                      >
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(g.id)}
+                      className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200"
+                    >
+                      删除
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
+              <span>管理员：{g.admin_name || (g.admin_id ? g.admin_id.slice(0, 8) + '...' : '—')}</span>
+              <button
+                onClick={() => toggleExpand(g.id)}
+                className="text-[var(--accent-blue)] font-mono"
+              >
+                {g.member_count} 人
+              </button>
+            </div>
+
+            <div className="text-[11px] text-[var(--text-placeholder)]">
+              {new Date(g.created_at).toLocaleDateString('zh-CN')}
+            </div>
+
+            {/* Expanded members on mobile */}
+            {expandedGroup === g.id && (
+              <div className="border-t border-[var(--border-subtle)] pt-3 mt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">组成员</p>
+                  <button
+                    onClick={openAddMember}
+                    className="px-2 py-0.5 text-[11px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
+                  >
+                    添加成员
+                  </button>
+                </div>
+                {membersLoading ? (
+                  <p className="text-xs text-[var(--text-placeholder)]">加载中...</p>
+                ) : members.length === 0 ? (
+                  <p className="text-xs text-[var(--text-placeholder)]">暂无成员</p>
+                ) : (
+                  <div className="space-y-1">
+                    {members.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-[var(--bg-primary)]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-[var(--text-primary)] truncate">{m.username}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                            m.role === 'admin' ? 'bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]' :
+                            m.role === 'instructor' ? 'bg-[var(--accent-purple)]/20 text-[var(--accent-purple)]' :
+                            'bg-[var(--accent-green)]/20 text-[var(--accent-green)]'
+                          }`}>
+                            {m.role === 'admin' ? '管理员' : m.role === 'instructor' ? '讲师' : '销售'}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveMember(m.id)}
+                          className="px-2 py-0.5 text-[11px] rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200 shrink-0 ml-2"
+                        >
+                          移除
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {groups.length === 0 && (
+          <div className="card p-8 text-center text-sm text-[var(--text-placeholder)]">暂无分组</div>
+        )}
+      </div>
+
+      {/* ============ DESKTOP: Table layout (hidden sm:block) ============ */}
+      <div className="hidden sm:block card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -288,7 +395,7 @@ export default function AdminGroups() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(g)}
-                          className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                          className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
                         >
                           编辑
                         </button>
@@ -297,13 +404,13 @@ export default function AdminGroups() {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleDelete(g.id)}
-                                className="px-2 py-0.5 text-xs rounded bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)]"
+                                className="px-2 py-0.5 text-xs rounded-full bg-[var(--btn-danger)] text-white hover:bg-[var(--accent-red)] transition-all duration-200"
                               >
                                 确认
                               </button>
                               <button
                                 onClick={() => setConfirmDelete(null)}
-                                className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
                               >
                                 取消
                               </button>
@@ -311,7 +418,7 @@ export default function AdminGroups() {
                           ) : (
                             <button
                               onClick={() => setConfirmDelete(g.id)}
-                              className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-colors"
+                              className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200"
                             >
                               删除
                             </button>
@@ -320,7 +427,6 @@ export default function AdminGroups() {
                       </div>
                     </td>
                   </tr>
-                  {/* Expanded members row */}
                   {expandedGroup === g.id && (
                     <tr key={`${g.id}-members`}>
                       <td colSpan={6} className="px-4 py-3 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)]">
@@ -328,7 +434,7 @@ export default function AdminGroups() {
                           <p className="text-xs font-semibold text-[var(--text-secondary)]">组成员</p>
                           <button
                             onClick={openAddMember}
-                            className="px-2 py-0.5 text-xs rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+                            className="px-2 py-0.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
                           >
                             添加成员
                           </button>
@@ -344,7 +450,7 @@ export default function AdminGroups() {
                                 <div className="flex items-center gap-3">
                                   <span className="text-xs text-[var(--text-primary)]">{m.username}</span>
                                   <span className="text-[10px] text-[var(--text-placeholder)]">{m.email}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                                     m.role === 'admin' ? 'bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]' :
                                     m.role === 'instructor' ? 'bg-[var(--accent-purple)]/20 text-[var(--accent-purple)]' :
                                     'bg-[var(--accent-green)]/20 text-[var(--accent-green)]'
@@ -354,7 +460,7 @@ export default function AdminGroups() {
                                 </div>
                                 <button
                                   onClick={() => handleRemoveMember(m.id)}
-                                  className="px-2 py-0.5 text-xs rounded border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-colors"
+                                  className="px-2 py-0.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--accent-red)] hover:bg-[var(--btn-danger)]/20 transition-all duration-200"
                                 >
                                   移除
                                 </button>
@@ -385,7 +491,7 @@ export default function AdminGroups() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
               >
                 上一页
               </button>
@@ -393,7 +499,7 @@ export default function AdminGroups() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
               >
                 下一页
               </button>
@@ -402,10 +508,34 @@ export default function AdminGroups() {
         )}
       </div>
 
+      {/* Mobile pagination */}
+      {totalPages > 1 && (
+        <div className="sm:hidden flex items-center justify-between mt-3 px-1">
+          <span className="text-xs text-[var(--text-placeholder)]">共 {total} 个分组</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
+            >
+              上一页
+            </button>
+            <span className="text-xs text-[var(--text-secondary)] px-2">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 transition-all duration-200"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add member modal */}
       {showAddMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => { setShowAddMember(false); setAddMemberError(''); }}>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg w-full max-w-md mx-4 p-6 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { setShowAddMember(false); setAddMemberError(''); }}>
+          <div className="bg-[var(--bg-secondary)] rounded-2xl w-full max-w-md mx-4 p-6 max-h-[70vh] flex flex-col shadow-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">添加成员</h3>
             {addMemberError && <p className="text-sm text-[var(--accent-red)] mb-2">{addMemberError}</p>}
             {usersLoading ? (
@@ -422,7 +552,7 @@ export default function AdminGroups() {
                     </div>
                     <button
                       onClick={() => handleAddMember(u.id)}
-                      className="px-2 py-0.5 text-xs rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+                      className="px-2 py-0.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
                     >
                       添加
                     </button>
@@ -433,7 +563,7 @@ export default function AdminGroups() {
             <div className="flex justify-end mt-4 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 onClick={() => { setShowAddMember(false); setAddMemberError(''); }}
-                className="px-3 py-1.5 text-sm rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200"
               >
                 关闭
               </button>

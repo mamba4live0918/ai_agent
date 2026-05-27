@@ -106,7 +106,7 @@ export default function KycGrid({ customer }: Props) {
           return (
             <div
               key={idx}
-              className={`relative rounded-md border p-2.5 min-h-[90px] flex flex-col ${
+              className={`relative rounded-xl border p-2.5 min-h-[90px] flex flex-col ${
                 cell.isEmpty && !currentContent
                   ? 'border-[var(--accent-orange)]/40 bg-[var(--accent-orange)]/5'
                   : 'border-[var(--border-subtle)] bg-[var(--bg-primary)]'
@@ -115,7 +115,7 @@ export default function KycGrid({ customer }: Props) {
               <p className="text-[10px] font-medium text-[var(--text-tertiary)] mb-1.5 leading-tight">{cell.label}</p>
               {isEditing ? (
                 <textarea
-                  className="flex-1 w-full bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded p-1.5 text-xs text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="flex-1 w-full bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-xl p-1.5 text-xs text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
                   value={currentContent}
                   onChange={e => setEdits(prev => ({ ...prev, [idx]: e.target.value }))}
                   rows={3}
@@ -134,14 +134,14 @@ export default function KycGrid({ customer }: Props) {
                 {isEditing ? (
                   <button
                     onClick={() => saveEdit(idx)}
-                    className="ml-auto text-[10px] px-2 py-0.5 rounded bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+                    className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
                   >
                     保存
                   </button>
                 ) : (
                   <button
                     onClick={() => startEdit(idx)}
-                    className="ml-auto text-[10px] px-2 py-0.5 rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-colors"
+                    className="ml-auto text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-all duration-200"
                   >
                     ✎ 编辑
                   </button>

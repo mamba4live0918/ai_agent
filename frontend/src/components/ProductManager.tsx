@@ -114,7 +114,7 @@ export default function ProductManager() {
     return (
       <div className="flex items-center gap-1 pt-2">
         <button onClick={() => handlePageChange(page - 1)} disabled={page <= 1}
-          className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200">
           &laquo;
         </button>
         {(() => {
@@ -130,7 +130,7 @@ export default function ProductManager() {
           return pages.map((p, idx) =>
             typeof p === 'number' ? (
               <button key={p} onClick={() => handlePageChange(p)}
-                className={`w-7 h-7 text-xs rounded transition-colors ${p === page ? 'bg-[var(--btn-blue)] text-white border border-[var(--btn-blue-hover)]' : 'border border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'}`}>
+                className={`w-7 h-7 text-xs rounded-full transition-all duration-200 ${p === page ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'}`}>
                 {p}
               </button>
             ) : (
@@ -139,14 +139,14 @@ export default function ProductManager() {
           );
         })()}
         <button onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages}
-          className="px-2 py-1 text-xs rounded border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          className="px-2 py-1 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200">
           &raquo;
         </button>
         <span className="text-[10px] text-[var(--text-placeholder)] ml-2">{page}/{totalPages} 页</span>
         <input type="text" value={jumpPage}
           onChange={e => setJumpPage(e.target.value.replace(/\D/g, ''))}
           onKeyDown={handleJumpPage} placeholder="跳转"
-          className="ml-1 w-12 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none" />
+          className="ml-1 w-12 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" />
       </div>
     );
   };
@@ -156,14 +156,14 @@ export default function ProductManager() {
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2">
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="搜索产品名称..." className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none flex-1" />
+          placeholder="搜索产品名称..." className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] outline-none flex-1 transition-all duration-200" />
         <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)]">
+          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)] transition-all duration-200">
           <option value="">全部类型</option>
           {PRODUCT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select value={riskFilter} onChange={e => { setRiskFilter(e.target.value); setPage(1); }}
-          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)]">
+          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)] transition-all duration-200">
           <option value="">全部风险</option>
           {RISK_LEVELS.map(r => <option key={r} value={r}>R{r}</option>)}
         </select>
@@ -183,7 +183,7 @@ export default function ProductManager() {
           const risk = getRiskLabel(p.risk_level);
           const expanded = expandedId === p.id;
           return (
-            <div key={p.id} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md overflow-hidden">
+            <div key={p.id} className="bg-[var(--bg-primary)] rounded-xl overflow-hidden shadow-sm">
               <div
                 onClick={() => handleExpand(p)}
                 className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors"
@@ -191,11 +191,12 @@ export default function ProductManager() {
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: risk.color }} />
                 <span className="text-sm text-[var(--text-primary)] flex-1 truncate">{p.name}</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--border-default)]" style={{ color: risk.color }}>{risk.text}</span>
-                <span className="text-[10px] text-[var(--accent-green)] font-mono tabular-nums">+{p.expected_return}%</span>
-                <span className="text-[10px] text-[var(--text-placeholder)]">{expanded ? '收起 ▴' : '展开 ▾'}</span>
+                <span className="text-[10px] text-[var(--accent-green)] font-mono tabular-nums hidden sm:inline">+{p.expected_return}%</span>
+                <span className="text-[10px] text-[var(--text-placeholder)] hidden sm:inline">{expanded ? '收起 ▴' : '展开 ▾'}</span>
+                <span className="text-[10px] text-[var(--text-placeholder)] sm:hidden">{expanded ? '▴' : '▾'}</span>
                 <button
                   onClick={e => { e.stopPropagation(); deleteProduct(p.id).then(load); }}
-                  className="text-[10px] text-[var(--accent-red)] hover:text-[var(--accent-red)] ml-1"
+                  className="text-[10px] text-[var(--accent-red)] hover:text-[var(--accent-red)] ml-1 flex-shrink-0"
                 >删除</button>
               </div>
               {expanded && (
@@ -226,65 +227,65 @@ export default function ProductManager() {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowAddModal(false)}>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-5 w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+          <div className="bg-[var(--bg-secondary)] rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto shadow-lg" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">新增金融产品</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">产品名称 *</label>
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">类型</label>
                   <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none">
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none transition-all duration-200">
                     {PRODUCT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">风险等级 (1-5)</label>
                   <select value={form.risk_level} onChange={e => setForm({ ...form, risk_level: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none">
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none transition-all duration-200">
                     {RISK_LEVELS.map(r => <option key={r} value={r}>R{r}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">预期年化收益率 (%) *</label>
                   <input type="number" step="0.1" value={form.expected_return} onChange={e => setForm({ ...form, expected_return: e.target.value })}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" />
                 </div>
                 <div>
                   <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">起投金额 (元) *</label>
                   <input type="number" value={form.min_investment} onChange={e => setForm({ ...form, min_investment: e.target.value })}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" />
                 </div>
               </div>
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">发行机构</label>
                 <input value={form.issuer} onChange={e => setForm({ ...form, issuer: e.target.value })}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" />
               </div>
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">锁定期限</label>
                 <input value={form.lock_period} onChange={e => setForm({ ...form, lock_period: e.target.value })}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" placeholder="如: T+1、30天、1年" />
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" placeholder="如: T+1、30天、1年" />
               </div>
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">基金代码 (仅基金类)</label>
                 <input value={form.fund_code} onChange={e => setForm({ ...form, fund_code: e.target.value })}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" placeholder="如: 005827，填后自动拉取真实净值" />
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" placeholder="如: 005827，填后自动拉取真实净值" />
               </div>
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">适合人群标签 (逗号分隔)</label>
                 <input value={form.target_tags} onChange={e => setForm({ ...form, target_tags: e.target.value })}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" placeholder="如: 保守,稳健,长期投资" />
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-all duration-200" placeholder="如: 保守,稳健,长期投资" />
               </div>
               <div>
                 <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block mb-1">产品描述</label>
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                  rows={2} className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none resize-none" />
+                  rows={2} className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none resize-none transition-all duration-200" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setShowAddModal(false)} className="btn btn-secondary text-xs">取消</button>
@@ -298,8 +299,8 @@ export default function ProductManager() {
 
       {/* CSV Import Modal */}
       {showCsvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => { setShowCsvModal(false); setImportError(''); }}>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { setShowCsvModal(false); setImportError(''); }}>
+          <div className="bg-[var(--bg-secondary)] rounded-2xl p-5 w-full max-w-sm shadow-lg" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">CSV 批量导入</h3>
             <p className="text-xs text-[var(--text-secondary)] mb-3">列: name,type,risk_level,expected_return,min_investment,description,issuer,target_tags,lock_period,fund_code</p>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileChange} disabled={importing}

@@ -6,7 +6,7 @@ function FeedbackRecord({ feedback: f }: { feedback: FeedbackResponse }) {
   const [open, setOpen] = useState(false);
   return (
     <div
-      className={`card transition-colors ${open ? 'border-[var(--accent-blue)]/40' : 'cursor-pointer hover:border-[var(--border-default)]'}`}
+      className={`card rounded-xl transition-all duration-200 ${open ? 'border-[var(--accent-blue)]/40' : 'cursor-pointer hover:border-[var(--border-default)]'}`}
       onClick={() => setOpen(!open)}
     >
       <div className="p-4 flex items-center justify-between">
@@ -100,13 +100,13 @@ export default function FeedbackPage() {
 
       {/* Stats cards */}
       {stats && stats.total > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          <div className="card p-4 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-6">
+          <div className="card rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-[var(--accent-orange)] font-mono">{stats.average.toFixed(1)}</p>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-1">平均评分</p>
           </div>
           {[5, 4, 3, 2].map(n => (
-            <div key={n} className="card p-4 text-center">
+            <div key={n} className="card rounded-xl p-4 text-center">
               <p className="text-lg font-bold text-[var(--text-primary)] font-mono">{stats.distribution[n]}</p>
               <p className="text-[11px] text-[var(--text-tertiary)] mt-1">{'★'.repeat(n)}{'☆'.repeat(5-n)}</p>
             </div>
@@ -115,7 +115,7 @@ export default function FeedbackPage() {
       )}
 
       {/* Feedback form */}
-      <div className="card p-6 mb-8">
+      <div className="card rounded-xl p-6 mb-8">
         {submitted ? (
           <div className="text-center py-6">
             <div className="w-14 h-14 rounded-full bg-[var(--btn-primary)]/20 border-2 border-[var(--btn-primary)]/40 flex items-center justify-center mx-auto mb-4">
@@ -127,7 +127,7 @@ export default function FeedbackPage() {
             <p className="text-sm text-[var(--text-secondary)] mb-4">你的评价已提交</p>
             <button
               onClick={() => { setSubmitted(false); setRating(0); setText(''); }}
-              className="px-4 py-2 text-sm rounded-md border border-[var(--border-default)] text-[var(--accent-blue)] hover:border-[var(--accent-blue)]/40 transition-colors"
+              className="px-4 py-2 text-sm rounded-full border border-[var(--border-default)] text-[var(--accent-blue)] hover:border-[var(--accent-blue)]/40 transition-all duration-200"
             >
               再次评价
             </button>
@@ -158,7 +158,7 @@ export default function FeedbackPage() {
               </span>
             </div>
             <textarea
-              className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] resize-none focus:outline-none focus:border-[var(--accent-blue)] mb-4"
+              className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] resize-none focus:outline-none focus:border-[var(--accent-blue)] mb-4 transition-all duration-200"
               rows={3}
               placeholder="分享你的使用体验或改进建议（可选）..."
               value={text}
@@ -168,13 +168,13 @@ export default function FeedbackPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || rating === 0}
-                className="px-5 py-2 text-sm font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-5 py-2 text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 {submitting ? '提交中...' : '提交反馈'}
               </button>
               <button
                 onClick={handleShare}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-all duration-200 flex items-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M3.5 2.75a.75.75 0 0 0-.75.75v6.5c0 .414.336.75.75.75H5v1H3.5A1.75 1.75 0 0 1 1.75 10V3.5c0-.966.784-1.75 1.75-1.75h8.5c.966 0 1.75.784 1.75 1.75V5h-1V3.5a.75.75 0 0 0-.75-.75h-8.5Z"/>

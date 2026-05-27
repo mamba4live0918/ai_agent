@@ -18,7 +18,7 @@ export default function TauriTitlebar() {
       <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           onClick={tauri.minimize}
-          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer rounded-full"
           title="最小化"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
@@ -27,7 +27,7 @@ export default function TauriTitlebar() {
         </button>
         <button
           onClick={tauri.toggleMaximize}
-          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors rounded-full"
           title="最大化"
         >
           {tauri.isMaximized ? (
@@ -43,7 +43,7 @@ export default function TauriTitlebar() {
         </button>
         <button
           onClick={tauri.close}
-          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[var(--accent-red)] transition-colors"
+          className="w-11 h-full flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[var(--accent-red)] transition-colors rounded-full"
           title="关闭"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">

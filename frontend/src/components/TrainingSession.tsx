@@ -27,6 +27,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   const [review, setReview] = useState<TrainingReviewType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPersonaPopover, setShowPersonaPopover] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,9 +183,9 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   return (
     <div className="flex h-full relative">
       {/* Chat area */}
-      <div className="flex-1 flex flex-col bg-[var(--bg-primary)] border-r-2 border-[var(--border-default)] min-w-0">
+      <div className="flex-1 flex flex-col bg-[var(--bg-primary)] min-w-0 shadow-[0_0_20px_rgba(0,0,0,0.06)]">
         {/* Persona header */}
-        <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[var(--bg-secondary)] border-b-2 border-[var(--border-subtle)] flex-shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--bg-secondary)] shadow-sm flex-shrink-0">
           <div ref={personaRef} className="relative flex-shrink-0">
             <button
               onClick={() => setShowPersonaPopover(v => !v)}
@@ -194,7 +195,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
               👤
             </button>
             {showPersonaPopover && (
-              <div className="absolute top-full left-0 mt-2 w-72 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-2xl z-50 overflow-hidden">
+              <div className="absolute top-full left-0 mt-2 w-72 bg-[var(--bg-secondary)] rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--border-subtle)]">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-[var(--border-default)] border border-[var(--accent-orange)] flex items-center justify-center text-xs">
@@ -277,11 +278,21 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
           }`}>
             {detail.status === 'completed' ? '已完成' : detail.status === 'active' ? '进行中' : '未开始'}
           </span>
+          <button
+            onClick={() => setCoachOpen(v => !v)}
+            className="lg:hidden px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--accent-purple)] hover:bg-[var(--accent-purple)]/10 transition-all duration-200 flex items-center gap-1"
+            title={coachOpen ? '收起教练' : '展开教练'}
+          >
+            <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 1.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5ZM5.75 8a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5ZM12.5 6a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 0 1 3.5 0ZM10.25 10.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z"/>
+            </svg>
+            教练
+          </button>
         </div>
 
         {/* Scenario briefing banner (shown when no messages yet) */}
         {messages.length === 0 && detail.scenario_context && (
-          <div className="mx-3 mt-3 p-3 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg">
+          <div className="mx-3 mt-3 p-4 bg-[var(--bg-secondary)] rounded-xl shadow-sm">
             <div className="text-[10px] font-semibold text-[var(--accent-blue)] uppercase tracking-wider mb-1.5">训练简报</div>
             <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{detail.scenario_context}</p>
           </div>
@@ -297,10 +308,10 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
                 {m.role === 'user' ? '🧑' : '👤'}
               </div>
               <div className={`max-w-[70%] ${m.role === 'user' ? 'items-end' : ''}`}>
-                <div className={`rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                <div className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'bg-[var(--btn-blue)] border border-[var(--btn-blue-hover)] text-white'
-                    : 'bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)]'
+                    ? 'bg-[var(--btn-blue)] text-white shadow-md'
+                    : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-sm'
                 }`}>
                   {m.content}
                 </div>
@@ -314,9 +325,9 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
           {/* AI ending hint */}
           {showEndingHint && detail.status !== 'completed' && (
             <div className="flex justify-center">
-              <div className="bg-[var(--bg-secondary)] border border-[var(--accent-orange)] rounded-lg px-3 py-2 text-center">
+              <div className="bg-[var(--bg-secondary)] rounded-xl shadow-sm px-4 py-3 text-center border border-[var(--accent-orange)]/20">
                 <p className="text-[11px] text-[var(--accent-orange)] mb-1.5">对话似乎已自然结束，是否生成复盘？</p>
-                <button onClick={handleEnd} disabled={ending} className="px-3 py-1 bg-[var(--accent-orange)] text-black text-[10px] rounded font-medium hover:bg-[var(--accent-orange)] disabled:opacity-50">
+                <button onClick={handleEnd} disabled={ending} className="px-4 py-1.5 bg-[var(--accent-orange)] text-black text-[10px] rounded-full font-medium hover:bg-[var(--accent-orange)] disabled:opacity-50 transition-all duration-200">
                   {ending ? '生成中...' : '生成复盘报告'}
                 </button>
               </div>
@@ -326,7 +337,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         </div>
 
         {/* Input bar */}
-        <div className="p-2.5 border-t-2 border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex gap-2 items-center flex-shrink-0">
+        <div className="p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] bg-[var(--bg-secondary)] flex gap-2 items-center flex-shrink-0">
           <input
             ref={inputRef}
             type="text"
@@ -335,19 +346,19 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={detail.status === 'completed'}
-            className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:border-[var(--accent-blue)] disabled:opacity-50"
+            className="flex-1 bg-[var(--bg-primary)] rounded-full px-4 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]/30 disabled:opacity-50 shadow-sm transition-all duration-200"
           />
           <button
             onClick={handleSend}
             disabled={sending || !input.trim() || detail.status === 'completed'}
-            className="px-4 py-2 bg-[var(--btn-blue)] border border-[var(--btn-blue-hover)] rounded-md text-white text-[11px] font-medium hover:bg-[var(--btn-blue-hover)] disabled:opacity-50 transition-colors flex-shrink-0"
+            className="px-5 py-2 bg-[var(--btn-blue)] rounded-full text-white text-[11px] font-medium hover:bg-[var(--btn-blue-hover)] disabled:opacity-50 transition-all duration-200 flex-shrink-0 shadow-md"
           >
             {sending ? '发送中...' : '发送'}
           </button>
           {detail.status === 'completed' && detail.review ? (
             <button
               onClick={() => setReview(detail.review)}
-              className="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--accent-purple)] rounded-md text-[var(--accent-purple)] text-[11px] hover:bg-[var(--bg-overlay)] transition-colors flex-shrink-0"
+              className="px-4 py-2 bg-[var(--bg-tertiary)] rounded-full text-[var(--accent-purple)] text-[11px] hover:bg-[var(--bg-overlay)] transition-all duration-200 flex-shrink-0 shadow-sm"
             >
               查看复盘
             </button>
@@ -355,7 +366,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             <button
               onClick={handleEnd}
               disabled={ending || detail.status === 'completed'}
-              className="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--accent-red)] rounded-md text-[var(--accent-red)] text-[11px] hover:bg-[var(--color-danger-hover-bg)] disabled:opacity-50 transition-colors flex-shrink-0"
+              className="px-4 py-2 bg-[var(--bg-tertiary)] rounded-full text-[var(--accent-red)] text-[11px] hover:bg-[var(--color-danger-hover-bg)] disabled:opacity-50 transition-all duration-200 flex-shrink-0 shadow-sm"
             >
               {ending ? '生成中...' : '结束训练'}
             </button>
@@ -363,10 +374,24 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         </div>
       </div>
 
-      {/* Coach sidebar */}
-      <div className="w-[260px] bg-[var(--bg-primary)] border-t-[3px] border-t-[var(--accent-purple)] flex flex-col flex-shrink-0">
-        <div className="px-3 py-2.5 text-[10px] font-semibold text-[var(--accent-purple)] uppercase tracking-wider border-b border-[var(--border-subtle)]">
-          教练实时提示
+      {/* Coach sidebar — overlay on mobile, static on desktop */}
+      {/* Mobile coach overlay backdrop */}
+      {coachOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setCoachOpen(false)} />}
+      <div className={`
+        ${coachOpen ? 'fixed inset-y-0 right-0 z-50 w-[260px]' : 'hidden'}
+        lg:static lg:block lg:w-[260px] lg:flex-shrink-0
+        bg-[var(--bg-primary)] shadow-[0_0_20px_rgba(0,0,0,0.06)] flex flex-col
+      `}>
+        <div className="px-3 py-2.5 text-[10px] font-semibold text-[var(--accent-purple)] uppercase tracking-wider border-b border-[var(--border-subtle)] flex items-center justify-between">
+          <span>教练实时提示</span>
+          <button
+            onClick={() => setCoachOpen(false)}
+            className="lg:hidden text-[var(--text-placeholder)] hover:text-[var(--text-secondary)] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+            </svg>
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
           {lastCoachTip ? (
@@ -374,7 +399,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
               const content = lastCoachTip[key];
               if (!content) return null;
               return (
-                <div key={key} className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-md p-2.5" style={{ borderLeft: `3px solid ${borderColor}` }}>
+                <div key={key} className="bg-[var(--bg-secondary)] rounded-xl p-3 shadow-sm transition-all duration-200" style={{ borderLeft: `3px solid ${borderColor}` }}>
                   <div className="text-[9px] font-semibold uppercase mb-1" style={{ color }}>{icon} {label}</div>
                   <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{content}</p>
                 </div>
@@ -390,7 +415,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
           {/* Quick replies */}
           {quickReplies.length > 0 && detail.status !== 'completed' && (
-            <div className="bg-[var(--bg-secondary)] border border-[var(--accent-purple)]/40 rounded-md p-2.5 mt-2">
+            <div className="bg-[var(--bg-secondary)] rounded-xl p-3 mt-2 shadow-sm transition-all duration-200">
               <div className="text-[9px] font-semibold text-[var(--accent-purple)] uppercase mb-2">💭 回复思路建议</div>
               {quickReplies.map((suggestion, i) => (
                 <button
@@ -408,7 +433,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
       {/* Error toast */}
       {error && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--accent-red)]/90 text-white text-xs px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--accent-red)]/90 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-white/80 hover:text-white font-bold">✕</button>
         </div>

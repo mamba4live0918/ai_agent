@@ -19,7 +19,7 @@ export default function SessionList({ sessions, selectedId, onSelect, onDelete, 
           <div
             key={s.id}
             onClick={() => onSelect(s)}
-            className={`group relative rounded-md border p-2.5 cursor-pointer transition-colors ${
+            className={`group relative rounded-xl border p-2.5 cursor-pointer transition-colors ${
               selectedId === s.id
                 ? 'border-[var(--accent-blue)] bg-[var(--bg-overlay)]'
                 : s.status === 'pending' || s.status === 'active'
@@ -62,7 +62,7 @@ export default function SessionList({ sessions, selectedId, onSelect, onDelete, 
       <div className="p-2 border-t border-[var(--border-subtle)]">
         <button
           onClick={onNewPersona}
-          className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md py-1.5 text-[10px] transition-colors"
+          className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full py-1.5 text-[10px] transition-colors"
         >
           + 手动创建数字人
         </button>

@@ -42,7 +42,7 @@ export default function FeedbackForm() {
 
   if (submitted) {
     return (
-      <div className="card p-5 animate-in" style={{ animationDelay: '220ms' }}>
+      <div className="card rounded-xl p-5 animate-in" style={{ animationDelay: '220ms' }}>
         <div className="text-center py-4">
           <div className="w-12 h-12 rounded-full bg-[var(--btn-primary)]/20 border border-[var(--btn-primary)]/40 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-[var(--accent-green)]" viewBox="0 0 16 16" fill="currentColor">
@@ -60,7 +60,7 @@ export default function FeedbackForm() {
   }
 
   return (
-    <div className="card p-5 animate-in" style={{ animationDelay: '220ms' }}>
+    <div className="card rounded-xl p-5 animate-in" style={{ animationDelay: '220ms' }}>
       <div className="flex items-center gap-2 mb-4">
         <svg className="w-4 h-4 text-[var(--accent-orange)]" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
@@ -100,7 +100,7 @@ export default function FeedbackForm() {
 
       {/* Text feedback */}
       <textarea
-        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] resize-none focus:outline-none focus:border-[var(--accent-blue)] mb-3"
+        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] resize-none focus:outline-none focus:border-[var(--accent-blue)] mb-3 transition-all duration-200"
         rows={2}
         placeholder="分享你的使用体验或建议（可选）..."
         value={text}
@@ -112,13 +112,13 @@ export default function FeedbackForm() {
         <button
           onClick={handleSubmit}
           disabled={submitting || rating === 0}
-          className="px-4 py-1.5 text-xs font-medium rounded-md bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-1.5 text-xs font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
         >
           {submitting ? '提交中...' : '提交反馈'}
         </button>
         <button
           onClick={handleShare}
-          className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors flex items-center gap-1"
+          className="px-3 py-1.5 text-xs font-medium rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-all duration-200 flex items-center gap-1"
         >
           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
             <path d="M3.5 2.75a.75.75 0 0 0-.75.75v6.5c0 .414.336.75.75.75H5v1H3.5A1.75 1.75 0 0 1 1.75 10V3.5c0-.966.784-1.75 1.75-1.75h8.5c.966 0 1.75.784 1.75 1.75V5h-1V3.5a.75.75 0 0 0-.75-.75h-8.5Z"/>

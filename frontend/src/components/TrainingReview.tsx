@@ -46,14 +46,14 @@ export default function TrainingReview({ review, session, onBack }: Props) {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-primary)]">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-[var(--bg-primary)] border-b-2 border-[var(--border-subtle)] flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 py-2.5 bg-[var(--bg-primary)] border-b-2 border-[var(--border-subtle)] flex-shrink-0 flex-wrap">
         {onBack && (
           <button onClick={onBack} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs">← 返回</button>
         )}
         <span className="text-sm text-[var(--text-primary)] font-semibold">复盘报告</span>
-        <span className="text-[10px] text-[var(--text-placeholder)]">|</span>
-        <span className="text-[11px] text-[var(--text-secondary)]">👤 {session.persona?.name || '未知'} · {session.scenario}</span>
-        <span className="text-[10px] text-[var(--text-placeholder)]">{new Date(review.created_at).toLocaleString('zh-CN')}</span>
+        <span className="text-[10px] text-[var(--text-placeholder)] hidden sm:inline">|</span>
+        <span className="text-[11px] text-[var(--text-secondary)] truncate max-w-[200px] sm:max-w-none">👤 {session.persona?.name || '未知'} · {session.scenario}</span>
+        <span className="text-[10px] text-[var(--text-placeholder)] hidden sm:inline">{new Date(review.created_at).toLocaleString('zh-CN')}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -126,7 +126,7 @@ export default function TrainingReview({ review, session, onBack }: Props) {
             <h3 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">话术点评</h3>
             <div className="space-y-2.5">
               {highlights.map((h, i) => (
-                <div key={i} className="border border-[var(--border-subtle)] rounded-md overflow-hidden">
+                <div key={i} className="border border-[var(--border-subtle)] rounded-xl overflow-hidden">
                   <div className={`px-3 py-1.5 text-[10px] border-b border-[var(--border-subtle)] ${h.type === 'good' ? 'bg-[var(--bg-secondary)] text-[var(--accent-green)]' : 'bg-[var(--bg-secondary)] text-[var(--accent-red)]'}`}>
                     {h.type === 'good' ? '👍 表现好的回复' : '👎 需要改进的回复'}
                   </div>

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { TrainingSession, TrainingSessionDetail, Persona } from '../types';
 import {
@@ -21,11 +21,11 @@ export default function Training() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showPersonaForm, setShowPersonaForm] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const autoCreatedRef = useRef(false);
   const restoredRef = useRef(false);
 
-  // Always fetch all sessions — don't filter by customerId so manual personas appear
   const fetchSessions = useCallback(async () => {
     try {
       const result = await getTrainingSessions(undefined, undefined, 1, 50);
@@ -38,8 +38,8 @@ export default function Training() {
   const selectSession = useCallback(async (id: string) => {
     setSelectedId(id);
     setDetailLoading(true);
+    setSidebarOpen(false);
 
-    // Persist to URL (survives browser back/forward) and sessionStorage (survives sidebar nav)
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('sessionId', id);
@@ -63,7 +63,6 @@ export default function Training() {
     await selectSession(s.id);
   }, [selectSession]);
 
-  // Restore session on mount — URL param first, then sessionStorage
   useEffect(() => {
     if (restoredRef.current) return;
     const idToRestore = sessionIdParam || sessionStorage.getItem(STORAGE_KEY);
@@ -73,13 +72,11 @@ export default function Training() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-create session from customer when customerId is in URL
   useEffect(() => {
     if (!initialCustomerId || autoCreatedRef.current || sessionIdParam) return;
     autoCreatedRef.current = true;
 
     (async () => {
-      // Always create a new session when coming from customer profile
       try {
         setCreating(true);
         const s = await createTrainingSession({
@@ -131,53 +128,82 @@ export default function Training() {
     fetchSessions();
   };
 
+  const sidebarContent = (
+    <div className="w-[268px] flex-shrink-0 flex flex-col h-full">
+      <SessionList
+        sessions={sessions}
+        selectedId={selectedId}
+        onSelect={handleSelect}
+        onDelete={handleDelete}
+        onNewPersona={() => { setShowPersonaForm(true); setSidebarOpen(false); }}
+      />
+    </div>
+  );
+
   return (
     <div className="flex h-full">
-      {/* Left: Session list */}
-      <div className="w-[268px] flex-shrink-0 border-r-2 border-[var(--border-default)] flex flex-col bg-[var(--bg-primary)]">
-        <SessionList
-          sessions={sessions}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onDelete={handleDelete}
-          onNewPersona={() => setShowPersonaForm(true)}
-        />
-      </div>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setSidebarOpen(false)} />
+      )}
 
-      {/* Right: Chat area or empty state */}
-      <div className="flex-1 min-w-0 bg-[var(--bg-primary)]">
-        {creating ? (
-          <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
-            <div className="text-center">
-              <div className="animate-spin w-6 h-6 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full mx-auto mb-3" />
-              <p>正在创建训练场景...</p>
+      {/* Sidebar — off-canvas on mobile, static on desktop */}
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-50
+        bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
+        transform transition-transform duration-200 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {sidebarContent}
+      </aside>
+
+      {/* Main area */}
+      <div className="flex-1 min-w-0 bg-[var(--bg-primary)] flex flex-col">
+        {/* Mobile header bar */}
+        <div className="lg:hidden flex items-center gap-2 px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+          <button onClick={() => setSidebarOpen(true)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+            <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75Z"/>
+            </svg>
+          </button>
+          <span className="text-sm font-semibold text-[var(--text-primary)]">仿真培训</span>
+          {sessions.length > 0 && <span className="text-[10px] text-[var(--text-placeholder)]">{sessions.length} 个会话</span>}
+        </div>
+
+        <div className="flex-1 min-h-0">
+          {creating ? (
+            <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+              <div className="text-center">
+                <div className="animate-spin w-6 h-6 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full mx-auto mb-3" />
+                <p>正在创建训练场景...</p>
+              </div>
             </div>
-          </div>
-        ) : detailLoading ? (
-          <div className="flex items-center justify-center h-full text-[var(--text-placeholder)] text-sm">加载中...</div>
-        ) : detail ? (
-          <TrainingSessionComponent
-            key={detail.id}
-            session={detail}
-            onSessionUpdated={handleSessionUpdated}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="text-4xl mb-4">🎯</div>
-              <p className="text-sm text-[var(--text-primary)] font-medium mb-1">仿真培训 — AI 数字人对练</p>
-              <p className="text-xs text-[var(--text-placeholder)] mb-4">
-                {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
-              </p>
-              <button
-                onClick={() => setShowPersonaForm(true)}
-                className="px-4 py-2 bg-[var(--btn-primary)] text-white text-xs rounded-md hover:bg-[var(--btn-primary-hover)] transition-colors"
-              >
-                + 新建训练
-              </button>
+          ) : detailLoading ? (
+            <div className="flex items-center justify-center h-full text-[var(--text-placeholder)] text-sm">加载中...</div>
+          ) : detail ? (
+            <TrainingSessionComponent
+              key={detail.id}
+              session={detail}
+              onSessionUpdated={handleSessionUpdated}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full px-4">
+              <div className="text-center">
+                <div className="text-4xl mb-4">🎯</div>
+                <p className="text-sm text-[var(--text-primary)] font-medium mb-1">仿真培训 — AI 数字人对练</p>
+                <p className="text-xs text-[var(--text-placeholder)] mb-4">
+                  {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
+                </p>
+                <button
+                  onClick={() => setShowPersonaForm(true)}
+                  className="px-5 py-2.5 bg-[var(--btn-primary)] text-white text-xs rounded-full hover:bg-[var(--btn-primary-hover)] transition-all duration-200 shadow-md"
+                >
+                  + 新建训练
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <PersonaForm
@@ -186,7 +212,6 @@ export default function Training() {
         onSubmit={handleCreateFromPersona}
         loading={creating}
       />
-
     </div>
   );
 }

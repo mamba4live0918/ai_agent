@@ -39,7 +39,7 @@ export default function InstructorDashboard() {
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-[#490202]/20 border border-[var(--accent-red)] rounded-md px-4 py-3 text-sm text-[var(--accent-red)]">
+        <div className="bg-[var(--color-danger-hover-bg)] border border-[var(--accent-red)] rounded-xl px-4 py-3 text-sm text-[var(--accent-red)]">
           {error}
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function InstructorDashboard() {
         <h1 className="text-lg font-semibold text-[var(--text-primary)]">讲师端口 - 训练统计</h1>
         <button
           onClick={() => exportReport().catch(() => {})}
-          className="bg-[var(--btn-primary)] hover:bg-[var(--btn-primary-hover)] text-white text-sm px-4 py-2 rounded-md transition-colors"
+          className="bg-[var(--btn-primary)] hover:bg-[var(--btn-primary-hover)] text-white text-sm px-4 py-2 rounded-full transition-all duration-200"
         >
           导出报表 (CSV)
         </button>
@@ -60,7 +60,7 @@ export default function InstructorDashboard() {
 
       {/* Stat Cards */}
       {overview && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="总用户数" value={overview.total_users} color="var(--accent-blue)" />
           <StatCard label="总会话数" value={overview.total_sessions} color="var(--accent-green)" />
           <StatCard label="完成率" value={`${overview.completion_rate}%`} color="var(--accent-orange)" />
@@ -69,13 +69,13 @@ export default function InstructorDashboard() {
       )}
 
       {/* Trends Chart */}
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-4">
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">训练趋势</h2>
           <div className="flex gap-1">
             <button
               onClick={() => setGranularity('weekly')}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
                 granularity === 'weekly'
                   ? 'bg-[var(--btn-blue)] text-white'
                   : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -85,7 +85,7 @@ export default function InstructorDashboard() {
             </button>
             <button
               onClick={() => setGranularity('monthly')}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
                 granularity === 'monthly'
                   ? 'bg-[var(--btn-blue)] text-white'
                   : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -98,7 +98,7 @@ export default function InstructorDashboard() {
         {trends.length === 0 ? (
           <div className="text-xs text-[var(--text-placeholder)] py-8 text-center">暂无训练数据</div>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={typeof window !== 'undefined' && window.innerWidth < 640 ? 200 : 300}>
             <BarChart data={trends}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
               <XAxis dataKey="period" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
@@ -124,7 +124,7 @@ export default function InstructorDashboard() {
       </div>
 
       {/* Per-User Table */}
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">按用户统计</h2>
         </div>
@@ -133,18 +133,18 @@ export default function InstructorDashboard() {
             <thead>
               <tr className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)] text-xs">
                 <th className="text-left px-4 py-2 font-medium">用户</th>
-                <th className="text-left px-4 py-2 font-medium">角色</th>
+                <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">角色</th>
                 <th className="text-right px-4 py-2 font-medium">总会话</th>
                 <th className="text-right px-4 py-2 font-medium">已完成</th>
                 <th className="text-right px-4 py-2 font-medium">平均分</th>
-                <th className="text-right px-4 py-2 font-medium">最近训练</th>
+                <th className="text-right px-4 py-2 font-medium hidden md:table-cell">最近训练</th>
               </tr>
             </thead>
             <tbody>
               {perUser.map((u) => (
                 <tr key={u.user_id} className="border-b border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)]">
                   <td className="px-4 py-2.5 font-medium">{u.username}</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2.5 hidden sm:table-cell">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
                       u.role === 'admin' ? 'bg-[var(--accent-orange)]/20 text-[var(--accent-orange)]' :
                       u.role === 'instructor' ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]' :
@@ -156,7 +156,7 @@ export default function InstructorDashboard() {
                   <td className="px-4 py-2.5 text-right">{u.total_sessions}</td>
                   <td className="px-4 py-2.5 text-right">{u.completed_sessions}</td>
                   <td className="px-4 py-2.5 text-right">{u.average_score?.toFixed(1) ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right text-xs text-[var(--text-secondary)]">
+                  <td className="px-4 py-2.5 text-right text-xs text-[var(--text-secondary)] hidden md:table-cell">
                     {u.last_session_at ? new Date(u.last_session_at).toLocaleDateString() : '—'}
                   </td>
                 </tr>
@@ -178,7 +178,7 @@ export default function InstructorDashboard() {
 
 function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
-    <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-4">
+    <div className="bg-[var(--bg-secondary)] rounded-2xl p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5">
       <div className="text-xs text-[var(--text-secondary)] mb-1">{label}</div>
       <div className="text-2xl font-bold" style={{ color }}>{value}</div>
     </div>

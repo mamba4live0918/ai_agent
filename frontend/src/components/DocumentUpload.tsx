@@ -40,7 +40,7 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
       <select
         value={categoryId}
         onChange={e => setCategoryId(e.target.value)}
-        className="h-[32px] bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-md px-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all"
+        className="h-[32px] bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all duration-200"
       >
         {categories.map(cat => (
           <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
