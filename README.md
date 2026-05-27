@@ -17,6 +17,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **TTS** | edge-tts (`zh-CN-XiaoxiaoNeural`) |
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
+| **桌面应用** | Tauri v2（Windows MSI/NSIS 安装包） |
 
 ## 项目结构
 
@@ -36,7 +37,8 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── training.py      # TrainingSession / Message / Review
 │   │   │   ├── post_sales.py    # PostSalesSession / PostSalesMessage
 │   │   │   ├── feedback.py      # Feedback (评分 + 评价)
-│   │   │   └── realtime_session.py  # RealtimeSession / RealtimeSegment / RealtimeCoachEvent
+│   │   │   ├── realtime_session.py  # RealtimeSession / RealtimeSegment / RealtimeCoachEvent
+│   │   │   └── chat.py           # ChatConversation / ChatMessage (对话持久化)
 │   │   ├── schemas/             # Pydantic 请求/响应
 │   │   │   ├── auth.py          # UserRegister, UserLogin, UserResponse, TokenResponse
 │   │   │   ├── instructor.py    # TrainingStatsOverview, PerUserStats, TrainingTrendPoint
@@ -110,6 +112,8 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── PostSalesReport.tsx  # 售后报告（雷达图/情绪轨迹/PDF）
 │   │   │   ├── RealtimeTranscript.tsx # 实时转录面板（说话人彩色标签）
 │   │   │   ├── RealtimeCoach.tsx    # 实时教练提示（打字机效果）
+│   │   │   ├── PdfPreview.tsx       # 原生浏览器 PDF 预览弹窗
+│   │   │   ├── TauriTitlebar.tsx    # Windows 桌面应用自定义标题栏
 │   │   │   └── FeedbackForm.tsx     # 反馈表单（星级 + 评价）
 │   │   ├── services/api.ts      # API 调用封装（含上传进度跟踪）
 │   │   └── types/index.ts       # TypeScript 类型定义
@@ -325,6 +329,7 @@ npm run dev
 - 文档上传自动索引到 ChromaDB（PDF/DOCX/TXT/MD/PPTX），带上传进度条
 - 文档按用户隔离 + 基础共享文档（user_id=NULL）全员可见
 - 全文搜索 + RAG 智能问答（上下文感知，跨文档推理）
+- PDF 文档支持原生浏览器内预览（iframe + blob URL，工具栏/导航面板完整可用）
 - 删除文档同步清理 ChromaDB 向量
 
 **知识库优先生成（KB-First）**
@@ -423,6 +428,22 @@ npm run dev
 - CSS 自定义属性驱动的双主题（暗色 GitHub-dark + 奶油色 Light Mode）
 - ThemeContext 持久化到 localStorage，刷新保持主题偏好
 - 侧边栏底部一键切换太阳/月亮图标
+
+**桌面应用（Tauri v2）**
+- Windows 原生安装包（MSI/NSIS），自动包含前后端依赖
+- 自定义标题栏（`TauriTitlebar`）：最小化/最大化/关闭 + 窗口拖拽
+- 构建命令：`cd frontend && npm run tauri build`
+- 开发模式：`cd frontend && npm run tauri dev`
+
+**对话持久化**
+- 知识库 RAG 对话自动持久化到 PostgreSQL（`ChatConversation` + `ChatMessage` 模型）
+- 对话按用户隔离命名空间，支持历史会话恢复
+- 会话列表支持查看/删除（级联清理消息）
+
+**聊天侧边栏（ChatPanel）**
+- 侧边栏滑动展开/收起，带细边把手（8px）+ 半透明过渡
+- 暗色模式下 bg-secondary 背景自然区分，内部用 bg-primary 暗色分隔线
+- 主内容区随侧边栏 margin-left 平滑过渡，内容不被遮挡
 
 ## License
 
