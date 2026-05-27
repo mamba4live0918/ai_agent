@@ -1,7 +1,11 @@
 import uuid
 import os
 import shutil
+from math import ceil
+import pandas as pd
+import mammoth
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -11,11 +15,11 @@ from ..models.user import User
 from ..utils.auth import get_current_user, apply_document_filter
 from ..schemas.knowledge import (
     CategoryCreate, CategoryResponse,
-    DocumentResponse, DocumentListResponse,
+    DocumentResponse, DocumentListResponse, DocumentContentResponse, TableData,
 )
 from ..services.embedding_service import index_document, delete_from_chroma
 from ..services.audit_service import log_action
-from ..utils.document_loader import get_content_preview, load_single_document
+from ..utils.document_loader import get_content_preview, load_single_document, load_document_content
 
 router = APIRouter()
 
@@ -56,6 +60,8 @@ def create_category(data: CategoryCreate, db: Session = Depends(get_db)):
 def list_documents(
     category_id: uuid.UUID | None = Query(None),
     q: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -66,7 +72,8 @@ def list_documents(
         query = query.filter(Document.title.ilike(f"%{q}%"))
     query = query.order_by(Document.created_at.desc())
     total = query.count()
-    items = query.all()
+    total_pages = ceil(total / page_size) if total > 0 else 1
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
     result = []
     for doc in items:
         cat = db.query(Category).filter(Category.id == doc.category_id).first()
@@ -76,7 +83,7 @@ def list_documents(
             chunk_count=doc.chunk_count, created_at=doc.created_at,
             category_name=cat.name if cat else None,
         ))
-    return DocumentListResponse(items=result, total=total)
+    return DocumentListResponse(items=result, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 
 @router.post("/documents", response_model=DocumentResponse, status_code=201)
@@ -98,7 +105,7 @@ def upload_document(
         pass
 
     ext = os.path.splitext(raw_name)[1].lower()
-    if ext not in (".pdf", ".docx", ".txt", ".md", ".pptx"):
+    if ext not in (".pdf", ".doc", ".docx", ".txt", ".md", ".ppt", ".pptx", ".xls", ".xlsx", ".xlsm", ".csv"):
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
     os.makedirs(DOCUMENTS_DIR, exist_ok=True)
@@ -175,3 +182,73 @@ def delete_document(doc_id: uuid.UUID, request: Request, db: Session = Depends(g
         ip_address=request.client.host if request.client else None,
         detail=f"Deleted: {filename}",
     )
+
+
+@router.get("/documents/{doc_id}/download")
+def download_document(doc_id: uuid.UUID, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    media_types = {
+        "pdf": "application/pdf",
+        "doc": "application/msword",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "ppt": "application/vnd.ms-powerpoint",
+        "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "xls": "application/vnd.ms-excel",
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "xlsm": "application/vnd.ms-excel.sheet.macroEnabled.12",
+        "csv": "text/csv",
+        "txt": "text/plain",
+        "md": "text/markdown",
+    }
+    media_type = media_types.get(doc.file_type, "application/octet-stream")
+    inline = request.query_params.get("inline", "").lower() == "true"
+    if inline:
+        return FileResponse(doc.file_path, media_type=media_type)
+    return FileResponse(doc.file_path, media_type=media_type, filename=doc.title)
+
+
+@router.get("/documents/{doc_id}/content", response_model=DocumentContentResponse, response_model_exclude_none=False)
+def get_document_content(doc_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    try:
+        content = load_document_content(doc.file_path)
+    except Exception:
+        content = ""
+    if not content or not content.strip():
+        content = doc.content_preview or "（此文档为图片扫描件或无法提取文本内容，请下载后查看）"
+
+    # Extract table data for spreadsheet files
+    table = None
+    if doc.file_type in ("xlsx", "xls", "xlsm", "csv"):
+        try:
+            if doc.file_type == "csv":
+                df = pd.read_csv(doc.file_path, nrows=100)
+            else:
+                engine = "xlrd" if doc.file_type == "xls" else "openpyxl"
+                df = pd.read_excel(doc.file_path, engine=engine, nrows=100)
+            df = df.fillna("").astype(str)
+            columns = df.columns.tolist()
+            rows = [row.tolist() for _, row in df.iterrows()]
+            table = TableData(columns=columns, rows=rows)
+        except Exception:
+            pass
+
+    # Convert Word docs to HTML for rich preview (images, tables, formatting)
+    html = None
+    if doc.file_type in ("docx", "doc"):
+        try:
+            with open(doc.file_path, "rb") as f:
+                result = mammoth.convert_to_html(f)
+                html = result.value
+        except Exception:
+            pass
+
+    return DocumentContentResponse(title=doc.title, file_type=doc.file_type, content=content, html=html, table=table)

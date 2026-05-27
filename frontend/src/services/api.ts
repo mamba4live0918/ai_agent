@@ -221,6 +221,15 @@ export const sendMessage = (message: string, conversationId?: string) =>
     body: JSON.stringify({ message, conversation_id: conversationId || null }),
   });
 
+export const getConversations = () =>
+  request<import('../types').ConversationItem[]>('/chat/conversations');
+
+export const getConversation = (id: string) =>
+  request<import('../types').MessageItem[]>(`/chat/conversations/${id}`);
+
+export const deleteConversation = (id: string) =>
+  request<void>(`/chat/conversations/${id}`, { method: 'DELETE' });
+
 // Training
 export const createTrainingSession = (data: { customer_id?: string; persona?: import('../types').Persona; scenario: string }) =>
   request<import('../types').TrainingSession>('/training/sessions', { method: 'POST', body: JSON.stringify(data) });

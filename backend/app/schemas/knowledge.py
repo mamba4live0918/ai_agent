@@ -38,3 +38,17 @@ class DocumentResponse(BaseModel):
 class DocumentListResponse(BaseModel):
     items: list[DocumentResponse]
     total: int
+    page: int = 1
+    page_size: int = 20
+    total_pages: int = 1
+
+class TableData(BaseModel):
+    columns: list[str]
+    rows: list[list[str]]
+
+class DocumentContentResponse(BaseModel):
+    title: str
+    file_type: str
+    content: str
+    html: str | None = None
+    table: TableData | None = None

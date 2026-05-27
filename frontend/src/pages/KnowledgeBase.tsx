@@ -4,6 +4,7 @@ import type { Category, Document, DocumentContent } from '../types';
 import CategoryNav from '../components/CategoryNav';
 import SearchBar from '../components/SearchBar';
 import DocumentUpload from '../components/DocumentUpload';
+import PdfPreview from '../components/PdfPreview';
 import ChatPanel from '../components/ChatPanel';
 
 export default function KnowledgeBase() {
@@ -21,6 +22,7 @@ export default function KnowledgeBase() {
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
   const pageSize = 20;
 
@@ -34,6 +36,10 @@ export default function KnowledgeBase() {
   }, [selectedCat, search, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    return () => { if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl); };
+  }, [pdfPreviewUrl]);
 
   const handleUpload = async (file: File, categoryId: string, onProgress?: (pct: number) => void) => {
     await uploadDocument(file, categoryId, onProgress);
@@ -60,16 +66,46 @@ export default function KnowledgeBase() {
     setPage(1);
   };
 
+  const closePreview = () => {
+    setPreviewId(null);
+    setPreviewContent(null);
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+  };
+
   const handlePreview = async (doc: Document) => {
     if (previewId === doc.id) {
-      setPreviewId(null);
-      setPreviewContent(null);
+      closePreview();
       return;
     }
+    closePreview();
     setPreviewId(doc.id);
+
+    // PDF: fetch as blob for native browser viewer
+    if (doc.file_type.toLowerCase() === 'pdf') {
+      setPreviewLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const baseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+        const res = await fetch(`${baseUrl}/knowledge/documents/${doc.id}/download?inline=true`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error('Download failed');
+        const blob = await res.blob();
+        setPdfPreviewUrl(URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })));
+      } catch {
+        setPreviewError('加载 PDF 失败');
+      } finally {
+        setPreviewLoading(false);
+      }
+      return;
+    }
+
+    // Non-PDF: extract text content
     setPreviewLoading(true);
     setPreviewError('');
-    setPreviewContent(null);
     try {
       const content = await getDocumentContent(doc.id);
       setPreviewContent(content);
@@ -93,8 +129,14 @@ export default function KnowledgeBase() {
   const fileIcon = (type: string) => {
     const icons: Record<string, string> = {
       pdf: 'M4 4a2 2 0 0 1 2-2h4.172a2 2 0 0 1 1.414.586l2.828 2.828A2 2 0 0 1 15 6.828V12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Z',
+      doc: 'M4 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Z',
       docx: 'M4 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Z',
+      ppt: 'M3 2.5A1.5 1.5 0 0 1 4.5 1h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12A1.5 1.5 0 0 1 12 4.622V13.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 2 13.5v-11Z',
       pptx: 'M3 2.5A1.5 1.5 0 0 1 4.5 1h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12A1.5 1.5 0 0 1 12 4.622V13.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 2 13.5v-11Z',
+      xls: 'M3 3.5A1.5 1.5 0 0 1 4.5 2h7A1.5 1.5 0 0 1 13 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 12.5v-9Z',
+      xlsx: 'M3 3.5A1.5 1.5 0 0 1 4.5 2h7A1.5 1.5 0 0 1 13 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 12.5v-9Z',
+      xlsm: 'M3 3.5A1.5 1.5 0 0 1 4.5 2h7A1.5 1.5 0 0 1 13 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 12.5v-9Z',
+      csv: 'M3 3.5A1.5 1.5 0 0 1 4.5 2h7A1.5 1.5 0 0 1 13 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 12.5v-9Z',
       md: 'M3 1.75A1.75 1.75 0 0 1 4.75 0h6.086a1.75 1.75 0 0 1 1.238.513l3.414 3.414a1.75 1.75 0 0 1 .512 1.238V14.25A1.75 1.75 0 0 1 14.25 16H4.75A1.75 1.75 0 0 1 3 14.25Z',
       txt: 'M3 1.75A1.75 1.75 0 0 1 4.75 0h6.086a1.75 1.75 0 0 1 1.238.513l3.414 3.414a1.75 1.75 0 0 1 .512 1.238V14.25A1.75 1.75 0 0 1 14.25 16H4.75A1.75 1.75 0 0 1 3 14.25Z',
     };
@@ -103,7 +145,17 @@ export default function KnowledgeBase() {
 
   const typeColor = (type: string) => {
     const colors: Record<string, string> = {
-      pdf: 'text-[var(--accent-red)]', docx: 'text-[var(--accent-blue)]', pptx: 'text-[var(--accent-orange)]', md: 'text-[var(--text-secondary)]', txt: 'text-[var(--text-secondary)]',
+      pdf: 'text-[var(--accent-red)]',
+      doc: 'text-[var(--accent-blue)]',
+      docx: 'text-[var(--accent-blue)]',
+      ppt: 'text-[var(--accent-orange)]',
+      pptx: 'text-[var(--accent-orange)]',
+      xls: 'text-[var(--accent-green)]',
+      xlsx: 'text-[var(--accent-green)]',
+      xlsm: 'text-[var(--accent-green)]',
+      csv: 'text-[var(--accent-green)]',
+      md: 'text-[var(--text-secondary)]',
+      txt: 'text-[var(--text-secondary)]',
     };
     return colors[type] || 'text-[var(--text-secondary)]';
   };
@@ -239,43 +291,6 @@ export default function KnowledgeBase() {
             </table>
           </div>
 
-          {/* Inline preview panel */}
-          {previewId && (
-            <div className="border-t border-[var(--border-subtle)] p-4 sm:p-5 bg-[var(--bg-secondary)]">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                  <svg className="w-4 h-4 text-[var(--text-tertiary)]" viewBox="0 0 16 16" fill="currentColor">
-                    <path fillRule="evenodd" d="M2 2.5A1.5 1.5 0 0 1 3.5 1h5.086a1.5 1.5 0 0 1 1.06.44l2.122 2.121A1.5 1.5 0 0 1 12.207 5H14.5A1.5 1.5 0 0 1 16 6.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 2 13.5v-11Z"/>
-                  </svg>
-                  文档预览
-                  {previewContent && <span className="text-[10px] text-[var(--text-placeholder)] font-normal">· {previewContent.file_type.toUpperCase()}</span>}
-                </h4>
-                <button
-                  onClick={() => { setPreviewId(null); setPreviewContent(null); }}
-                  className="text-[var(--text-placeholder)] hover:text-[var(--text-secondary)] transition-colors"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
-                  </svg>
-                </button>
-              </div>
-              {previewLoading ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-[var(--text-secondary)]">加载中...</p>
-                </div>
-              ) : previewError ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-[var(--accent-red)]">{previewError}</p>
-                </div>
-              ) : previewContent ? (
-                <div className="max-h-[400px] overflow-y-auto bg-[var(--bg-primary)] rounded-xl p-4 border border-[var(--border-subtle)]">
-                  <pre className="text-xs text-[var(--text-primary)] whitespace-pre-wrap font-sans leading-relaxed break-words">
-                    {previewContent.content}
-                  </pre>
-                </div>
-              ) : null}
-            </div>
-          )}
         </div>
 
         {/* Pagination */}
@@ -319,6 +334,112 @@ export default function KnowledgeBase() {
           </div>
         )}
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewId && pdfPreviewUrl && (
+        <PdfPreview
+          file={pdfPreviewUrl}
+          title={documents.find(d => d.id === previewId)?.title}
+          onClose={closePreview}
+          onDownload={() => {
+            const doc = documents.find(d => d.id === previewId);
+            if (doc) downloadDocument(doc.id, doc.title);
+          }}
+        />
+      )}
+
+      {/* Non-PDF Preview Modal */}
+      {previewId && !pdfPreviewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={closePreview}
+          />
+
+          {/* Modal */}
+          <div className="relative w-full max-w-3xl max-h-[85vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] flex-shrink-0">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 truncate">
+                <svg className="w-4 h-4 text-[var(--text-tertiary)] flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M2 2.5A1.5 1.5 0 0 1 3.5 1h5.086a1.5 1.5 0 0 1 1.06.44l2.122 2.121A1.5 1.5 0 0 1 12.207 5H14.5A1.5 1.5 0 0 1 16 6.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 2 13.5v-11Z"/>
+                </svg>
+                <span className="truncate">{documents.find(d => d.id === previewId)?.title || '文档预览'}</span>
+                {previewContent && (
+                  <span className="text-[10px] text-[var(--text-placeholder)] font-normal flex-shrink-0">{previewContent.file_type.toUpperCase()}</span>
+                )}
+              </h3>
+              <div className="flex items-center gap-2 ml-3">
+                <button
+                  onClick={() => { const doc = documents.find(d => d.id === previewId); if (doc) downloadDocument(doc.id, doc.title); }}
+                  className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+                >
+                  下载
+                </button>
+                <button
+                  onClick={closePreview}
+                  className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {previewLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-[var(--text-secondary)]">加载中...</p>
+                </div>
+              ) : previewError ? (
+                <div className="text-center py-16">
+                  <p className="text-sm text-[var(--accent-red)]">{previewError}</p>
+                </div>
+              ) : previewContent ? (
+                previewContent.html ? (
+                  <div
+                    className="prose prose-sm max-w-none text-[var(--text-primary)] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-[var(--bg-tertiary)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:border [&_th]:border-[var(--border-subtle)] [&_td]:px-3 [&_td]:py-1.5 [&_td]:border [&_td]:border-[var(--border-subtle)] [&_img]:max-w-full [&_img]:rounded-lg"
+                    dangerouslySetInnerHTML={{ __html: previewContent.html }}
+                  />
+                ) : previewContent.table ? (
+                  <div className="overflow-auto rounded-xl border border-[var(--border-subtle)]">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-[var(--bg-tertiary)]">
+                          {previewContent.table.columns.map((col, i) => (
+                            <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap border-b border-[var(--border-subtle)]">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewContent.table.rows.map((row, ri) => (
+                          <tr key={ri} className={ri % 2 === 0 ? 'bg-[var(--bg-primary)]' : 'bg-[var(--bg-secondary)]'}>
+                            {row.map((cell, ci) => (
+                              <td key={ci} className="px-3 py-1.5 text-[var(--text-secondary)] whitespace-nowrap border-b border-[var(--border-subtle)] max-w-[300px] truncate">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-sans leading-relaxed break-words">
+                    {previewContent.content}
+                  </pre>
+                )
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

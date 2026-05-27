@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
 import type { TranscriptSegment, ConnectionState } from '../hooks/useRealtimeASR';
 import RealtimeCoach from '../components/RealtimeCoach';
@@ -91,7 +91,7 @@ export default function RealTimeVoice() {
   } = useRealtimeASR();
 
   const [coachConnected, setCoachConnected] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
 
   // Session history state
@@ -116,6 +116,7 @@ export default function RealTimeVoice() {
       setHistoryDetail(null);
       setSelectedSessionId(null);
     }
+    setSidebarOpen(false);
   }, []);
 
   const handleBackToLive = useCallback(() => {
@@ -137,58 +138,85 @@ export default function RealTimeVoice() {
     : transcript;
 
   return (
-    <div className="flex h-full">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setSidebarOpen(false)} />
-      )}
-      {/* Mobile coach overlay */}
-      {coachOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setCoachOpen(false)} />
-      )}
-
-      {/* Left: Session History Sidebar — overlay on mobile */}
-      <aside className={`
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${sidebarOpen ? 'fixed lg:static' : 'hidden lg:block'}
-        inset-y-0 left-0 z-50 lg:z-auto
-        transform transition-transform duration-200 ease-in-out
-      `}>
-        <div className="w-[260px] flex-shrink-0 h-full">
+    <div className="flex h-full relative">
+      {/* Sliding container: card + tab move together */}
+      <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
+        transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-20px)]'}`}>
+        <div className="w-[260px] sm:w-[280px] h-full flex flex-col
+          bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
+          shadow-[4px_0_24px_rgba(0,0,0,0.12)] rounded-r-2xl">
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border-subtle)]">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">录音历史</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+        {/* Session list content */}
+        <div className="flex-1 overflow-hidden">
           <SessionSidebar
             refreshTrigger={refreshTrigger}
             onSelectSession={handleSelectSession}
             selectedSessionId={selectedSessionId}
           />
         </div>
-      </aside>
+      </div>
+
+      {/* Tab handle — attached to right side of card */}
+      <div
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="w-[20px] flex-shrink-0 h-full flex items-center cursor-pointer group
+          border-l border-[var(--border-subtle)]/20 rounded-l-lg
+          hover:border-[var(--accent-blue)]/60 hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
+          transition-all duration-200"
+      >
+        <div className="-ml-1 w-5 h-8 rounded-full bg-[var(--bg-secondary)]/60 border border-[var(--border-default)]/30
+          flex items-center justify-center
+          group-hover:border-[var(--accent-blue)] group-hover:bg-[var(--bg-primary)] group-hover:shadow-sm
+          transition-all duration-200">
+          <svg className="w-3 h-3 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+            {sidebarOpen ? (
+              <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+            ) : (
+              <path fillRule="evenodd" d="M10.354 3.646a.5.5 0 0 1 0 .708L6.707 8l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0Z" clipRule="evenodd"/>
+            )}
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    {/* Backdrop overlay when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="absolute inset-0 z-[15] bg-black/20 transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile coach overlay */}
+      {coachOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setCoachOpen(false)} />
+      )}
 
       {/* Center: Main content — transcript + controls */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Sidebar toggle */}
-            <button
-              onClick={() => setSidebarOpen((v) => !v)}
-              className="text-[var(--text-placeholder)] hover:text-[var(--text-secondary)] transition-colors"
-              title={sidebarOpen ? '收起历史' : '展开历史'}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-                <path fillRule="evenodd" d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.06 7.75h9.19a.75.75 0 0 1 0 1.5H4.06l3.72 3.72a.75.75 0 0 1 0 1.06Z" />
-              </svg>
-            </button>
-
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)] truncate">
-                {historyDetail ? '历史回放' : '实时语音陪跑'}
-              </h2>
-              <p className="text-[10px] sm:text-[11px] text-[var(--text-placeholder)] mt-0.5 truncate">
-                {historyDetail
-                  ? `${historyDetail.segments.length} 条片段 · ${historyDetail.session.speaker_count} 人`
-                  : 'AI 实时转录 + 教练提示'}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)] truncate">
+              {historyDetail ? '历史回放' : '实时语音陪跑'}
+            </h2>
+            <p className="text-[10px] sm:text-[11px] text-[var(--text-placeholder)] mt-0.5 truncate">
+              {historyDetail
+                ? `${historyDetail.segments.length} 条片段 · ${historyDetail.session.speaker_count} 人`
+                : 'AI 实时转录 + 教练提示'}
+            </p>
           </div>
 
           {/* Status + Controls */}

@@ -27,6 +27,9 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   const [review, setReview] = useState<TrainingReviewType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPersonaPopover, setShowPersonaPopover] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
+  const pdfBlobRef = useRef<Blob | null>(null);
   const [coachOpen, setCoachOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +56,11 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [detail.messages, scrollToBottom]);
+
+  // Cleanup blob URL
+  useEffect(() => {
+    return () => { if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl); };
+  }, [pdfPreviewUrl]);
 
   // 60s idle detection
   useEffect(() => {
@@ -119,6 +127,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
 
   const handleExportPDF = async () => {
     if (!reviewRef.current) return;
+    setPdfExporting(true);
     try {
       const canvas = await html2canvas(reviewRef.current, { scale: 3, useCORS: true, backgroundColor: 'var(--color-white)' });
       const imgData = canvas.toDataURL('image/png');
@@ -137,11 +146,28 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
         heightLeft -= (pageHeight - 20);
       }
-      pdf.save(`训练复盘_${detail.persona?.name || '未知'}_${new Date().toLocaleDateString('zh-CN')}.pdf`);
+      const blob = pdf.output('blob');
+      pdfBlobRef.current = blob;
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(URL.createObjectURL(blob));
     } catch (e) {
       console.error('PDF export failed:', e);
       setError('PDF导出失败');
+    } finally {
+      setPdfExporting(false);
     }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfBlobRef.current) return;
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(pdfBlobRef.current);
+    a.href = url;
+    a.download = `训练复盘_${detail.persona?.name || '未知'}_${new Date().toLocaleDateString('zh-CN')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleCloseReview = async () => {
@@ -439,6 +465,39 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
         </div>
       )}
 
+      {/* PDF Preview Modal */}
+      {pdfPreviewUrl && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-black/80">
+          <div className="flex items-center justify-between px-5 py-3 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] flex-shrink-0">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">PDF 预览</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadPDF}
+                className="px-4 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 1.75a.75.75 0 0 1 .75.75v6.69l1.97-1.97a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0l-3.25-3.25a.75.75 0 1 1 1.06-1.06L7.25 9.19V2.5A.75.75 0 0 1 8 1.75ZM2.5 12.5a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5h-9.5a.75.75 0 0 1-.75-.75Z"/>
+                </svg>
+                下载 PDF
+              </button>
+              <button
+                onClick={() => setPdfPreviewUrl(null)}
+                className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={pdfPreviewUrl}
+            className="flex-1 w-full border-0"
+            title="PDF Preview"
+          />
+        </div>
+      )}
+
       {/* Review modal overlay */}
       {review && (
         <div className="absolute inset-0 z-40 flex items-start justify-center bg-black/70 overflow-y-auto py-8">
@@ -449,12 +508,10 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleExportPDF}
+                  disabled={pdfExporting}
                   className="btn btn-primary text-xs"
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                    <path fillRule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM10 2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.5-.5H11a1 1 0 0 1-1-1V2Z"/>
-                  </svg>
-                  导出 PDF
+                  {pdfExporting ? '生成中...' : '预览 PDF'}
                 </button>
                 <button
                   onClick={handleCloseReview}

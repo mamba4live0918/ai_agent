@@ -52,7 +52,7 @@ export default function DocumentUpload({ categories, onUpload }: DocumentUploadP
         </svg>
         {uploading ? `上传中 ${progress}%` : '上传文档'}
         <input ref={fileRef} type="file" className="hidden"
-          accept=".pdf,.docx,.txt,.md,.pptx"
+          accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx,.xls,.xlsx,.xlsm,.csv"
           onChange={handleUpload} disabled={uploading} />
       </label>
       {uploading && (

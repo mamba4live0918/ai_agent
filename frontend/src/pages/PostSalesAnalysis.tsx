@@ -111,109 +111,138 @@ export default function PostSalesAnalysis() {
     fetchSessions();
   };
 
-  const sidebarContent = (
-    <div className="w-[268px] flex-shrink-0 flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
-        <span className="text-sm font-semibold text-[var(--text-primary)]">售后分析</span>
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
-          title="新建分析"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
-          </svg>
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {sessions.length === 0 ? (
-          <p className="px-4 py-6 text-xs text-[var(--text-placeholder)] text-center">暂无分析记录</p>
-        ) : (
-          sessions.map(s => (
-            <div
-              key={s.id}
-              onClick={() => selectSession(s.id)}
-              className={`relative group px-4 py-3 cursor-pointer border-b border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors ${
-                selectedId === s.id ? 'bg-[var(--bg-secondary)] border-l-2 border-l-[var(--accent-blue)]' : ''
-              }`}
+  return (
+    <div className="flex h-full relative">
+      {/* Sliding container: card + tab move together */}
+      <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
+        transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-20px)]'}`}>
+        <div className="w-[260px] sm:w-[280px] h-full flex flex-col
+          bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
+          shadow-[4px_0_24px_rgba(0,0,0,0.12)] rounded-r-2xl">
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
+          <span className="text-sm font-semibold text-[var(--text-primary)]">售后分析</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { handleCreate(); setSidebarOpen(false); }}
+              disabled={creating}
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
+              title="新建分析"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-[var(--text-primary)] truncate max-w-[140px]">
-                  {s.customer_name || '未关联客户'}
-                </span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                  s.status === 'completed' ? 'bg-[var(--btn-primary)]/20 text-[var(--accent-green)]' :
-                  s.status === 'processing' ? 'bg-[var(--accent-orange)]/20 text-[var(--accent-orange)]' :
-                  'bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]'
-                }`}>
-                  {s.status === 'completed' ? '已完成' : s.status === 'processing' ? '处理中' : '记录中'}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-[10px] text-[var(--text-placeholder)]">
-                <span>{s.message_count} 条消息</span>
-                <span>{new Date(s.started_at).toLocaleDateString('zh-CN')}</span>
-              </div>
-              <button
-                onClick={(e) => handleDelete(e, s.id)}
-                className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-[var(--text-placeholder)] hover:text-[var(--accent-red)]"
-                title="删除"
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        {/* Session list */}
+        <div className="flex-1 overflow-y-auto">
+          {sessions.length === 0 ? (
+            <p className="px-4 py-6 text-xs text-[var(--text-placeholder)] text-center">暂无分析记录</p>
+          ) : (
+            sessions.map(s => (
+              <div
+                key={s.id}
+                onClick={() => selectSession(s.id)}
+                className={`relative group px-4 py-3 cursor-pointer border-b border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors ${
+                  selectedId === s.id ? 'bg-[var(--bg-secondary)] border-l-2 border-l-[var(--accent-blue)]' : ''
+                }`}
               >
-                {deleting === s.id ? (
-                  <span className="text-[9px]">...</span>
-                ) : (
-                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                    <path fillRule="evenodd" d="M6.75 2.75A.75.75 0 0 1 7.5 2h1a.75.75 0 0 1 .75.75V3h-2.5v-.25ZM4.25 3a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 .75.75V4h1.75a.75.75 0 0 1 0 1.5h-.14l-.67 8.024a1.75 1.75 0 0 1-1.745 1.726H5.055a1.751 1.751 0 0 1-1.745-1.726l-.67-8.024H2.5a.75.75 0 0 1 0-1.5h1.75V3Zm1 1.5v.25h5.5V4.5h-5.5Zm4.22 2.72a.75.75 0 0 1 1.06 0l.97.97.97-.97a.75.75 0 1 1 1.06 1.06l-.97.97.97.97a.75.75 0 1 1-1.06 1.06l-.97-.97-.97.97a.75.75 0 1 1-1.06-1.06l.97-.97-.97-.97a.75.75 0 0 1 0-1.06Z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          ))
-        )}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-[var(--text-primary)] truncate max-w-[140px]">
+                    {s.customer_name || '未关联客户'}
+                  </span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                    s.status === 'completed' ? 'bg-[var(--btn-primary)]/20 text-[var(--accent-green)]' :
+                    s.status === 'processing' ? 'bg-[var(--accent-orange)]/20 text-[var(--accent-orange)]' :
+                    'bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]'
+                  }`}>
+                    {s.status === 'completed' ? '已完成' : s.status === 'processing' ? '处理中' : '记录中'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-[var(--text-placeholder)]">
+                  <span>{s.message_count} 条消息</span>
+                  <span>{new Date(s.started_at).toLocaleDateString('zh-CN')}</span>
+                </div>
+                <button
+                  onClick={(e) => handleDelete(e, s.id)}
+                  className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-[var(--text-placeholder)] hover:text-[var(--accent-red)]"
+                  title="删除"
+                >
+                  {deleting === s.id ? (
+                    <span className="text-[9px]">...</span>
+                  ) : (
+                    <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
+                      <path fillRule="evenodd" d="M6.75 2.75A.75.75 0 0 1 7.5 2h1a.75.75 0 0 1 .75.75V3h-2.5v-.25ZM4.25 3a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 .75.75V4h1.75a.75.75 0 0 1 0 1.5h-.14l-.67 8.024a1.75 1.75 0 0 1-1.745 1.726H5.055a1.751 1.751 0 0 1-1.745-1.726l-.67-8.024H2.5a.75.75 0 0 1 0-1.5h1.75V3Zm1 1.5v.25h5.5V4.5h-5.5Zm4.22 2.72a.75.75 0 0 1 1.06 0l.97.97.97-.97a.75.75 0 1 1 1.06 1.06l-.97.97.97.97a.75.75 0 1 1-1.06 1.06l-.97-.97-.97.97a.75.75 0 1 1-1.06-1.06l.97-.97-.97-.97a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        {/* Bottom create button */}
+        <div className="px-4 py-2 border-t border-[var(--border-subtle)]">
+          <button
+            onClick={() => { handleCreate(); setSidebarOpen(false); }}
+            disabled={creating}
+            className="w-full px-3 py-2 bg-[var(--btn-primary)] text-white text-xs rounded-full hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
+          >
+            + 新建分析
+          </button>
+        </div>
       </div>
-      <div className="px-4 py-2 border-t border-[var(--border-subtle)]">
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="w-full px-3 py-2 bg-[var(--btn-primary)] text-white text-xs rounded-full hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors"
-        >
-          + 新建分析
-        </button>
+
+      {/* Tab handle — attached to right side of card */}
+      <div
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="w-[20px] flex-shrink-0 h-full flex items-center cursor-pointer group
+          border-l border-[var(--border-subtle)]/20 rounded-l-lg
+          hover:border-[var(--accent-blue)]/60 hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
+          transition-all duration-200"
+      >
+        <div className="-ml-1 w-5 h-8 rounded-full bg-[var(--bg-secondary)]/60 border border-[var(--border-default)]/30
+          flex items-center justify-center
+          group-hover:border-[var(--accent-blue)] group-hover:bg-[var(--bg-primary)] group-hover:shadow-sm
+          transition-all duration-200">
+          <svg className="w-3 h-3 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+            {sidebarOpen ? (
+              <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+            ) : (
+              <path fillRule="evenodd" d="M10.354 3.646a.5.5 0 0 1 0 .708L6.707 8l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0Z" clipRule="evenodd"/>
+            )}
+          </svg>
+        </div>
       </div>
     </div>
-  );
 
-  return (
-    <div className="flex h-full">
-      {/* Mobile overlay */}
+    {/* Backdrop overlay when sidebar is open */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="absolute inset-0 z-[15] bg-black/20 transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
-
-      {/* Sidebar — off-canvas on mobile, static on desktop */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
-        bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
-        transform transition-transform duration-200 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {sidebarContent}
-      </aside>
 
       {/* Main area */}
       <div className="flex-1 min-w-0 bg-[var(--bg-primary)] flex flex-col">
-        {/* Mobile header bar */}
-        <div className="lg:hidden flex items-center gap-2 px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75Z"/>
-            </svg>
-          </button>
+        {/* Header bar */}
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-[var(--border-subtle)]">
           <span className="text-sm font-semibold text-[var(--text-primary)]">售后分析</span>
+          <span className="text-[10px] text-[var(--text-placeholder)]">{sessions.length} 个记录</span>
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="ml-auto px-2 py-1 text-[11px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
+            className="ml-auto px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
           >
             + 新建
           </button>

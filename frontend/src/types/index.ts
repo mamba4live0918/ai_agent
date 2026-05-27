@@ -81,10 +81,17 @@ export interface DocumentList {
   total_pages: number;
 }
 
+export interface TableData {
+  columns: string[];
+  rows: string[][];
+}
+
 export interface DocumentContent {
   title: string;
   file_type: string;
   content: string;
+  html?: string | null;
+  table?: TableData | null;
 }
 
 export interface Customer {
@@ -127,6 +134,22 @@ export interface ChatResponse {
   answer: string;
   conversation_id: string;
   sources: { filename: string; page: string; preview: string }[];
+}
+
+export interface ConversationItem {
+  id: string;
+  title: string;
+  message_count: number;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface MessageItem {
+  id: string;
+  role: string;
+  content: string;
+  sources: { filename: string; page: string; preview: string }[] | null;
+  created_at: string;
 }
 
 export interface Product {

@@ -4,7 +4,6 @@ import type { TrainingSession, TrainingSessionDetail, Persona } from '../types';
 import {
   getTrainingSessions, getTrainingSession, createTrainingSession, deleteTrainingSession,
 } from '../services/api';
-import SessionList from '../components/SessionList';
 import PersonaForm from '../components/PersonaForm';
 import TrainingSessionComponent from '../components/TrainingSession';
 
@@ -128,46 +127,130 @@ export default function Training() {
     fetchSessions();
   };
 
-  const sidebarContent = (
-    <div className="w-[268px] flex-shrink-0 flex flex-col h-full">
-      <SessionList
-        sessions={sessions}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        onDelete={handleDelete}
-        onNewPersona={() => { setShowPersonaForm(true); setSidebarOpen(false); }}
-      />
-    </div>
-  );
-
   return (
-    <div className="flex h-full">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setSidebarOpen(false)} />
-      )}
+    <div className="flex h-full relative">
+      {/* Sliding container: card + tab move together */}
+      <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
+        transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-20px)]'}`}>
+        <div className="w-[260px] sm:w-[280px] h-full flex flex-col
+          bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
+          shadow-[4px_0_24px_rgba(0,0,0,0.12)] rounded-r-2xl">
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border-subtle)]">
+          <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">训练记录</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+        {/* Session list content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+              {sessions.map(s => (
+                <div
+                  key={s.id}
+                  onClick={() => { handleSelect(s); setSidebarOpen(false); }}
+                  className={`group relative rounded-xl border p-2.5 cursor-pointer transition-colors ${
+                    selectedId === s.id
+                      ? 'border-[var(--accent-blue)] bg-[var(--bg-overlay)]'
+                      : s.status === 'pending' || s.status === 'active'
+                        ? 'border-[var(--accent-orange)]/60 bg-[var(--bg-overlay)]/50 hover:bg-[var(--bg-overlay)]'
+                        : 'border-transparent bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: s.status === 'completed' ? 'var(--accent-green)' : 'var(--accent-orange)' }}
+                    />
+                    <span className="text-xs text-[var(--text-primary)] font-medium truncate">
+                      {s.persona?.name || '未知'} · {s.scenario}
+                    </span>
+                  </div>
+                  <div className="text-[10px] mt-1.5 ml-[14px]" style={{ color: s.status === 'completed' ? 'var(--accent-green)' : 'var(--accent-orange)' }}>
+                    {s.status === 'completed'
+                      ? `✓ 已完成${s.has_review ? ' · 📊 复盘' : ''}`
+                      : s.status === 'active'
+                        ? '⏳ 进行中 — 点击继续'
+                        : '⏳ 未开始 — 点击开始'}
+                  </div>
+                  <div className="text-[9px] text-[var(--text-placeholder)] mt-1 ml-[14px]">{formatTime(s.started_at)}</div>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDelete(s.id); }}
+                    className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-[var(--text-placeholder)] hover:text-[var(--accent-red)] text-xs transition-opacity"
+                    title="删除"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {sessions.length === 0 && (
+                <div className="text-center py-6">
+                  <p className="text-[11px] text-[var(--text-placeholder)]">暂无训练记录</p>
+                </div>
+              )}
+            </div>
+            <div className="p-2 border-t border-[var(--border-subtle)]">
+              <button
+                onClick={() => { setShowPersonaForm(true); setSidebarOpen(false); }}
+                className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full py-1.5 text-[10px] transition-colors"
+              >
+                + 手动创建数字人
+              </button>
+            </div>
+          </div>
+        </div>
 
-      {/* Sidebar — off-canvas on mobile, static on desktop */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
-        bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
-        transform transition-transform duration-200 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {sidebarContent}
-      </aside>
+        {/* Tab handle — attached to right side of card */}
+        <div
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="w-[20px] flex-shrink-0 h-full flex items-center cursor-pointer group
+            border-l border-[var(--border-subtle)]/20 rounded-l-lg
+            hover:border-[var(--accent-blue)]/60 hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
+            transition-all duration-200"
+        >
+          <div className="-ml-1 w-5 h-8 rounded-full bg-[var(--bg-secondary)]/60 border border-[var(--border-default)]/30
+            flex items-center justify-center
+            group-hover:border-[var(--accent-blue)] group-hover:bg-[var(--bg-primary)] group-hover:shadow-sm
+            transition-all duration-200">
+            <svg className="w-3 h-3 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+              {sidebarOpen ? (
+                <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
+              ) : (
+                <path fillRule="evenodd" d="M10.354 3.646a.5.5 0 0 1 0 .708L6.707 8l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0Z" clipRule="evenodd"/>
+              )}
+            </svg>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Backdrop overlay when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="absolute inset-0 z-[15] bg-black/20 transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main area */}
       <div className="flex-1 min-w-0 bg-[var(--bg-primary)] flex flex-col">
-        {/* Mobile header bar */}
-        <div className="lg:hidden flex items-center gap-2 px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75Z"/>
-            </svg>
-          </button>
+        {/* Header bar */}
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-[var(--border-subtle)]">
           <span className="text-sm font-semibold text-[var(--text-primary)]">仿真培训</span>
           {sessions.length > 0 && <span className="text-[10px] text-[var(--text-placeholder)]">{sessions.length} 个会话</span>}
+          <button
+            onClick={() => setShowPersonaForm(true)}
+            className="ml-auto px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
+          >
+            + 新建训练
+          </button>
         </div>
 
         <div className="flex-1 min-h-0">
@@ -192,7 +275,7 @@ export default function Training() {
                 <div className="text-4xl mb-4">🎯</div>
                 <p className="text-sm text-[var(--text-primary)] font-medium mb-1">仿真培训 — AI 数字人对练</p>
                 <p className="text-xs text-[var(--text-placeholder)] mb-4">
-                  {initialCustomerId ? '选择一个训练会话或创建新的训练' : '从左侧选择一个训练会话，或创建新的数字人开始训练'}
+                  {initialCustomerId ? '选择一个训练会话或创建新的训练' : '点击左侧箭头展开训练记录，或创建新的数字人开始训练'}
                 </p>
                 <button
                   onClick={() => setShowPersonaForm(true)}
@@ -214,4 +297,16 @@ export default function Training() {
       />
     </div>
   );
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return '刚刚';
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} 天前`;
+  return d.toLocaleDateString('zh-CN');
 }

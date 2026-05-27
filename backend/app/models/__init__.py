@@ -8,6 +8,7 @@ from .user import User
 from .audit import AuditLog
 from .feedback import Feedback
 from .group import Group
+from .chat import ChatConversation, ChatMessage
 from ..database import Base
 
 __all__ = [
@@ -28,4 +29,6 @@ __all__ = [
     "AuditLog",
     "Feedback",
     "Group",
+    "ChatConversation",
+    "ChatMessage",
 ]
