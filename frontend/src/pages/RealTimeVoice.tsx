@@ -141,13 +141,12 @@ export default function RealTimeVoice() {
     <div className="flex h-full relative">
       {/* Sliding container: card + tab move together */}
       <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
-        transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-20px)]'}`}>
+        transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${sidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[calc(100%-8px)] opacity-70'}`}>
         <div className="w-[260px] sm:w-[280px] h-full flex flex-col
-          bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
-          shadow-[4px_0_24px_rgba(0,0,0,0.12)] rounded-r-2xl">
+          bg-[var(--bg-secondary)] rounded-r-2xl">
         {/* Sidebar header */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--bg-primary)]">
           <span className="text-xs font-semibold text-[var(--text-primary)]">录音历史</span>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -171,16 +170,16 @@ export default function RealTimeVoice() {
       {/* Tab handle — attached to right side of card */}
       <div
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="w-[20px] flex-shrink-0 h-full flex items-center cursor-pointer group
-          border-l border-[var(--border-subtle)]/20 rounded-l-lg
-          hover:border-[var(--accent-blue)]/60 hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
-          transition-all duration-200"
+        className="w-[8px] flex-shrink-0 h-full flex items-center cursor-pointer group
+            hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
+            transition-all duration-200"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 35%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
       >
-        <div className="-ml-1 w-5 h-8 rounded-full bg-[var(--bg-secondary)]/60 border border-[var(--border-default)]/30
+        <div className="w-2 h-6 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-default)]
           flex items-center justify-center
           group-hover:border-[var(--accent-blue)] group-hover:bg-[var(--bg-primary)] group-hover:shadow-sm
           transition-all duration-200">
-          <svg className="w-3 h-3 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+          <svg className="w-1.5 h-1.5 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
             {sidebarOpen ? (
               <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
             ) : (
@@ -205,7 +204,7 @@ export default function RealTimeVoice() {
       )}
 
       {/* Center: Main content — transcript + controls */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarOpen ? 'ml-[280px] sm:ml-[300px]' : 'ml-0'}`}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
           <div className="min-w-0">
@@ -308,7 +307,7 @@ export default function RealTimeVoice() {
       {/* Right: Coach panel — overlay on mobile, static on desktop */}
       <div className={`
         ${coachOpen ? 'fixed inset-0 z-50 lg:static' : 'hidden lg:block'}
-        lg:w-[320px] lg:flex-shrink-0 lg:border-l lg:border-[var(--border-subtle)] bg-[var(--bg-primary)]
+        lg:w-[320px] lg:flex-shrink-0 bg-[var(--bg-primary)]
       `}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-subtle)] lg:hidden">
           <span className="text-sm font-semibold text-[var(--text-primary)]">AI 教练</span>

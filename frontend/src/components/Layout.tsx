@@ -205,7 +205,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — off-canvas on mobile, static on desktop */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex-shrink-0
-        bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]
+        bg-[var(--bg-primary)]
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>

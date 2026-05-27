@@ -87,7 +87,7 @@ export default function SessionSidebar({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)] border-l border-[var(--border-subtle)]">
+    <div className="flex flex-col h-full bg-[var(--bg-primary)]">
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] flex items-center justify-between">
         <span className="text-xs font-semibold text-[var(--text-primary)]">录音历史</span>
