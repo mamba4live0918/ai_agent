@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings, check_secret_key
 from .database import engine, Base
-from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups, realtime
+from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups, realtime, quiz
 from .middleware.rate_limit import RateLimitMiddleware
 
 # Configure logging — use a handler explicitly to survive uvicorn's own logging setup
@@ -56,6 +56,7 @@ app.include_router(post_sales.router, prefix="/api/post-sales", tags=["post-sale
 app.include_router(feedback.router, prefix="/api", tags=["feedback"])
 app.include_router(groups.router, prefix="/api", tags=["groups"])
 app.include_router(realtime.router, tags=["realtime"])
+app.include_router(quiz.router, prefix="/api/quiz", tags=["quiz"])
 
 
 @app.get("/api/health")

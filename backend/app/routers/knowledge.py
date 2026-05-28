@@ -13,7 +13,7 @@ from sqlalchemy import func
 from ..database import get_db
 from ..models.knowledge import Category, Document, document_categories
 from ..models.user import User
-from ..utils.auth import get_current_user, apply_document_filter
+from ..utils.auth import get_current_user, apply_document_filter, decode_access_token, decode_access_token
 from ..schemas.knowledge import (
     CategoryCreate, CategoryResponse,
     DocumentResponse, DocumentListResponse, DocumentContentResponse, TableData,
@@ -333,7 +333,20 @@ def delete_document(doc_id: uuid.UUID, request: Request, db: Session = Depends(g
 
 
 @router.get("/documents/{doc_id}/download")
-def download_document(doc_id: uuid.UUID, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def download_document(doc_id: uuid.UUID, request: Request, token: str | None = Query(None), db: Session = Depends(get_db)):
+    # Accept token via query param for iframe (can't set headers), fall back to header auth
+    if token:
+        try:
+            payload = decode_access_token(token)
+            user_id = payload.get("user_id")
+            if user_id:
+                current_user = db.query(User).filter(User.id == user_id).first()
+            else:
+                raise HTTPException(status_code=401, detail="Invalid token")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    else:
+        current_user = get_current_user(request, db)
     doc = apply_document_filter(db.query(Document), Document, current_user).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -355,7 +368,9 @@ def download_document(doc_id: uuid.UUID, request: Request, db: Session = Depends
     media_type = media_types.get(doc.file_type, "application/octet-stream")
     inline = request.query_params.get("inline", "").lower() == "true"
     if inline:
-        return FileResponse(doc.file_path, media_type=media_type)
+        resp = FileResponse(doc.file_path, media_type=media_type)
+        resp.headers["Content-Disposition"] = "inline"
+        return resp
     return FileResponse(doc.file_path, media_type=media_type, filename=doc.title)
 
 

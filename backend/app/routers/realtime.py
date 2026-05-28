@@ -24,7 +24,7 @@ from ..models.user import User
 from ..models.realtime_session import RealtimeSession, RealtimeSegment
 from ..services.realtime_asr import StreamingTranscriber
 from ..services.realtime_service import archive_session
-from ..utils.auth import decode_access_token, get_current_user
+from ..utils.auth import decode_access_token, get_current_user, apply_user_filter
 
 logger = logging.getLogger(__name__)
 
@@ -236,11 +236,9 @@ def list_sessions(
 
     Sessions are ordered by ``started_at`` descending (newest first).
     """
-    query = (
-        db.query(RealtimeSession)
-        .filter(RealtimeSession.user_id == current_user.id)
-        .order_by(RealtimeSession.started_at.desc())
-    )
+    query = apply_user_filter(
+        db.query(RealtimeSession), RealtimeSession, current_user
+    ).order_by(RealtimeSession.started_at.desc())
     total = query.count()
     items = query.offset((page - 1) * page_size).limit(page_size).all()
 

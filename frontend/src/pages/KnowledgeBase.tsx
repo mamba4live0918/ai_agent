@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { getCategories, createCategory, deleteCategory, uploadCategoryIcon, getDocuments, getDocumentContent, downloadDocument, uploadDocument, deleteDocument, updateDocumentCategories } from '../services/api';
+import { getCategories, createCategory, deleteCategory, uploadCategoryIcon, getDocuments, getDocumentContent, getDocumentBlobUrl, downloadDocument, uploadDocument, deleteDocument, updateDocumentCategories } from '../services/api';
 import type { Category, Document, DocumentContent, CategoryTreeNode } from '../types';
 import CategoryIcon from '../components/CategoryIcon';
 import SearchBar from '../components/SearchBar';
 import DocumentUpload from '../components/DocumentUpload';
-import PdfPreview from '../components/PdfPreview';
+
 import ChatPanel from '../components/ChatPanel';
+import PdfPreview from '../components/PdfPreview';
 import QuizPanel from '../components/QuizPanel';
 
 export default function KnowledgeBase() {
@@ -83,10 +84,6 @@ export default function KnowledgeBase() {
   }, [selectedCat, search, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  useEffect(() => {
-    return () => { if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl); };
-  }, [pdfPreviewUrl]);
 
   // Recent docs tracking — stored fully in localStorage so available regardless of pagination
   type RecentDoc = { id: string; title: string; file_type: string; category_names: string[]; created_at: string };
@@ -202,10 +199,15 @@ export default function KnowledgeBase() {
   const closePreview = () => {
     setPreviewId(null);
     setPreviewContent(null);
-    if (pdfPreviewUrl) {
+    if (pdfPreviewUrl && pdfPreviewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(pdfPreviewUrl);
-      setPdfPreviewUrl(null);
     }
+    setPdfPreviewUrl(null);
+    setPreviewError('');
+  };
+
+  const handleDownload = (doc: Document) => {
+    downloadDocument(doc.id, doc.title);
   };
 
   const handlePreview = async (doc: Document) => {
@@ -220,16 +222,10 @@ export default function KnowledgeBase() {
     if (doc.file_type.toLowerCase() === 'pdf') {
       setPreviewLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        const baseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
-        const res = await fetch(`${baseUrl}/knowledge/documents/${doc.id}/download?inline=true`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error('Download failed');
-        const blob = await res.blob();
-        setPdfPreviewUrl(URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })));
+        const url = await getDocumentBlobUrl(doc.id);
+        setPdfPreviewUrl(url);
       } catch {
-        setPreviewError('加载 PDF 失败');
+        setPreviewError('PDF 加载失败');
       } finally {
         setPreviewLoading(false);
       }
@@ -246,12 +242,6 @@ export default function KnowledgeBase() {
     } finally {
       setPreviewLoading(false);
     }
-  };
-
-  const handleDownload = (e: React.MouseEvent, doc: Document) => {
-    e.stopPropagation();
-    recordAccess({ id: doc.id, title: doc.title, file_type: doc.file_type, category_names: doc.category_names, created_at: doc.created_at });
-    downloadDocument(doc.id, doc.title);
   };
 
   const handlePageChange = (p: number) => {
@@ -482,8 +472,8 @@ export default function KnowledgeBase() {
                   <button onClick={() => handlePreview(doc)} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="预览">
                     <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.5 5.5.5 8c1 2.5 4 5 7.5 5s6.5-2.5 7.5-5c-1-2.5-4-5-7.5-5ZM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDownload(e, doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="下载">
-                    <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.25 10.75a.75.75 0 0 0 1.5 0V1.75a.75.75 0 0 0-1.5 0v9Z"/><path d="M4.72 7.22a.75.75 0 0 1 1.06 0L8 9.44l2.22-2.22a.75.75 0 1 1 1.06 1.06l-2.75 2.75a.75.75 0 0 1-1.06 0L4.72 8.28a.75.75 0 0 1 0-1.06Z"/><path d="M1.75 10.25a.75.75 0 0 1 1.5 0v2c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25v-2a.75.75 0 0 1 1.5 0v2A1.75 1.75 0 0 1 12.5 14h-9A1.75 1.75 0 0 1 1.75 12.25v-2Z"/></svg>
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--accent-blue)] hover:bg-[var(--btn-blue)]/10 transition-colors" title="下载">
+                    <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.75 2A.75.75 0 0 0 7 2.75v5.69L4.53 5.97a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06L8.5 8.44V2.75A.75.75 0 0 0 7.75 2Z"/><path d="M2 10.75a.75.75 0 0 1 1.5 0v1.5a.25.25 0 0 0 .25.25h8.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 1.5 11.75v-1.5Z"/></svg>
                   </button>
                   <div className="relative">
                     <button
@@ -777,8 +767,8 @@ export default function KnowledgeBase() {
                       <button onClick={() => handlePreview(doc)} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="预览">
                         <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.5 5.5.5 8c1 2.5 4 5 7.5 5s6.5-2.5 7.5-5c-1-2.5-4-5-7.5-5ZM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(e, doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="下载">
-                        <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.25 10.75a.75.75 0 0 0 1.5 0V1.75a.75.75 0 0 0-1.5 0v9Z"/><path d="M4.72 7.22a.75.75 0 0 1 1.06 0L8 9.44l2.22-2.22a.75.75 0 1 1 1.06 1.06l-2.75 2.75a.75.75 0 0 1-1.06 0L4.72 8.28a.75.75 0 0 1 0-1.06Z"/><path d="M1.75 10.25a.75.75 0 0 1 1.5 0v2c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25v-2a.75.75 0 0 1 1.5 0v2A1.75 1.75 0 0 1 12.5 14h-9A1.75 1.75 0 0 1 1.75 12.25v-2Z"/></svg>
+                      <button onClick={(e) => { e.stopPropagation(); handleDownload(doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--accent-blue)] hover:bg-[var(--btn-blue)]/10 transition-colors" title="下载">
+                        <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.75 2A.75.75 0 0 0 7 2.75v5.69L4.53 5.97a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06L8.5 8.44V2.75A.75.75 0 0 0 7.75 2Z"/><path d="M2 10.75a.75.75 0 0 1 1.5 0v1.5a.25.25 0 0 0 .25.25h8.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 1.5 11.75v-1.5Z"/></svg>
                       </button>
                       <button onClick={() => handleDelete(doc.id)} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--accent-red)] hover:bg-[var(--accent-red)]/10 transition-colors" title="删除">
                         <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h3.25a.75.75 0 0 1 0 1.5h-.8l-.75 9.5A1.75 1.75 0 0 1 10.97 15.5H5.03a1.75 1.75 0 0 1-1.73-1.5L2.55 4.5H1.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.06 4.5l.73 9.13a.25.25 0 0 0 .24.22h5.97a.25.25 0 0 0 .24-.22l.73-9.13H4.06Z"/></svg>
@@ -832,8 +822,8 @@ export default function KnowledgeBase() {
                         <button onClick={() => handlePreview(doc)} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="预览">
                           <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.5 5.5.5 8c1 2.5 4 5 7.5 5s6.5-2.5 7.5-5c-1-2.5-4-5-7.5-5ZM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDownload(e, doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors" title="下载">
-                          <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.25 10.75a.75.75 0 0 0 1.5 0V1.75a.75.75 0 0 0-1.5 0v9Z"/><path d="M4.72 7.22a.75.75 0 0 1 1.06 0L8 9.44l2.22-2.22a.75.75 0 1 1 1.06 1.06l-2.75 2.75a.75.75 0 0 1-1.06 0L4.72 8.28a.75.75 0 0 1 0-1.06Z"/><path d="M1.75 10.25a.75.75 0 0 1 1.5 0v2c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25v-2a.75.75 0 0 1 1.5 0v2A1.75 1.75 0 0 1 12.5 14h-9A1.75 1.75 0 0 1 1.75 12.25v-2Z"/></svg>
+                        <button onClick={(e) => { e.stopPropagation(); handleDownload(doc); }} className="w-5 h-5 inline-flex items-center justify-center rounded text-[var(--text-placeholder)] hover:text-[var(--accent-blue)] hover:bg-[var(--btn-blue)]/10 transition-colors" title="下载">
+                          <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M7.75 2A.75.75 0 0 0 7 2.75v5.69L4.53 5.97a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06L8.5 8.44V2.75A.75.75 0 0 0 7.75 2Z"/><path d="M2 10.75a.75.75 0 0 1 1.5 0v1.5a.25.25 0 0 0 .25.25h8.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 1.5 11.75v-1.5Z"/></svg>
                         </button>
                         <div className="relative">
                           <button onClick={() => { setMovingDocId(movingDocId === doc.id ? null : doc.id); setEditingDocCatIds([...doc.category_ids]); }} className={`w-5 h-5 inline-flex items-center justify-center rounded transition-colors ${movingDocId === doc.id ? 'text-[var(--accent-blue)] bg-[var(--btn-blue)]/10' : 'text-[var(--text-placeholder)] hover:text-[var(--accent-blue)] hover:bg-[var(--btn-blue)]/10'}`} title="移动到分类">
@@ -920,7 +910,7 @@ export default function KnowledgeBase() {
           onClose={closePreview}
           onDownload={() => {
             const doc = documents.find(d => d.id === previewId);
-            if (doc) downloadDocument(doc.id, doc.title);
+            if (doc) handleDownload(doc);
           }}
         />
       )}
@@ -941,13 +931,21 @@ export default function KnowledgeBase() {
                 )}
               </h3>
               <div className="flex items-center gap-2 ml-3">
-                <button onClick={() => { const doc = documents.find(d => d.id === previewId); if (doc) downloadDocument(doc.id, doc.title); }} className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">下载</button>
+                <button
+                  onClick={() => {
+                    const doc = documents.find(d => d.id === previewId);
+                    if (doc) handleDownload(doc);
+                  }}
+                  className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+                >
+                  下载
+                </button>
                 <button onClick={closePreview} className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 overflow-auto p-5">
               {previewLoading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
@@ -959,12 +957,12 @@ export default function KnowledgeBase() {
                 previewContent.html ? (
                   <div className="prose prose-sm max-w-none text-[var(--text-primary)] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-[var(--bg-tertiary)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:border [&_th]:border-gray-500/30 [&_td]:px-3 [&_td]:py-1.5 [&_td]:border [&_td]:border-gray-500/30 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: previewContent.html }} />
                 ) : previewContent.table ? (
-                  <div className="overflow-auto rounded-xl border border-gray-500/30">
-                    <table className="w-full text-xs">
+                  <div className="rounded-xl border border-gray-500/30">
+                    <table className="min-w-full text-xs">
                       <thead>
-                        <tr className="bg-[var(--bg-tertiary)]">
+                        <tr>
                           {previewContent.table.columns.map((col, i) => (
-                            <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap border-b border-gray-500/30">{col}</th>
+                            <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap border-b border-gray-500/30 sticky top-0 bg-[var(--bg-tertiary)]">{col}</th>
                           ))}
                         </tr>
                       </thead>

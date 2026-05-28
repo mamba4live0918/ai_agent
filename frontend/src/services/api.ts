@@ -81,6 +81,17 @@ export const exportReport = async (): Promise<void> => {
   window.URL.revokeObjectURL(url);
 };
 
+export const getDocumentBlobUrl = async (docId: string): Promise<string> => {
+  const token = getToken();
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/knowledge/documents/${docId}/download?inline=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('加载失败');
+  const blob = await res.blob();
+  return window.URL.createObjectURL(blob);
+};
+
 // Categories
 export const getCategories = () => request<import('../types').Category[]>('/knowledge/categories');
 export const createCategory = (data: { name: string; description?: string; icon?: string; parent_id?: string }) =>
@@ -113,30 +124,25 @@ export const getDocument = (id: string) =>
   request<import('../types').Document>(`/knowledge/documents/${id}`);
 export const getDocumentContent = (id: string) =>
   request<import('../types').DocumentContent>(`/knowledge/documents/${id}/content`);
-export const downloadDocument = (id: string, title: string) => {
-  const token = localStorage.getItem('token');
+export const downloadDocument = async (id: string, title: string) => {
+  const token = getToken();
+  const fetcher = await tauriFetch();
   const url = `${BASE}/knowledge/documents/${id}/download`;
-  // Create a temporary link to trigger download with auth
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = title;
-  // Use fetch to get the blob with auth header
-  fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    .then(res => res.blob())
-    .then(blob => {
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = title;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    })
-    .catch(() => {
-      // Fallback: open directly
-      window.open(url, '_blank');
-    });
+  try {
+    const res = await fetcher(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(url, '_blank');
+  }
 };
 export const uploadDocument = async (file: File, categoryId: string, _onProgress?: (pct: number) => void) => {
   const form = new FormData();

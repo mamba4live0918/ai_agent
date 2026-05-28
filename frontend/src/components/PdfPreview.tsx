@@ -1,18 +1,56 @@
+import { useState, useEffect, useRef } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
 interface PdfPreviewProps {
-  file: string; // blob URL or file URL
+  file: string;
   title?: string;
   onClose: () => void;
   onDownload?: () => void;
 }
 
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 3.0;
+const SCALE_STEP = 0.25;
+
 export default function PdfPreview({ file, title, onClose, onDownload }: PdfPreviewProps) {
+  const [numPages, setNumPages] = useState(0);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [workerReady, setWorkerReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fitWidth, setFitWidth] = useState(800);
+  const [scale, setScale] = useState(1.0);
+
+  useEffect(() => {
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    setWorkerReady(true);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width - 32;
+        if (w > 0) setFitWidth(w);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const displayWidth = fitWidth * scale;
+
+  const zoomIn = () => setScale(s => Math.min(MAX_SCALE, +(s + SCALE_STEP).toFixed(2)));
+  const zoomOut = () => setScale(s => Math.max(MIN_SCALE, +(s - SCALE_STEP).toFixed(2)));
+  const zoomReset = () => setScale(1.0);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-7xl h-[96vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-5xl h-[96vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
           <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 truncate">
@@ -22,7 +60,41 @@ export default function PdfPreview({ file, title, onClose, onDownload }: PdfPrev
             <span className="truncate">{title || 'PDF 预览'}</span>
           </h3>
 
-          <div className="flex items-center gap-1 ml-3">
+          <div className="flex items-center gap-3 ml-3">
+            {/* Zoom controls */}
+            <div className="flex items-center gap-1 text-xs text-[var(--text-secondary)] select-none">
+              <button onClick={zoomOut} disabled={scale <= MIN_SCALE} className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] disabled:opacity-30 disabled:cursor-default transition-colors" title="缩小">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M2 7.25a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5H2Z"/></svg>
+              </button>
+              <button onClick={zoomReset} className="min-w-[3em] text-center hover:bg-[var(--bg-tertiary)] rounded px-1 py-0.5 transition-colors" title="适应宽度">
+                {Math.round(scale * 100)}%
+              </button>
+              <button onClick={zoomIn} disabled={scale >= MAX_SCALE} className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] disabled:opacity-30 disabled:cursor-default transition-colors" title="放大">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M7.25 2a.75.75 0 0 1 1.5 0v5.25H14a.75.75 0 0 1 0 1.5H8.75V14a.75.75 0 0 1-1.5 0V8.75H2a.75.75 0 0 1 0-1.5h5.25V2Z"/></svg>
+              </button>
+            </div>
+
+            {/* Page navigation */}
+            {numPages > 1 && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] select-none">
+                <button
+                  onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+                  disabled={pageNumber <= 1}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 3.5a.5.5 0 0 0-1 0v9a.5.5 0 0 0 1 0v-9Z"/><path d="M6.354 8.354a.5.5 0 0 1 0-.708l2.828-2.828a.5.5 0 0 1 .854.354v5.656a.5.5 0 0 1-.854.354L6.354 8.354Z"/></svg>
+                </button>
+                <span className="tabular-nums min-w-[3em] text-center">{pageNumber} / {numPages}</span>
+                <button
+                  onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
+                  disabled={pageNumber >= numPages}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 3.5a.5.5 0 0 1 1 0v9a.5.5 0 0 1-1 0v-9Z"/><path d="M9.646 8.354a.5.5 0 0 0 0-.708L6.818 4.818a.5.5 0 0 0-.854.354v5.656a.5.5 0 0 0 .854.354l2.828-2.828Z"/></svg>
+                </button>
+              </div>
+            )}
+
             {onDownload && (
               <button onClick={onDownload} className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">
                 下载
@@ -36,12 +108,37 @@ export default function PdfPreview({ file, title, onClose, onDownload }: PdfPrev
           </div>
         </div>
 
-        {/* Body — native browser PDF viewer */}
-        <iframe
-          src={`${file}#toolbar=1&navpanes=1`}
-          className="w-full flex-1 border-0"
-          title={title || 'PDF Preview'}
-        />
+        {/* Body */}
+        <div ref={containerRef} className="flex-1 overflow-auto bg-[var(--bg-secondary)]">
+          <div className="min-h-full flex justify-center p-4">
+            {workerReady && (
+              <Document
+                file={file}
+                onLoadSuccess={({ numPages: n }) => { setNumPages(n); setPageNumber(1); }}
+                loading={
+                  <div className="flex flex-col items-center justify-center py-20 gap-3">
+                    <div className="w-6 h-6 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-[var(--text-secondary)]">加载 PDF...</p>
+                  </div>
+                }
+                error={
+                  <div className="flex flex-col items-center justify-center py-20 gap-2">
+                    <p className="text-sm text-[var(--accent-red)]">PDF 加载失败</p>
+                    <p className="text-xs text-[var(--text-placeholder)]">请尝试刷新页面后重试</p>
+                  </div>
+                }
+              >
+                <Page
+                  pageNumber={pageNumber}
+                  width={displayWidth}
+                  devicePixelRatio={(window.devicePixelRatio || 1) * 3}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+              </Document>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
