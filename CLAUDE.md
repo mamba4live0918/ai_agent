@@ -59,7 +59,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `services/trigger_rules.yaml` — 触发器规则配置（犹豫/价格异议/竞品/承诺/反对/长静默/多人/情绪）
 - `services/tts_service.py` — 语音合成服务（edge-tts，默认 zh-CN-XiaoxiaoNeural）
 - `services/realtime_service.py` — 实时会话归档（完成后 bulk persist 到 PostgreSQL）
-- `routers/realtime.py` — WebSocket 端点 /ws/realtime/session + HTTP GET 回放端点
+- `routers/realtime.py` — WebSocket 端点 /ws/realtime/session + HTTP GET 回放端点（使用 apply_user_filter，管理员可查看全部）
 - `utils/auth.py` — JWT 生成/验证、bcrypt 密码哈希、认证依赖注入（含 require_admin/require_super_admin/分组管理员过滤）
 - `utils/document_loader.py` — 多格式文档加载（PDF/DOCX/TXT/MD/PPTX）
 - `models/user.py` — User ORM 模型（UUID PK, username, email, hashed_password, role）
@@ -68,6 +68,10 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `models/feedback.py` — Feedback ORM 模型
 - `models/group.py` — Group ORM 模型（UUID PK, name, description, admin_id FK→users, created_at）
 - `models/realtime_session.py` — RealtimeSession / RealtimeSegment / RealtimeCoachEvent ORM 模型
+- `models/quiz.py` — QuizSession / QuizQuestion / QuizAnswer ORM 模型
+- `routers/quiz.py` — 知识库练习 API（生成题目/提交答案/列表/详情/删除）
+- `services/quiz_service.py` — DeepSeek 根据知识库内容自动生成练习题
+- `schemas/quiz.py` — 练习相关 Pydantic 模型
 - `schemas/auth.py` — 认证相关 Pydantic 模型（UserRegister, UserLogin, UserResponse, TokenResponse）
 - `schemas/instructor.py` — 讲师统计 Pydantic 模型
 - `schemas/training.py` — 训练相关 Pydantic 请求/响应模型
@@ -79,7 +83,7 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 
 - `pages/Login.tsx` — 登录页（GitHub-dark 风格卡片表单）
 - `pages/Register.tsx` — 注册页（用户名 + 邮箱 + 密码 + 确认密码）
-- `pages/Dashboard.tsx` — 首页仪表盘
+- `pages/Dashboard.tsx` — 首页仪表盘（8 统计卡片 + 3 模块入口 + 4 摘要卡片：仿真培训/实时语音/售后分析/知识库练习）
 - `pages/KnowledgeBase.tsx` — 知识库管理（分类筛选 + 文档上传 + RAG 对话）
 - `pages/CustomerAnalysis.tsx` — 客户列表 + 搜索 + 新建/删除
 - `pages/Training.tsx` — 仿真培训主页面（会话列表 + 聊天区 + 复盘弹窗）
@@ -95,6 +99,8 @@ frontend/    React 19 + TypeScript + Vite (port 5173)
 - `components/PersonaForm.tsx` — 手动创建数字人客户表单
 - `components/TrainingSession.tsx` — 仿真训练聊天界面 + 教练实时提示 + 复盘弹窗
 - `components/TrainingReview.tsx` — 复盘报告（评分/雷达图/话术点评/技能短板/建议 + PDF 导出）
+- `components/PdfPreview.tsx` — PDF 预览（react-pdf canvas 渲染，支持缩放/翻页/自适应宽度）
+- `components/QuizPanel.tsx` — 知识库练习面板（选择题 + 简答题 + 自动评分）
 - `context/AuthContext.tsx` — 认证上下文（user 状态、login/register/logout、isInstructor、isAdmin）
 - `pages/PostSalesAnalysis.tsx` — 售后分析主页面（会话列表 + 新建）
 - `components/PostSalesSession.tsx` — 售后分析对话界面（录音/上传/手动输入/报告浮窗）
