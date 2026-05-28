@@ -83,14 +83,28 @@ export const exportReport = async (): Promise<void> => {
 
 // Categories
 export const getCategories = () => request<import('../types').Category[]>('/knowledge/categories');
-export const createCategory = (data: { name: string; description?: string; icon?: string }) =>
+export const createCategory = (data: { name: string; description?: string; icon?: string; parent_id?: string }) =>
   request<import('../types').Category>('/knowledge/categories', { method: 'POST', body: JSON.stringify(data) });
-
+export const deleteCategory = (id: string) =>
+  request<void>(`/knowledge/categories/${id}`, { method: 'DELETE' });
+export const uploadCategoryIcon = async (id: string, file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  const fetcher = await tauriFetch();
+  const res = await fetcher(`${BASE}/knowledge/categories/${id}/icon`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: form,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json() as Promise<{ icon: string; url: string }>;
+};
 // Documents
-export const getDocuments = (categoryId?: string, q?: string, page = 1, pageSize = 20) => {
+export const getDocuments = (categoryId?: string, q?: string, page = 1, pageSize = 20, archived = false) => {
   const params = new URLSearchParams();
   if (categoryId) params.set('category_id', categoryId);
   if (q) params.set('q', q);
+  params.set('archived', String(archived));
   params.set('page', String(page));
   params.set('page_size', String(pageSize));
   return request<import('../types').DocumentList>(`/knowledge/documents?${params}`);
@@ -142,6 +156,17 @@ export const uploadDocument = async (file: File, categoryId: string, _onProgress
 };
 export const deleteDocument = (id: string) =>
   request<void>(`/knowledge/documents/${id}`, { method: 'DELETE' });
+export const updateDocumentCategories = (id: string, categoryIds: string[]) =>
+  request<import('../types').Document>(`/knowledge/documents/${id}/categories`, {
+    method: 'PUT',
+    body: JSON.stringify({ category_ids: categoryIds }),
+  });
+
+export const archiveDocument = (id: string, isArchived: boolean) =>
+  request<import('../types').Document>(`/knowledge/documents/${id}/archive`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_archived: isArchived }),
+  });
 
 // Customers
 export const getCustomers = (q?: string, page = 1, pageSize = 10) => {
@@ -369,3 +394,25 @@ export const getRealtimeSession = (id: string) =>
 
 export const deleteRealtimeSession = (id: string) =>
   request<void>(`/realtime/sessions/${id}`, { method: 'DELETE' });
+
+// ─── Quiz ───
+export const generateQuiz = (categoryId?: string | null, documentIds?: string[] | null, questionCount = 5, questionTypes: string[] = ['choice', 'short_answer'], typeCounts?: Record<string, number> | null) =>
+  request<import('../types').QuizSessionDetail>('/quiz/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ category_id: categoryId || null, document_ids: documentIds || null, question_count: questionCount, question_types: questionTypes, type_counts: typeCounts || null }),
+  });
+
+export const submitQuizAnswer = (sessionId: string, questionId: string, userAnswer: string) =>
+  request<import('../types').QuizAnswer>(`/quiz/sessions/${sessionId}/answers`, {
+    method: 'POST',
+    body: JSON.stringify({ question_id: questionId, user_answer: userAnswer }),
+  });
+
+export const getQuizSessions = (page = 1, pageSize = 20) =>
+  request<import('../types').QuizSession[]>(`/quiz/sessions?page=${page}&page_size=${pageSize}`);
+
+export const getQuizSession = (id: string) =>
+  request<import('../types').QuizSessionDetail>(`/quiz/sessions/${id}`);
+
+export const deleteQuizSession = (id: string) =>
+  request<void>(`/quiz/sessions/${id}`, { method: 'DELETE' });

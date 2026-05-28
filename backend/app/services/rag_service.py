@@ -20,9 +20,9 @@ def _get_or_create_history(conversation_id: str | None) -> tuple[str, list[tuple
     return cid, _conversations[cid]
 
 
-def retrieve_context(query: str, user_id: str, k: int = 8) -> tuple[str, list[dict]]:
+def retrieve_context(query: str, user_id: str, k: int = 8, filenames: list[str] | None = None) -> tuple[str, list[dict]]:
     try:
-        docs = retrieve_from_chroma(query, user_id=user_id, k=k)
+        docs = retrieve_from_chroma(query, user_id=user_id, k=k, filenames=filenames)
     except Exception:
         return "", []
 
@@ -113,17 +113,21 @@ def chat(message: str, user_id: str, conversation_id: str | None = None) -> dict
     return result
 
 
-def search_knowledge_base(query: str, user_id: str, k: int = 5) -> str:
-    """Search KB for relevant content. Returns formatted prompt-ready string or empty string on failure."""
+def search_knowledge_base(query: str, user_id: str, k: int = 5, filenames: list[str] | None = None) -> str:
+    """Search KB for relevant content. Returns formatted prompt-ready string or empty string on failure.
+    Optionally restrict to specific filenames for document-scoped generation."""
     try:
-        context, _ = retrieve_context(query, user_id=user_id, k=k)
+        context, _ = retrieve_context(query, user_id=user_id, k=k, filenames=filenames)
         if not context.strip():
             return ""
+        scope_note = ""
+        if filenames:
+            scope_note = "\n".join(f"- {f}" for f in filenames)
+            scope_note = f"\n【限定范围】仅从以下文档中检索：\n{scope_note}\n"
         return f"""
 【知识库匹配内容】
 以下是从知识库中检索到的相关文档内容，请优先参考这些材料进行分析和生成。
-如果内容与当前场景不相关，则基于你的专业知识生成。
-
+{scope_note}
 {context}
 """
     except Exception:

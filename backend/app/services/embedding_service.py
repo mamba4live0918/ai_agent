@@ -84,15 +84,28 @@ def get_or_create_vectorstore() -> Chroma:
     )
 
 
-def retrieve_from_chroma(query: str, user_id: str, k: int = 8) -> list:
-    """Retrieve chunks filtered by user_id: shared docs + user's own docs."""
+def retrieve_from_chroma(query: str, user_id: str, k: int = 8, filenames: list[str] | None = None) -> list:
+    """Retrieve chunks filtered by user_id: shared docs + user's own docs.
+    Optionally restrict to specific filenames for document-scoped generation."""
     vectorstore = get_or_create_vectorstore()
-    where_filter = {
+
+    user_filter = {
         "$or": [
             {"user_id": "shared"},
             {"user_id": str(user_id)},
         ]
     }
+
+    if filenames:
+        where_filter = {
+            "$and": [
+                user_filter,
+                {"$or": [{"filename": f} for f in filenames]},
+            ]
+        }
+    else:
+        where_filter = user_filter
+
     return vectorstore.similarity_search(query, k=k, filter=where_filter)
 
 

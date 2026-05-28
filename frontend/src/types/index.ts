@@ -60,17 +60,24 @@ export interface Category {
   sort_order: number;
   created_at: string;
   document_count: number;
+  parent_id: string | null;
+  children_count: number;
+}
+
+export interface CategoryTreeNode extends Category {
+  children: CategoryTreeNode[];
 }
 
 export interface Document {
   id: string;
   title: string;
-  category_id: string;
+  category_ids: string[];
   file_type: string;
   content_preview: string | null;
   chunk_count: number;
+  is_archived: boolean;
   created_at: string;
-  category_name: string | null;
+  category_names: string[];
 }
 
 export interface DocumentList {
@@ -427,6 +434,46 @@ export interface GroupMember {
   role: string;
   group_id: string | null;
   created_at: string;
+}
+
+// ─── Quiz ───
+export interface QuizSession {
+  id: string;
+  category_id: string | null;
+  document_ids: string[] | null;
+  question_count: number;
+  score: number | null;
+  status: 'active' | 'completed';
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface QuizAnswer {
+  id: string;
+  question_id: string;
+  user_answer: string;
+  is_correct: boolean | null;
+  score: number | null;
+  feedback: string | null;
+  correct_answer: string | null;
+  explanation: string | null;
+  created_at: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question_type: 'choice' | 'short_answer';
+  stem: string;
+  options: Record<string, string> | null;
+  correct_answer: string | null;
+  explanation: string | null;
+  kb_reference: Record<string, unknown> | null;
+  question_index: number;
+  answer: QuizAnswer | null;
+}
+
+export interface QuizSessionDetail extends QuizSession {
+  questions: QuizQuestion[];
 }
 
 // ─── Realtime Sessions ───

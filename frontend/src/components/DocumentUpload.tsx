@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import type { Category } from '../types';
+import CategoryIcon from './CategoryIcon';
 
 interface DocumentUploadProps {
   categories: Category[];

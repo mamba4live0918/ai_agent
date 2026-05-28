@@ -95,7 +95,7 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="card flex flex-row h-[380px] sm:h-[480px] overflow-hidden relative">
+    <div className="flex flex-row h-[60vh] sm:h-[65vh] overflow-hidden relative">
       {/* Sliding container: card + tab move together */}
       <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
         transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
