@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getDocuments, getCustomers, getProducts, getTrainingSessions, getRealtimeSessions, getPostSalesSessions } from '../services/api';
-import type { TrainingSession, RealtimeSessionSummary, PostSalesSession } from '../types';
+import { getDocuments, getCustomers, getProducts, getTrainingSessions, getRealtimeSessions, getPostSalesSessions, getQuizSessions } from '../services/api';
+import type { TrainingSession, RealtimeSessionSummary, PostSalesSession, QuizSession } from '../types';
 
 export default function Dashboard() {
   const [docCount, setDocCount] = useState(0);
@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [rtSessions, setRtSessions] = useState<RealtimeSessionSummary[]>([]);
   const [psSessions, setPsSessions] = useState<PostSalesSession[]>([]);
+  const [quizSessions, setQuizSessions] = useState<QuizSession[]>([]);
 
   useEffect(() => {
     getDocuments(undefined, undefined, 1, 1).then(res => setDocCount(res.total)).catch(() => {});
@@ -19,6 +20,7 @@ export default function Dashboard() {
     getTrainingSessions(undefined, undefined, 1, 100).then(res => setSessions(res.items)).catch(() => {});
     getRealtimeSessions(1, 100).then(res => setRtSessions(res.items)).catch(() => {});
     getPostSalesSessions(undefined, undefined, 1, 100).then(res => setPsSessions(res.items)).catch(() => {});
+    getQuizSessions(1, 100).then(res => setQuizSessions(res)).catch(() => {});
     setLoading(false);
   }, []);
 
@@ -42,6 +44,13 @@ export default function Dashboard() {
   const psProcessing = psSessions.filter(s => s.status === 'processing').length;
   const psTotal = psSessions.length;
 
+  // Quiz stats
+  const quizTotal = quizSessions.length;
+  const quizCompleted = quizSessions.filter(s => s.status === 'completed').length;
+  const quizActive = quizSessions.filter(s => s.status === 'active').length;
+  const quizAvgScore = quizSessions.filter(s => s.status === 'completed' && s.score != null).reduce((a, s) => a + (s.score || 0), 0);
+  const quizAvg = quizCompleted > 0 ? Math.round(quizAvgScore / quizCompleted) : 0;
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-8 py-4 sm:py-10">
       {/* Header */}
@@ -60,7 +69,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4 mb-5 sm:mb-8 animate-in" style={{ animationDelay: '80ms' }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 mb-5 sm:mb-8 animate-in" style={{ animationDelay: '80ms' }}>
         {/* Knowledge docs */}
         <div className="card p-4 rounded-xl sm:rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
           <div className="flex items-center justify-between mb-1">
@@ -113,6 +122,19 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Quiz */}
+        <div className="card p-4 rounded-xl sm:rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-medium text-[var(--text-secondary)] uppercase tracking-wider">练习</span>
+            <svg className="w-3.5 h-3.5 text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2.5.75A.75.75 0 0 1 3.25 0h9.5a.75.75 0 0 1 .75.75v14.5a.75.75 0 0 1-.75.75h-9.5a.75.75 0 0 1-.75-.75V.75Zm1.5.75v13h8v-13h-8Z"/><path d="M5 3.75A.75.75 0 0 1 5.75 3h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 3.75ZM5 5.75A.75.75 0 0 1 5.75 5h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 5.75ZM5.75 7a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z"/>
+            </svg>
+          </div>
+          <p className="text-xl sm:text-2xl font-bold text-[var(--accent-blue)] font-mono tabular-nums">
+            {loading ? '--' : quizTotal}
+          </p>
+        </div>
+
         {/* Completion rate */}
         <div className="card p-4 rounded-xl sm:rounded-2xl transition-all duration-200 hover:-translate-y-0.5">
           <div className="flex items-center justify-between mb-1">
@@ -154,7 +176,7 @@ export default function Dashboard() {
       </div>
 
       {/* Section cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-8 animate-in" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-8 animate-in" style={{ animationDelay: '150ms' }}>
         {/* Training */}
         <div className="card p-4 sm:p-5 rounded-xl sm:rounded-2xl">
           <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
@@ -257,6 +279,40 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[var(--text-secondary)]">处理中</span>
                 <span className="text-sm font-semibold text-[var(--text-placeholder)] tabular-nums">{psProcessing}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-[var(--text-placeholder)] py-4 text-center">
+              {loading ? '加载中...' : '暂无数据'}
+            </div>
+          )}
+        </div>
+
+        {/* Quiz */}
+        <div className="card p-4 sm:p-5 rounded-xl sm:rounded-2xl">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4 text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2.5.75A.75.75 0 0 1 3.25 0h9.5a.75.75 0 0 1 .75.75v14.5a.75.75 0 0 1-.75.75h-9.5a.75.75 0 0 1-.75-.75V.75Zm1.5.75v13h8v-13h-8Z"/><path d="M5 3.75A.75.75 0 0 1 5.75 3h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 3.75ZM5 5.75A.75.75 0 0 1 5.75 5h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 5.75ZM5.75 7a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z"/>
+            </svg>
+            知识库练习
+          </h3>
+          {quizTotal > 0 ? (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--text-secondary)]">总次数</span>
+                <span className="text-sm font-semibold tabular-nums">{quizTotal}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--text-secondary)]">已完成</span>
+                <span className="text-sm font-semibold text-[var(--accent-green)] tabular-nums">{quizCompleted}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--text-secondary)]">进行中</span>
+                <span className="text-sm font-semibold text-[var(--accent-blue)] tabular-nums">{quizActive}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--text-secondary)]">平均分</span>
+                <span className="text-sm font-semibold text-[var(--accent-purple)] tabular-nums">{quizAvg}</span>
               </div>
             </div>
           ) : (
