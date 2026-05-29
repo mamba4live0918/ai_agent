@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Customer } from '../types';
 
 interface Section {
@@ -68,6 +69,7 @@ interface Props {
 
 export default function CustomerInfoCards({ customer }: Props) {
   const sd = (customer.structured_data || {}) as Record<string, unknown>;
+  const [showContact, setShowContact] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -86,12 +88,28 @@ export default function CustomerInfoCards({ customer }: Props) {
               <span className="text-[10px] text-[var(--text-placeholder)] ml-auto">{filledFields.length}</span>
             </div>
             <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
-              {filledFields.map(f => (
-                <div key={f.key} className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-[var(--text-placeholder)] truncate">{f.label}</span>
-                  <span className="text-xs text-[var(--text-primary)] break-words">{f.value}</span>
-                </div>
-              ))}
+              {filledFields.map(f => {
+                const isContact = f.key === 'contact';
+                const masked = isContact && !showContact && f.value.length > 4
+                  ? f.value.slice(0, 3) + '****' + f.value.slice(-4)
+                  : f.value;
+                return (
+                  <div key={f.key} className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-[var(--text-placeholder)] truncate">{f.label}</span>
+                    <span className="text-xs text-[var(--text-primary)] break-words">
+                      {masked}
+                      {isContact && f.value.length > 4 && (
+                        <button
+                          onClick={() => setShowContact(!showContact)}
+                          className="ml-1.5 text-[10px] text-[var(--accent-blue)] hover:underline"
+                        >
+                          {showContact ? '隐藏' : '查看'}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
