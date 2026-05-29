@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { saveAllocationPlan, generateAllocationPlan } from '../services/api';
 import type { Customer, AllocationSubPlan } from '../types';
 
@@ -9,9 +9,8 @@ interface Props {
 }
 
 const PLAN_KEYS = ['conservative', 'balanced', 'aggressive'] as const;
+const DONUT_COLORS = ['var(--accent-blue)', 'var(--accent-green)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--accent-red)', '#58a6ff'];
 const PLAN_LABELS: Record<string, string> = { conservative: '保守型', balanced: '稳健型', aggressive: '激进型' };
-const PRODUCT_COLORS = ['var(--accent-blue)', 'var(--accent-green)', 'var(--accent-orange)', 'var(--accent-red)', 'var(--accent-purple)', 'var(--accent-blue)'];
-
 export default function AllocationPlan({ customer, onUpdate }: Props) {
   const [planTab, setPlanTab] = useState<string>('conservative');
   const [viewMode, setViewMode] = useState<'ai' | 'user'>('ai');
@@ -39,13 +38,6 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
   const planSource = viewMode === 'ai' ? ap.ai_plan : ap.user_plan;
   const plan: AllocationSubPlan | undefined = planSource?.[planTab];
   if (!plan) return <p className="text-sm text-[var(--text-placeholder)] text-center py-4">方案数据缺失</p>;
-
-  const chartData = plan.allocations.map(a => ({
-    name: a.product_name.length > 20 ? a.product_name.slice(0, 20) + '...' : a.product_name,
-    fullName: a.product_name,
-    ratio: Math.round(a.ratio * 100),
-    amount: a.amount,
-  }));
 
   const totalInvestable = ap.total_investable || plan.allocations.reduce((s, a) => s + a.amount / (a.ratio || 0.01), 0) / plan.allocations.length || 1000000;
 
@@ -132,61 +124,59 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
       {/* Summary card */}
       <div className="bg-[var(--bg-primary)] rounded-xl p-3.5 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRODUCT_COLORS[0] }} />
+          <span className="w-2 h-2 rounded-full" className="w-2 h-2 rounded-full bg-[var(--accent-blue)]" />
           <h5 className="text-xs font-semibold text-[var(--text-primary)]">{plan.plan_type} — 组合概要</h5>
         </div>
         <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-2">{plan.overall_rationale}</p>
-        <p className="text-xs text-[var(--text-tertiary)] leading-relaxed mb-3">{plan.risk_return_profile}</p>
-
-        {/* Stacked bar chart */}
-        <div style={{ height: 40 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barSize={28}>
-              <XAxis type="number" domain={[0, 100]} hide />
-              <Tooltip
-                contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 6, fontSize: 11 }}
-                formatter={(_value: unknown, _name: unknown, props: unknown) => [`${(props as { payload: { ratio: number } }).payload.ratio}%`, (props as { payload: { fullName: string } }).payload.fullName]}
-              />
-              <Bar dataKey="ratio" stackId="a" radius={0}>
-                {chartData.map((_, idx) => (
-                  <Cell key={idx} fill={PRODUCT_COLORS[idx % PRODUCT_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">{plan.risk_return_profile}</p>
       </div>
 
-      {/* Allocation details */}
-      <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">配置明细</h4>
-      <div className="space-y-1.5">
-        {plan.allocations.map(a => (
-          <div key={a.product_id} className="bg-[var(--bg-primary)] rounded-xl px-3 py-2.5 shadow-sm">
-            {editing ? (
-              <div className="flex items-center gap-3">
+      {/* Donut chart + legend */}
+      <div className="bg-[var(--bg-primary)] rounded-xl p-4 shadow-sm">
+        <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">配置明细</h4>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-40 h-40 flex-shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={plan.allocations} dataKey="ratio" nameKey="product_name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                  {plan.allocations.map((_, idx) => (
+                    <Cell key={idx} fill={DONUT_COLORS[idx % DONUT_COLORS.length]} stroke="var(--bg-primary)" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 11 }}
+                  formatter={(_v: unknown, _n: unknown, props: unknown) => [`${Math.round((props as { payload: { ratio: number } }).payload.ratio * 100)}%`, (props as { payload: { product_name: string } }).payload.product_name]} />
+              </PieChart>
+            </ResponsiveContainer>
+            <p className="text-[10px] text-[var(--text-placeholder)] text-center mt-1">{plan.allocations.length} 个产品</p>
+          </div>
+          <div className="flex-1 space-y-1.5 min-w-0">
+            {plan.allocations.map((a, idx) => (
+              <div key={a.product_id} className="flex items-center gap-2 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
+                <span className="text-[var(--text-primary)] truncate flex-1">{a.product_name}</span>
+                <span className="font-mono text-[var(--text-primary)] flex-shrink-0">{Math.round(a.ratio * 100)}%</span>
+                <span className="text-[var(--text-placeholder)] flex-shrink-0">{a.amount.toLocaleString()}元</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Edit mode sliders */}
+        {editing && (
+          <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] space-y-2">
+            {plan.allocations.map(a => (
+              <div key={a.product_id} className="flex items-center gap-3">
                 <span className="text-xs text-[var(--text-primary)] w-24 flex-shrink-0 truncate">{a.product_name}</span>
                 <input type="range" min={0} max={100} value={editRatios[a.product_id] || 0}
                   onChange={e => handleSliderChange(a.product_id, Number(e.target.value))}
                   className="flex-1 h-1 accent-[var(--accent-blue)]" />
-                <span className="text-xs font-mono text-[var(--text-primary)] w-8 text-right">{editRatios[a.product_id] || 0}%</span>
                 <input type="text" value={editRatios[a.product_id] || 0}
                   onChange={e => handleInputChange(a.product_id, e.target.value.replace(/\D/g, ''))}
-                  className="w-12 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text-primary)] text-center focus:border-[var(--accent-blue)] outline-none" />
+                  className="w-14 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded px-1.5 py-0.5 text-[11px] text-center focus:border-[var(--accent-blue)] outline-none" />
+                <span className="text-xs font-mono w-8 text-right">%</span>
               </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-mono font-semibold text-[var(--text-primary)] w-10 flex-shrink-0">{Math.round(a.ratio * 100)}%</span>
-                  <div className="min-w-0">
-                    <span className="text-xs text-[var(--text-primary)]">{a.product_name}</span>
-                    <p className="text-[10px] text-[var(--text-placeholder)] mt-0.5">{a.reason}</p>
-                  </div>
-                </div>
-                <span className="text-[11px] text-[var(--text-secondary)] flex-shrink-0 ml-3">{a.amount.toLocaleString()} 元</span>
-              </div>
-            )}
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {editing && (
