@@ -33,7 +33,9 @@ def _group_to_response(group: Group, db: Session) -> GroupResponse:
     if group.admin_id:
         admin = db.query(User).filter(User.id == group.admin_id).first()
         admin_name = admin.username if admin else None
-    member_count = db.query(User).filter(User.group_id == group.id).count()
+    member_users = db.query(User).filter(User.group_id == group.id).all()
+    member_count = len(member_users)
+    members = [{"id": str(u.id), "username": u.username} for u in member_users]
     return GroupResponse(
         id=group.id,
         name=group.name,
@@ -41,6 +43,7 @@ def _group_to_response(group: Group, db: Session) -> GroupResponse:
         admin_id=group.admin_id,
         admin_name=admin_name,
         member_count=member_count,
+        members=members,
         created_at=group.created_at,
     )
 

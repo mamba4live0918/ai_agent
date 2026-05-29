@@ -33,6 +33,7 @@ class GroupResponse(BaseModel):
     admin_id: UUID | None
     admin_name: str | None = None
     member_count: int = 0
+    members: list[dict] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
