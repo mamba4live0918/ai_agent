@@ -257,6 +257,44 @@ curl http://localhost:8000/api/health
 - 文档删除时同步清理 ChromaDB 向量（通过 filename 元数据匹配）
 - 语音转录：ffmpeg（系统级）+ faster-whisper + pyannote.audio（需 `HUGGINGFACE_TOKEN`）+ OpenCC 简繁转换
 
+### 主题系统（Light/Dark Mode）
+
+- **ThemeContext**：`ThemeContext.tsx` 管理 dark/light 切换，通过 `<html class="light">` 切换 CSS 变量
+- **暗色模式（默认）**：`:root` 定义 GitHub-dark 风格变量（`--bg-primary: #0d1117` 等）
+- **亮色模式**：`html.light` 覆盖为暖奶油色调（`--bg-primary: #FFF8F0` 等）
+- **切换控件**：Layout 侧边栏底部 segmented-control 按钮
+- **CSS 变量覆盖范围**：背景（bg-primary/secondary/tertiary/overlay）、边框（border-default/subtle）、文字（text-primary/secondary/tertiary/placeholder）、强调色、按钮色、阴影
+
+### 毛玻璃侧边栏系统（Frosted Glass Sidebar）
+
+- **`.sidebar-glass` CSS 类**：统一管理所有侧边栏的毛玻璃效果
+  - Dark mode：`color-mix(10% --bg-secondary)` + `backdrop-filter: blur(40px)` — 高透明度强模糊
+  - Light mode：纯 `--bg-secondary` 实色 + 浅阴影 — 清晰可读
+- **`.sidebar-toggle` CSS 类**：侧边栏展开/折叠按钮，半透明玻璃质感 + hover 加深动画
+- **侧边栏统一规格**：宽度 `220px/240px`，标题栏 `bg-[var(--bg-secondary)]/40 backdrop-blur-md`，卡片 `rounded-xl border p-2.5 backdrop-blur-md`
+- **5 个侧边栏全部统一**：主导航（Layout）、知识库问答（ChatPanel）、仿真培训（Training）、实时语音（RealTimeVoice+SessionSidebar）、售后分析（PostSalesAnalysis）
+- **折叠行为**：收起时仅露 4px + `overflow-hidden` 裁剪，完全不显示侧边栏内容；展开按钮为浮动药丸形状贴在右边缘
+- **遮罩层**：`bg-black/40 backdrop-blur-[2px]`，点击关闭
+- **主内容区**：侧边栏展开时不平移（无 ml 偏移），覆盖在主内容上方
+- **卡片 hover 动画**：`hover:shadow-lg hover:shadow-black/10` + `transition-all duration-200`
+- **滚动条**：全局窄化 `4px`，滑块色 `--border-subtle`
+
+### 客户分析浮窗（Customer Detail Modal）
+
+- 客户详情从内嵌右侧卡片改为居中毛玻璃浮窗（`max-w-3xl`, `max-h-[90vh]`）
+- 背景遮罩 `bg-black/40 backdrop-blur-[2px]`，点击关闭
+- 浮窗底色 `bg-[var(--bg-secondary)]`，头身分离（标题栏 + 可滚动内容区）
+- 移动端和桌面端统一使用浮窗，不再区分
+
+### 实时 ASR 优化（Realtime ASR）
+
+- **去临时文件 I/O**：VAD 片段直接传 numpy float32 数组给 faster-whisper，消除 WAV 文件写入/读取延迟
+- **ASR 参数调优**：`beam_size=3`, `best_of=3`, `repetition_penalty=1.2`
+- **VAD 参数**：`threshold=0.5`, `min_speech_duration_ms=1000`, `max_speech_duration_s=8.0`
+- **说话人聚类**：`similarity_threshold=0.40`（降低分裂），`max_speakers=4`
+- **角色分配**：按检测顺序分配（speaker_0=销售, speaker_1+=客户），非按发言频次
+- **前端标签**：`getSpeakerLabel()` 映射 speaker→讲话人/销售/客户/系统
+
 ## 售后分析（Post-Sales Analysis）— 含语音转录
 
 - **创建方式**：从客户分析页一键发起（带 customerId），或从售后分析页独立创建
