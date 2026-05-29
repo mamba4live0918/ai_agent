@@ -530,23 +530,17 @@ export default function AdminUsers() {
                     {isSuperAdmin && (
                       memberGroupId === g.id ? (
                         <div className="flex gap-1.5">
-                          <div className="flex-1 relative">
-                            <input value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setMemberUserId(''); }} placeholder="搜索用户名..." className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] focus:border-[var(--accent-blue)] outline-none" />
-                            {memberSearch && !memberUserId && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-xl shadow-lg max-h-32 overflow-y-auto z-10">
-                                {users.filter(u => u.username.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 20).map(u => (
-                                  <button key={u.id} onMouseDown={(e) => { e.preventDefault(); setMemberUserId(u.id); setMemberSearch(u.username); }} className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]">
-                                    {u.username} <span className="text-[var(--text-placeholder)]">({ROLE_LABELS[u.role]})</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button onClick={async () => { if (!memberUserId || addingMember) return; await handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); loadGroups(); }} disabled={!memberUserId || addingMember} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">确认</button>
-                          <button onClick={() => { setMemberGroupId(null); setMemberSearch(''); }} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
+                          <select value={memberUserId} onChange={e => setMemberUserId(e.target.value)} className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none">
+                            <option value="">选择用户...</option>
+                            {users.filter(u => !u.group_id || u.group_id !== g.id).slice(0, 50).map(u => (
+                              <option key={u.id} value={u.id}>{u.username} ({ROLE_LABELS[u.role]})</option>
+                            ))}
+                          </select>
+                          <button onClick={() => { if (memberUserId) { handleAddMember(g.id); setMemberGroupId(null); } }} disabled={!memberUserId || addingMember} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">确认</button>
+                          <button onClick={() => setMemberGroupId(null)} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
                         </div>
                       ) : (
-                        <button onClick={() => { setMemberGroupId(g.id); setMemberUserId(''); setMemberSearch(''); }} className="text-[10px] px-3 py-1 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">+ 添加成员</button>
+                        <button onClick={() => { setMemberGroupId(g.id); setMemberUserId(''); }} className="text-[10px] px-3 py-1 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">+ 添加成员</button>
                       )
                     )}
                   </div>
