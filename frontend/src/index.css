@@ -322,24 +322,27 @@
 
   .tab-underline {
     display: flex;
-    gap: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--border-subtle);
   }
   .tab-underline button {
-    padding: 10px 20px;
-    font-size: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--text-secondary);
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 9999px;
     cursor: pointer;
+    white-space: nowrap;
     transition: all var(--transition-smooth);
   }
   .tab-underline button.active {
-    color: var(--accent-blue);
-    border-bottom-color: var(--accent-blue);
+    color: #fff;
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
   }
 
   .section-block {

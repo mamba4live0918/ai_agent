@@ -16,7 +16,7 @@ export default function ProductManager() {
   const [riskFilter, setRiskFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '', fund_code: '' });
   const [importError, setImportError] = useState('');
   const [importProgress, setImportProgress] = useState(0);
@@ -32,12 +32,7 @@ export default function ProductManager() {
   useEffect(() => { load(); }, [load]);
 
   const handleExpand = async (p: Product) => {
-    if (expandedId === p.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(p.id);
-    // Auto-refresh NAV if fund product with stale data
+    setSelectedProduct(p);
     if (p.fund_code) {
       const fourHours = 4 * 60 * 60 * 1000;
       const lastUpdate = p.nav_updated_at ? new Date(p.nav_updated_at).getTime() : 0;
@@ -45,7 +40,8 @@ export default function ProductManager() {
         try {
           const fresh = await getProduct(p.id);
           setProducts(prev => prev.map(item => item.id === p.id ? fresh : item));
-        } catch { /* silently skip refresh errors */ }
+          setSelectedProduct(fresh);
+        } catch { /* ignore */ }
       }
     }
   };
@@ -181,7 +177,6 @@ export default function ProductManager() {
         )}
         {products.map(p => {
           const risk = getRiskLabel(p.risk_level);
-          const expanded = expandedId === p.id;
           return (
             <div key={p.id} className="bg-[var(--bg-primary)] rounded-xl overflow-hidden shadow-sm">
               <div
@@ -192,32 +187,14 @@ export default function ProductManager() {
                 <span className="text-sm text-[var(--text-primary)] flex-1 truncate">{p.name}</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--border-default)]" style={{ color: risk.color }}>{risk.text}</span>
                 <span className="text-[10px] text-[var(--accent-green)] font-mono tabular-nums hidden sm:inline">+{p.expected_return}%</span>
-                <span className="text-[10px] text-[var(--text-placeholder)] hidden sm:inline">{expanded ? '收起 ▴' : '展开 ▾'}</span>
-                <span className="text-[10px] text-[var(--text-placeholder)] sm:hidden">{expanded ? '▴' : '▾'}</span>
                 <button
                   onClick={e => { e.stopPropagation(); deleteProduct(p.id).then(load); }}
                   className="text-[10px] text-[var(--accent-red)] hover:text-[var(--accent-red)] ml-1 flex-shrink-0"
                 >删除</button>
               </div>
-              {expanded && (
-                <div className="border-t border-[var(--border-subtle)] px-3 py-3 space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div><span className="text-[var(--text-tertiary)]">类型</span><br/><span className="text-[var(--text-primary)]">{p.type}</span></div>
-                    <div><span className="text-[var(--text-tertiary)]">预期收益</span><br/><span className="text-[var(--accent-green)] font-mono">{p.expected_return}%</span></div>
-                    <div><span className="text-[var(--text-tertiary)]">起投金额</span><br/><span className="text-[var(--text-primary)]">{p.min_investment.toLocaleString()} 元</span></div>
-                    <div><span className="text-[var(--text-tertiary)]">锁定期</span><br/><span className="text-[var(--text-primary)]">{p.lock_period || '无'}</span></div>
-                    {p.issuer && <div><span className="text-[var(--text-tertiary)]">发行机构</span><br/><span className="text-[var(--text-primary)]">{p.issuer}</span></div>}
-                    {p.description && <div className="col-span-2"><span className="text-[var(--text-tertiary)]">描述</span><br/><span className="text-[var(--text-secondary)]">{p.description}</span></div>}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                      近12个月净值走势
-                      {p.nav_updated_at && <span className="ml-2 font-normal lowercase text-[var(--text-placeholder)]">更新于 {new Date(p.nav_updated_at).toLocaleString('zh-CN')}</span>}
-                    </p>
-                    <ProductNavChart data={p.nav_history || []} source={p.source} productType={p.type} />
-                  </div>
-                </div>
-              )}
+            </div>
+          );
+        })}
             </div>
           );
         })}
@@ -319,6 +296,61 @@ export default function ProductManager() {
             </div>
           </div>
         </div>
+      )}
+      {/* Product detail floating panel */}
+      {selectedProduct && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setSelectedProduct(null)} />
+          <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-4">
+            <div className="pointer-events-auto w-full max-w-lg max-h-[85vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0 bg-[var(--bg-secondary)]">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{selectedProduct.name}</h3>
+                <button onClick={() => setSelectedProduct(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div><span className="text-[var(--text-tertiary)]">类型</span><p className="text-[var(--text-primary)] font-medium">{selectedProduct.type}</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">风险等级</span><p className="font-mono" style={{ color: getRiskLabel(selectedProduct.risk_level).color }}>{getRiskLabel(selectedProduct.risk_level).text}</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">预期收益</span><p className="text-[var(--accent-green)] font-mono font-medium">{selectedProduct.expected_return}%</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">起投金额</span><p className="text-[var(--text-primary)]">{selectedProduct.min_investment.toLocaleString()} 元</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">锁定期</span><p className="text-[var(--text-primary)]">{selectedProduct.lock_period || '无'}</p></div>
+                  {selectedProduct.issuer && <div><span className="text-[var(--text-tertiary)]">发行机构</span><p className="text-[var(--text-primary)]">{selectedProduct.issuer}</p></div>}
+                  {selectedProduct.fund_code && <div><span className="text-[var(--text-tertiary)]">基金代码</span><p className="text-[var(--text-primary)] font-mono">{selectedProduct.fund_code}</p></div>}
+                </div>
+                {selectedProduct.description && (
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">产品描述</p>
+                    <p className="text-xs text-[var(--text-secondary)]">{selectedProduct.description}</p>
+                  </div>
+                )}
+                {selectedProduct.target_tags && (selectedProduct.target_tags as string[]).length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">目标标签</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(selectedProduct.target_tags as string[]).map(tag => (
+                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(selectedProduct.nav_history && (selectedProduct.nav_history as unknown[]).length > 0) && (
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+                      净值走势
+                      {selectedProduct.nav_updated_at && <span className="ml-2 font-normal lowercase text-[var(--text-placeholder)]">更新于 {new Date(selectedProduct.nav_updated_at).toLocaleString('zh-CN')}</span>}
+                    </p>
+                    <ProductNavChart data={selectedProduct.nav_history || []} source={selectedProduct.source} productType={selectedProduct.type} />
+                  </div>
+                )}
+                {(!selectedProduct.nav_history || (selectedProduct.nav_history as unknown[]).length === 0) && (
+                  <p className="text-xs text-[var(--text-placeholder)] text-center py-4">暂无净值数据</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
