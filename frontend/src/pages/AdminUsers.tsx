@@ -35,6 +35,7 @@ export default function AdminUsers() {
   const [memberUserId, setMemberUserId] = useState('');
   const [memberGroupId, setMemberGroupId] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [groupError, setGroupError] = useState('');
 
@@ -461,73 +462,13 @@ export default function AdminUsers() {
           )}
           {groupError && <p className="text-[11px] text-[var(--accent-red)]">{groupError}</p>}
           {groupLoading ? <p className="text-xs text-[var(--text-placeholder)]">加载中...</p> : groups.length === 0 ? <p className="text-xs text-[var(--text-placeholder)] text-center py-8">暂无分组</p> : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {groups.map(g => (
-                <div key={g.id} className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] p-4">
-                  {editingGroupId === g.id ? (
-                    <div className="flex gap-2 mb-3">
-                      <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
-                      <input value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
-                      <button onClick={() => handleUpdateGroup(g.id)} className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white">保存</button>
-                      <button onClick={() => setEditingGroupId(null)} className="px-3 py-1.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h4>
-                        {g.description && <p className="text-[11px] text-[var(--text-placeholder)]">{g.description}</p>}
-                      </div>
-                      {isSuperAdmin && (
-                        <div className="flex gap-1">
-                          <button onClick={() => { setEditingGroupId(g.id); setEditGroupName(g.name); setEditGroupDesc(g.description || ''); }} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">编辑</button>
-                          {deletingGroupId === g.id ? (
-                            <><button onClick={() => handleDeleteGroup(g.id)} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-red)] text-white">确认删除</button>
-                            <button onClick={() => setDeletingGroupId(null)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button></>
-                          ) : (
-                            <button onClick={() => setDeletingGroupId(g.id)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--accent-red)]">删除</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">成员</p>
-                    {g.members && g.members.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {g.members.map((m: { id: string; username: string }) => (
-                          <span key={m.id} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-                            {m.username}
-                            {isSuperAdmin && (<button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)] ml-0.5">×</button>)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : <p className="text-[10px] text-[var(--text-placeholder)] mb-2">暂无成员</p>}
-                    {isSuperAdmin && (
-                      <div className="flex gap-1.5">
-                        {memberGroupId === g.id ? (
-                          <div className="flex-1 relative">
-                            <input value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setMemberUserId(''); }} placeholder="搜索用户..." className="w-full bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
-                            {memberSearch && !memberUserId && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-xl shadow-lg max-h-32 overflow-y-auto z-10">
-                                {users.filter(u => u.username.toLowerCase().includes(memberSearch.toLowerCase()) || u.email.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 20).map(u => (
-                                  <button key={u.id} onClick={() => { setMemberUserId(u.id); setMemberSearch(u.username); }} className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors">
-                                    {u.username} <span className="text-[var(--text-placeholder)]">({ROLE_LABELS[u.role]})</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <button onClick={() => { setMemberGroupId(g.id); setMemberUserId(''); setMemberSearch(''); }} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">+ 添加成员</button>
-                        )}
-                        {memberGroupId === g.id && (
-                          <>
-                            <button onClick={() => { if (memberUserId) { handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); } }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">确认</button>
-                            <button onClick={() => { setMemberGroupId(null); setMemberSearch(''); }} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                <div key={g.id} onClick={() => setSelectedGroup(g)} className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] p-3.5 cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors">
+                  <h4 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h4>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[11px] text-[var(--text-placeholder)]">{g.members?.length || 0} 人</span>
+                    {g.description && <span className="text-[10px] text-[var(--text-tertiary)] truncate">{g.description}</span>}
                   </div>
                 </div>
               ))}
@@ -535,6 +476,86 @@ export default function AdminUsers() {
           )}
         </div>
       )}
+
+      {/* Group Detail Modal */}
+      {selectedGroup && (() => {
+        const g = selectedGroup;
+        const close = () => setSelectedGroup(null);
+        return (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={close} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+              <div className="pointer-events-auto w-full max-w-md max-h-[80vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h3>
+                  <div className="flex items-center gap-2">
+                    {isSuperAdmin && (
+                      <>
+                        <button onClick={() => { setEditingGroupId(g.id); setEditGroupName(g.name); setEditGroupDesc(g.description || ''); }} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">编辑</button>
+                        {deletingGroupId === g.id ? (
+                          <><button onClick={() => { handleDeleteGroup(g.id); close(); }} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-red)] text-white">确认</button>
+                          <button onClick={() => setDeletingGroupId(null)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button></>
+                        ) : (
+                          <button onClick={() => setDeletingGroupId(g.id)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--accent-red)]">删除</button>
+                        )}
+                      </>
+                    )}
+                    <button onClick={close} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                {editingGroupId === g.id && (
+                  <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex gap-2">
+                    <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                    <input value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} placeholder="描述" className="w-28 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                    <button onClick={() => { handleUpdateGroup(g.id); setEditingGroupId(null); }} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white">保存</button>
+                    <button onClick={() => setEditingGroupId(null)} className="px-3 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
+                  </div>
+                )}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                  {g.description && !editingGroupId && <p className="text-xs text-[var(--text-secondary)]">{g.description}</p>}
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-2">成员 ({g.members?.length || 0})</p>
+                    {g.members && g.members.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {g.members.map((m: { id: string; username: string }) => (
+                          <span key={m.id} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                            {m.username}
+                            {isSuperAdmin && (<button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)] ml-0.5">×</button>)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <p className="text-[10px] text-[var(--text-placeholder)] mb-3">暂无成员</p>}
+                    {isSuperAdmin && (
+                      memberGroupId === g.id ? (
+                        <div className="flex gap-1.5">
+                          <div className="flex-1 relative">
+                            <input value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setMemberUserId(''); }} placeholder="搜索用户名..." className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] focus:border-[var(--accent-blue)] outline-none" />
+                            {memberSearch && !memberUserId && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-xl shadow-lg max-h-32 overflow-y-auto z-10">
+                                {users.filter(u => u.username.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 20).map(u => (
+                                  <button key={u.id} onClick={() => { setMemberUserId(u.id); setMemberSearch(u.username); }} className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]">
+                                    {u.username} <span className="text-[var(--text-placeholder)]">({ROLE_LABELS[u.role]})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => { if (memberUserId) { handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); } }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50">确认</button>
+                          <button onClick={() => { setMemberGroupId(null); setMemberSearch(''); }} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setMemberGroupId(g.id); setMemberUserId(''); setMemberSearch(''); }} className="text-[10px] px-3 py-1 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">+ 添加成员</button>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
