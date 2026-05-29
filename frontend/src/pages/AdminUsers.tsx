@@ -535,14 +535,14 @@ export default function AdminUsers() {
                             {memberSearch && !memberUserId && (
                               <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-xl shadow-lg max-h-32 overflow-y-auto z-10">
                                 {users.filter(u => u.username.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 20).map(u => (
-                                  <button key={u.id} onClick={() => { setMemberUserId(u.id); setMemberSearch(u.username); }} className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]">
+                                  <button key={u.id} onMouseDown={(e) => { e.preventDefault(); setMemberUserId(u.id); setMemberSearch(u.username); }} className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]">
                                     {u.username} <span className="text-[var(--text-placeholder)]">({ROLE_LABELS[u.role]})</span>
                                   </button>
                                 ))}
                               </div>
                             )}
                           </div>
-                          <button onClick={async () => { if (memberUserId) { await handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); loadGroups(); } }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50">确认</button>
+                          <button onClick={async () => { if (!memberUserId || addingMember) return; await handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); loadGroups(); }} disabled={!memberUserId || addingMember} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">确认</button>
                           <button onClick={() => { setMemberGroupId(null); setMemberSearch(''); }} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
                         </div>
                       ) : (
