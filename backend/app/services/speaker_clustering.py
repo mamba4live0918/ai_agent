@@ -434,11 +434,11 @@ class OnlineSpeakerClustering:
         return self._threshold
 
     def assign_speaker_roles(self) -> dict[str, str]:
-        """Map speaker IDs to human-readable role names based on speech frequency.
+        """Map speaker IDs to human-readable role names.
 
-        The speaker with the most segments is labeled "销售" (salesperson),
-        the second-most is "客户" (customer), and any additional speakers
-        are labeled "其他" (other).
+        Speaker 0 (the first person detected, usually the salesperson who
+        initiates the recording) is labeled "销售". Speaker 1+ are labeled
+        "客户". Any additional speakers get "其他".
 
         Returns
         -------
@@ -449,12 +449,11 @@ class OnlineSpeakerClustering:
         if not self._clusters:
             return {}
 
-        # Sort clusters by segment count descending
-        sorted_clusters = sorted(
-            self._clusters, key=lambda c: len(c.embeddings), reverse=True
-        )
-
         role_map: dict[str, str] = {}
+        # Sort by speaker_id number for deterministic ordering
+        sorted_clusters = sorted(
+            self._clusters, key=lambda c: int(c.speaker_id.split("_")[1])
+        )
         for i, cluster in enumerate(sorted_clusters):
             label = self.ROLE_LABELS[i] if i < len(self.ROLE_LABELS) else "其他"
             role_map[cluster.speaker_id] = label

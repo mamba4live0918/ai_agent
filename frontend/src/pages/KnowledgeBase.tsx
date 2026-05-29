@@ -19,35 +19,8 @@ export default function KnowledgeBase() {
   const [search, setSearch] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  const [quizPos, setQuizPos] = useState({ x: 0, y: 0 });
-  const [chatPos, setChatPos] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const dragStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
-
-  const onDragStart = (panel: string, ox: number, oy: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setDragging(panel);
-    dragStart.current = { x: e.clientX, y: e.clientY, ox, oy };
-  };
-
-  useEffect(() => {
-    if (!dragging) return;
-    const onMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      if (dragging === 'quiz') setQuizPos({ x: dragStart.current.ox + dx, y: dragStart.current.oy + dy });
-      if (dragging === 'chat') setChatPos({ x: dragStart.current.ox + dx, y: dragStart.current.oy + dy });
-    };
-    const onUp = () => setDragging(null);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [dragging]);
 
   // Add category state
   const [showAddCat, setShowAddCat] = useState(false);
@@ -420,8 +393,8 @@ export default function KnowledgeBase() {
                 <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
               </button>
               {deleting === node.id && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-30 bg-[var(--bg-primary)] border border-gray-500/30 rounded-xl shadow-lg p-3 min-w-[160px] text-center">
-                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-[var(--bg-primary)] border-l border-t border-gray-500/30" />
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-30 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl shadow-lg p-3 min-w-[160px] text-center">
+                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-[var(--bg-primary)] border-l border-t border-[var(--border-subtle)]" />
                   <p className="text-xs text-[var(--text-primary)] mb-2.5">确定删除「<span className="font-semibold">{node.name}</span>」？</p>
                   <p className="text-[10px] text-[var(--text-placeholder)] mb-3">其中的文档将移入未分类{node.children_count > 0 ? '，子分类将提升至上一级' : ''}</p>
                   <div className="flex items-center justify-center gap-2">
@@ -436,7 +409,7 @@ export default function KnowledgeBase() {
 
         {/* Expanded children: docs + sub-categories */}
         {isExpanded && (
-          <div className="ml-4 pl-3 border-l-2 border-gray-500/30">
+          <div className="ml-4 pl-3 border-l-2 border-[var(--border-subtle)]">
             {childDocs.length === 0 && !hasChildren && (
               <div className="px-2 py-3 text-center">
                 <p className="text-[11px] text-[var(--text-placeholder)]">空文件夹</p>
@@ -484,7 +457,7 @@ export default function KnowledgeBase() {
                       <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10Z"/></svg>
                     </button>
                     {movingDocId === doc.id && (
-                      <div className="absolute bottom-full right-0 mb-2 z-20 bg-[var(--bg-primary)] border border-gray-500/30 rounded-xl shadow-lg p-3 min-w-[200px]">
+                      <div className="absolute bottom-full right-0 mb-2 z-20 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl shadow-lg p-3 min-w-[200px]">
                         <p className="text-[11px] font-medium text-[var(--text-primary)] mb-2">移动到分类</p>
                         <div className="max-h-36 overflow-y-auto mb-2 space-y-1">
                           {categories.map(c => (
@@ -542,15 +515,11 @@ export default function KnowledgeBase() {
 
       {/* Quiz floating panel */}
       {showQuiz && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
-          style={{ transform: `translate(${quizPos.x}px, ${quizPos.y}px)` }}
-        >
-          <div className="pointer-events-auto w-[480px] max-w-[calc(100vw-32px)] max-h-[85vh] bg-[var(--bg-primary)]/85 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/20 flex flex-col overflow-hidden">
-            <div
-              className="flex items-center justify-between px-4 py-2.5 border-b border-gray-500/30/50 flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
-              onMouseDown={(e) => onDragStart('quiz', quizPos.x, quizPos.y, e)}
-            >
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowQuiz(false)} />
+          <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+            <div className="pointer-events-auto w-[480px] max-w-[calc(100vw-32px)] max-h-[85vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-subtle)] flex-shrink-0 select-none">
             <h3 className="text-xs font-semibold text-[var(--text-primary)]">知识库练习</h3>
             <button
               onClick={() => setShowQuiz(false)}
@@ -564,19 +533,16 @@ export default function KnowledgeBase() {
           </div>
           </div>
         </div>
+        </>
       )}
 
       {/* Chat floating panel */}
       {showChat && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
-          style={{ transform: `translate(${chatPos.x}px, ${chatPos.y}px)` }}
-        >
-          <div className="pointer-events-auto w-[480px] max-w-[calc(100vw-32px)] h-[560px] max-h-[85vh] bg-[var(--bg-primary)]/85 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/20 flex flex-col overflow-hidden">
-            <div
-              className="flex items-center justify-between px-4 py-2.5 border-b border-gray-500/30/50 flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
-              onMouseDown={(e) => onDragStart('chat', chatPos.x, chatPos.y, e)}
-            >
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowChat(false)} />
+          <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+            <div className="pointer-events-auto w-[480px] max-w-[calc(100vw-32px)] h-[560px] max-h-[85vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-subtle)] flex-shrink-0 select-none">
             <h3 className="text-xs font-semibold text-[var(--text-primary)]">知识库问答</h3>
             <button
               onClick={() => setShowChat(false)}
@@ -590,10 +556,11 @@ export default function KnowledgeBase() {
           </div>
           </div>
         </div>
+        </>
       )}
 
       {/* Main framed content */}
-      <div className="card rounded-2xl border-2 border-[var(--border-default)] shadow-sm overflow-hidden">
+      <div className="card rounded-2xl border-2 border-solid border-[var(--border-subtle)] shadow-sm overflow-hidden">
         {/* Toolbar: Search + Upload */}
         <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-0">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -706,7 +673,7 @@ export default function KnowledgeBase() {
         )}
 
         {/* Separator */}
-        <div className="mx-4 sm:mx-6 border-t border-gray-500/30" />
+        <div className="mx-4 sm:mx-6 border-t border-[var(--border-subtle)]" />
 
         {/* File tree */}
         <div className="px-2 sm:px-4 py-2">
@@ -740,7 +707,7 @@ export default function KnowledgeBase() {
                 <span className="text-[11px] font-mono text-[var(--text-placeholder)] tabular-nums ml-auto">{recentDocs.length}</span>
               </button>
               {expandedFolders.has('__recent__') && (
-              <div className="ml-4 pl-3 border-l-2 border-gray-500/30">
+              <div className="ml-4 pl-3 border-l-2 border-[var(--border-subtle)]">
                 {recentDocs.map(doc => (
                   <div
                     key={`recent-${doc.id}`}
@@ -802,7 +769,7 @@ export default function KnowledgeBase() {
                 <span className="text-[11px] font-mono text-[var(--text-placeholder)] tabular-nums ml-auto">{uncategorized.length}</span>
               </button>
               {expandedFolders.has('__uncategorized__') && (
-                <div className="ml-4 pl-3 border-l-2 border-gray-500/30">
+                <div className="ml-4 pl-3 border-l-2 border-[var(--border-subtle)]">
                   {uncategorized.map(doc => (
                     <div
                       key={`uncat-${doc.id}`}
@@ -830,7 +797,7 @@ export default function KnowledgeBase() {
                             <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10Z"/></svg>
                           </button>
                           {movingDocId === doc.id && (
-                            <div className="absolute bottom-full right-0 mb-2 z-20 bg-[var(--bg-primary)] border border-gray-500/30 rounded-xl shadow-lg p-3 min-w-[200px]">
+                            <div className="absolute bottom-full right-0 mb-2 z-20 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl shadow-lg p-3 min-w-[200px]">
                               <p className="text-[11px] font-medium text-[var(--text-primary)] mb-2">移动到分类</p>
                               <div className="max-h-36 overflow-y-auto mb-2 space-y-1">
                                 {categories.map(c => (
@@ -862,7 +829,7 @@ export default function KnowledgeBase() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-gray-500/30">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-[var(--border-subtle)]">
             <span className="text-xs text-[var(--text-placeholder)]">共 {total} 条文档</span>
             <div className="flex items-center gap-1 flex-wrap">
               <button
@@ -920,7 +887,7 @@ export default function KnowledgeBase() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closePreview} />
           <div className="relative w-full max-w-3xl max-h-[85vh] bg-[var(--bg-primary)] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-500/30 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] flex-shrink-0">
               <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 truncate">
                 <svg className="w-4 h-4 text-[var(--text-tertiary)] flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
                   <path fillRule="evenodd" d="M2 2.5A1.5 1.5 0 0 1 3.5 1h5.086a1.5 1.5 0 0 1 1.06.44l2.122 2.121A1.5 1.5 0 0 1 12.207 5H14.5A1.5 1.5 0 0 1 16 6.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 2 13.5v-11Z"/>
@@ -955,14 +922,14 @@ export default function KnowledgeBase() {
                 <div className="text-center py-16"><p className="text-sm text-[var(--accent-red)]">{previewError}</p></div>
               ) : previewContent ? (
                 previewContent.html ? (
-                  <div className="prose prose-sm max-w-none text-[var(--text-primary)] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-[var(--bg-tertiary)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:border [&_th]:border-gray-500/30 [&_td]:px-3 [&_td]:py-1.5 [&_td]:border [&_td]:border-gray-500/30 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: previewContent.html }} />
+                  <div className="prose prose-sm max-w-none text-[var(--text-primary)] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-[var(--bg-tertiary)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:border [&_th]:border-[var(--border-subtle)] [&_td]:px-3 [&_td]:py-1.5 [&_td]:border [&_td]:border-[var(--border-subtle)] [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: previewContent.html }} />
                 ) : previewContent.table ? (
-                  <div className="rounded-xl border border-gray-500/30">
+                  <div className="rounded-xl border border-[var(--border-subtle)]">
                     <table className="min-w-full text-xs">
                       <thead>
                         <tr>
                           {previewContent.table.columns.map((col, i) => (
-                            <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap border-b border-gray-500/30 sticky top-0 bg-[var(--bg-tertiary)]">{col}</th>
+                            <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap border-b border-[var(--border-subtle)] sticky top-0 bg-[var(--bg-tertiary)]">{col}</th>
                           ))}
                         </tr>
                       </thead>
@@ -970,7 +937,7 @@ export default function KnowledgeBase() {
                         {previewContent.table.rows.map((row, ri) => (
                           <tr key={ri} className={ri % 2 === 0 ? 'bg-[var(--bg-primary)]' : 'bg-[var(--bg-secondary)]'}>
                             {row.map((cell, ci) => (
-                              <td key={ci} className="px-3 py-1.5 text-[var(--text-secondary)] whitespace-nowrap border-b border-gray-500/30 max-w-[300px] truncate">{cell}</td>
+                              <td key={ci} className="px-3 py-1.5 text-[var(--text-secondary)] whitespace-nowrap border-b border-[var(--border-subtle)] max-w-[300px] truncate">{cell}</td>
                             ))}
                           </tr>
                         ))}

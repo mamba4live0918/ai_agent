@@ -118,8 +118,9 @@ async def realtime_session(
     # ---- Step 3: create the transcription pipeline -------------------------
     transcriber = StreamingTranscriber(
         sample_rate=16000,
-        vad_threshold=0.3,
-        min_speech_duration_ms=800,
+        vad_threshold=0.5,
+        min_speech_duration_ms=1000,
+        max_speech_duration_s=8.0,
         enable_speaker_clustering=True,
     )
 

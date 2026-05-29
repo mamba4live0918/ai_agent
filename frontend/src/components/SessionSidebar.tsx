@@ -87,10 +87,10 @@ export default function SessionSidebar({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)]">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] flex items-center justify-between">
-        <span className="text-xs font-semibold text-[var(--text-primary)]">录音历史</span>
+      <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-secondary)]/40 backdrop-blur-md">
+        <span className="text-sm font-semibold text-[var(--text-primary)]">录音历史</span>
         <button
           onClick={loadSessions}
           disabled={loading}
@@ -104,7 +104,7 @@ export default function SessionSidebar({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
         {loading && sessions.length === 0 && (
           <div className="px-3 py-4 text-center text-[11px] text-[var(--text-placeholder)]">加载中...</div>
         )}
@@ -123,8 +123,10 @@ export default function SessionSidebar({
           <button
             key={s.id}
             onClick={() => handleSelect(s.id)}
-            className={`relative w-full text-left px-3 py-2.5 border-b border-[var(--border-subtle)]/50 hover:bg-[var(--bg-secondary)] transition-colors group ${
-              selectedSessionId === s.id ? 'bg-[var(--btn-blue)]/10 border-l-2 border-l-[var(--accent-blue)]' : ''
+            className={`relative w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors group backdrop-blur-md ${
+              selectedSessionId === s.id
+                ? 'border-[var(--accent-blue)] bg-[var(--bg-overlay)]/80'
+                : 'border-transparent bg-[var(--bg-primary)]/40 hover:bg-[var(--bg-secondary)]/60'
             }`}
           >
             <div className="flex items-center justify-between">

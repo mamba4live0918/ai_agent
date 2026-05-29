@@ -453,56 +453,52 @@ class ASRProcessor:
     def transcribe_segment(self, audio_bytes: bytes, sample_rate: int = 8000) -> ASRSegment:
         """Transcribe a single speech segment (PCM 16-bit mono bytes).
 
-        Parameters
-        ----------
-        audio_bytes : bytes
-            Raw PCM 16-bit mono audio.
-        sample_rate : int
-            Sample rate of *audio_bytes*. Audio is resampled to 16 kHz
-            internally because faster-whisper expects 16 kHz.
-
-        Returns
-        -------
-        ASRSegment
-            Transcribed text with average confidence.
+        Uses numpy array input directly (no temp file I/O) for low latency.
         """
         if not audio_bytes:
             return ASRSegment(start=0.0, end=0.0, text="", confidence=0.0)
 
-        # Compute duration before potential resample
         num_samples = len(audio_bytes) // BYTES_PER_SAMPLE
         duration_sec = num_samples / sample_rate if sample_rate > 0 else 0.0
 
-        # Convert to 16 kHz mono WAV (faster-whisper requirement)
-        wav_bytes = _bytes_to_wav(audio_bytes, sample_rate)
+        # Convert PCM bytes → numpy float32 array (faster-whisper native input)
+        audio = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
 
-        # Resample to 16 kHz if needed
+        # Resample to 16 kHz if needed (faster-whisper requirement)
         if sample_rate != 16000:
-            wav_bytes = self._resample_wav(wav_bytes, sample_rate, 16000)
-
-        # Write to temp file (faster-whisper API requires a file path)
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp.write(wav_bytes)
-            tmp_path = tmp.name
+            try:
+                import torchaudio.functional as F
+                t = torch.from_numpy(audio).unsqueeze(0)
+                audio = F.resample(t, sample_rate, 16000).squeeze(0).numpy()
+            except Exception:
+                ratio = 16000 / sample_rate
+                out_len = max(1, int(len(audio) * ratio))
+                indices = np.linspace(0, len(audio) - 1, out_len)
+                audio = np.interp(indices, np.arange(len(audio)), audio).astype(np.float32)
 
         try:
-            segments, info = self._model.transcribe(tmp_path, beam_size=5)
+            segments, info = self._model.transcribe(
+                audio,
+                beam_size=3,
+                best_of=3,
+                repetition_penalty=1.2,
+            )
             texts: list[str] = []
             confidences: list[float] = []
-            seg_start = 0.0
-            seg_end = duration_sec
+            seg_start: float = 0.0
+            seg_end: float = duration_sec
 
             for seg in segments:
-                texts.append(seg.text.strip())
+                t = seg.text.strip()
+                if t:
+                    texts.append(t)
                 confidences.append(seg.avg_logprob if hasattr(seg, "avg_logprob") else 0.0)
-                # Use the actual segment start/end if available
                 if hasattr(seg, "start"):
                     seg_start = min(seg_start if seg_start > 0 else seg.start, seg.start)
                 if hasattr(seg, "end"):
                     seg_end = max(seg_end, seg.end)
 
             text = _cc.convert("".join(texts))
-            # Convert log-prob to confidence in [0, 1]
             if confidences:
                 avg_logprob = float(np.mean(confidences))
                 confidence = float(np.exp(avg_logprob))
@@ -523,13 +519,6 @@ class ASRProcessor:
                 text="",
                 confidence=0.0,
             )
-        finally:
-            try:
-                import os
-
-                os.unlink(tmp_path)
-            except OSError:
-                pass
 
     @staticmethod
     def _resample_wav(wav_bytes: bytes, src_rate: int, dst_rate: int) -> bytes:
@@ -673,7 +662,7 @@ class StreamingTranscriber:
         self._speaker_clustering = None
         if enable_speaker_clustering:
             from .speaker_clustering import OnlineSpeakerClustering
-            self._speaker_clustering = OnlineSpeakerClustering(similarity_threshold=0.55)
+            self._speaker_clustering = OnlineSpeakerClustering(similarity_threshold=0.40)
 
         # Track cumulative time offset for segments
         self._processed_seconds = 0.0

@@ -10,13 +10,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const close = useCallback(() => setSidebarOpen(false), []);
 
-  const baseClass = 'flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 border border-transparent';
+  const baseClass = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border backdrop-blur-md';
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `${baseClass} ${
       isActive
-        ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border-default)]'
-        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
+        ? 'bg-[var(--bg-overlay)]/80 text-[var(--text-primary)] border-[var(--accent-blue)]'
+        : 'text-[var(--text-secondary)] bg-[var(--bg-primary)]/40 border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]/60'
     }`;
 
   const sidebarContent = (
@@ -205,7 +205,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — off-canvas on mobile, static on desktop */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex-shrink-0
-        bg-[var(--bg-primary)]
+        sidebar-glass
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>

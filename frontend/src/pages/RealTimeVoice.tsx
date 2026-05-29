@@ -139,24 +139,28 @@ export default function RealTimeVoice() {
 
   return (
     <div className="flex h-full relative">
-      {/* Sliding container: card + tab move together */}
+      {/* Sliding sidebar */}
       <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
-        transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        ${sidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[calc(100%-8px)] opacity-70'}`}>
-        <div className="w-[260px] sm:w-[280px] h-full flex flex-col
-          bg-[var(--bg-secondary)] rounded-r-2xl">
-        {/* Sidebar header */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--bg-primary)]">
-          <span className="text-xs font-semibold text-[var(--text-primary)]">录音历史</span>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+        transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-12px)]'}`}>
+        <div className="w-[220px] sm:w-[240px] h-full flex flex-col sidebar-glass relative">
+        {/* Toggle button on right edge */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 rounded-r-lg bg-[var(--bg-tertiary)]/50
+            flex items-center justify-center
+            hover:bg-[var(--bg-overlay)] hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
+            transition-all duration-200 z-10 group/toggle"
+          title={sidebarOpen ? '收起' : '展开'}
+        >
+          <svg className="w-3 h-3 text-[var(--text-placeholder)] group-hover/toggle:text-[var(--accent-blue)] transition-colors" viewBox="0 0 16 16" fill="currentColor">
+            {sidebarOpen ? (
               <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
-            </svg>
-          </button>
-        </div>
+            ) : (
+              <path fillRule="evenodd" d="M10.354 3.646a.5.5 0 0 1 0 .708L6.707 8l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0Z" clipRule="evenodd"/>
+            )}
+          </svg>
+        </button>
         {/* Session list content */}
         <div className="flex-1 overflow-hidden">
           <SessionSidebar
@@ -166,34 +170,12 @@ export default function RealTimeVoice() {
           />
         </div>
       </div>
-
-      {/* Tab handle — attached to right side of card */}
-      <div
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="w-[8px] flex-shrink-0 h-full flex items-center cursor-pointer group
-            hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
-            transition-all duration-200"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 35%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
-      >
-        <div className="w-2 h-6 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-default)]
-          flex items-center justify-center
-          group-hover:border-[var(--accent-blue)] group-hover:bg-[var(--bg-primary)] group-hover:shadow-sm
-          transition-all duration-200">
-          <svg className="w-1.5 h-1.5 text-[var(--text-placeholder)] group-hover:text-[var(--accent-blue)]" viewBox="0 0 16 16" fill="currentColor">
-            {sidebarOpen ? (
-              <path fillRule="evenodd" d="M5.646 3.646a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L9.293 8 5.646 4.354a.5.5 0 0 1 0-.708Z" clipRule="evenodd"/>
-            ) : (
-              <path fillRule="evenodd" d="M10.354 3.646a.5.5 0 0 1 0 .708L6.707 8l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0Z" clipRule="evenodd"/>
-            )}
-          </svg>
-        </div>
-      </div>
     </div>
 
     {/* Backdrop overlay when sidebar is open */}
       {sidebarOpen && (
         <div
-          className="absolute inset-0 z-[15] bg-black/20 transition-opacity duration-300"
+          className="absolute inset-0 z-[15] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -204,7 +186,7 @@ export default function RealTimeVoice() {
       )}
 
       {/* Center: Main content — transcript + controls */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarOpen ? 'ml-[280px] sm:ml-[300px]' : 'ml-0'}`}>
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
           <div className="min-w-0">

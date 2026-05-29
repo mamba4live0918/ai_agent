@@ -47,8 +47,8 @@
     --color-danger-hover-bg: rgba(248, 81, 73, 0.1);
 
     /* Apple-style shadows */
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.24), 0 0 0 0.5px rgba(255,255,255,0.04);
-    --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.32), 0 0 0 0.5px rgba(255,255,255,0.06);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.24);
+    --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.32);
     --shadow-glass: 0 8px 32px rgba(0,0,0,0.28);
     --shadow-btn: 0 1px 2px rgba(0,0,0,0.16);
 
@@ -126,10 +126,12 @@
     color: var(--text-primary);
   }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-placeholder); }
+  ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-default); }
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: var(--border-subtle) transparent; }
 
   *:focus-visible {
     outline: 2px solid var(--accent-blue);
@@ -185,12 +187,12 @@
   .btn-primary {
     background: var(--btn-primary);
     color: #fff;
-    box-shadow: var(--shadow-btn), 0 0 0 1px rgba(255,255,255,0.1) inset;
+    box-shadow: var(--shadow-btn), 0 0 0 1px rgba(255,255,255,0.03) inset;
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--btn-primary-hover);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(255,255,255,0.1) inset;
+    box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(255,255,255,0.03) inset;
   }
 
   .btn-secondary {
@@ -395,6 +397,21 @@
     inset: 0;
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
     animation: loadingBar 1.5s ease-in-out infinite;
+  }
+
+  /* Sidebar glass — frosted in dark mode, solid in light mode */
+  .sidebar-glass {
+    background: color-mix(in srgb, var(--bg-secondary) 10%, transparent);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-right: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  html.light .sidebar-glass {
+    background: var(--bg-secondary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
   .hr {

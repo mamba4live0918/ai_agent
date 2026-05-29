@@ -40,7 +40,8 @@ function getSpeakerLabel(seg: TranscriptSegment): string {
   if (seg.speaker_name && seg.speaker_name !== seg.speaker) {
     return seg.speaker_name;
   }
-  return seg.speaker.replace('speaker_', '说话人');
+  if (!seg.speaker) return '系统';
+  return seg.speaker.replace('speaker_', '讲话人');
 }
 
 export default function RealtimeTranscript({
