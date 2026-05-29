@@ -62,6 +62,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const [showKyc, setShowKyc] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['basic-info', 'scores', 'ai-report', 'presales-report', 'allocation']));
@@ -528,9 +529,13 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             </div>
             {'structured_data' in localCustomer && (
               (localCustomer as Customer).allocation_plan ? (
-                <div data-pdf-section="资产配置方案">
-                  <SectionHeader sectionKey="allocation" label="资产配置方案" />
-                  {!collapsed.has('allocation') && <div className="mt-2.5"><AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} /></div>}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">资产配置方案</span>
+                    <button onClick={() => setShowAllocationModal(true)} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200">
+                      查看方案
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
@@ -598,6 +603,26 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                 <button onClick={() => setShowEditForm(false)} className="px-4 py-2 border border-[var(--border-default)] text-[var(--text-secondary)] text-sm rounded-full hover:text-[var(--text-primary)] transition-colors">
                   取消
                 </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Allocation Plan Modal */}
+      {showAllocationModal && (localCustomer as Customer).allocation_plan && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowAllocationModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+            <div className="pointer-events-auto w-full max-w-3xl max-h-[90vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">资产配置方案</h3>
+                <button onClick={() => setShowAllocationModal(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5">
+                <AllocationPlan customer={localCustomer as Customer} onUpdate={(updated) => setLocalCustomer(updated)} />
               </div>
             </div>
           </div>
