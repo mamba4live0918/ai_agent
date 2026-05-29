@@ -440,10 +440,38 @@ npm run dev
 - 对话按用户隔离命名空间，支持历史会话恢复
 - 会话列表支持查看/删除（级联清理消息）
 
-**聊天侧边栏（ChatPanel）**
-- 侧边栏滑动展开/收起，带细边把手（8px）+ 半透明过渡
-- 暗色模式下 bg-secondary 背景自然区分，内部用 bg-primary 暗色分隔线
-- 主内容区随侧边栏 margin-left 平滑过渡，内容不被遮挡
+**毛玻璃侧边栏系统（Frosted Glass Sidebar）**
+- 所有模块侧边栏统一设计：`.sidebar-glass` CSS 类驱动
+- Dark mode：10% 不透明度 + 40px 强模糊，极致玻璃质感
+- Light mode：实色背景 + 浅阴影，清晰可读
+- 展开按钮统一设计：浮动药丸形状，半透明玻璃质感 + hover 加深动画
+- 折叠时仅露 4px，侧边栏内容完全不可见
+- 卡片 hover 阴影动画：`hover:shadow-lg` + `transition-all duration-200`
+- 统一规格：宽度 220/240px，标题栏 `backdrop-blur-md`，卡片 `rounded-xl border backdrop-blur-md`
+
+**客户分析浮窗**
+- 客户详情从内嵌右侧卡片改为居中毛玻璃浮窗（`max-w-3xl`, `max-h-[90vh]`）
+- 背景遮罩 `bg-black/40 backdrop-blur-[2px]`，点击关闭
+- 移动端和桌面端统一使用浮窗
+
+**知识库弹窗**
+- 知识库问答和知识库练习改为居中毛玻璃浮窗 + 暗色遮罩
+- 去掉拖动功能，固定居中展示
+- 点击遮罩关闭弹窗
+
+**实时 ASR 优化**
+- 去临时文件 I/O：VAD 片段直接传 numpy float32 数组给 faster-whisper
+- VAD 阈值优化：`threshold=0.5`, `min_speech_duration_ms=1000`, `max_speech_duration_s=8.0`
+- 说话人聚类：`similarity_threshold=0.40`，角色按检测顺序分配
+- 前端说话人标签修复：speaker→讲话人/销售/客户/其他
+
+**暗色模式白边清理**
+- 全局替换硬编码 `border-gray-500/30` → `border-[var(--border-subtle)]`
+- 移除 `--shadow-card` 中的白色环形阴影（`rgba(255,255,255,0.04)`）
+- 浮动面板：去掉 `backdrop-blur-xl` + 半透明背景，改纯色
+- `.btn-primary` 白色内阴影降至 3% 不可见
+- `.card` 类 `border: none` 覆盖问题修复（加 `border-solid`）
+- 全局滚动条窄化至 4px + 更低调的滑块色
 
 ## License
 
