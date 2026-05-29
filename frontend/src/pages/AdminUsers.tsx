@@ -538,7 +538,7 @@ export default function AdminUsers() {
                                 <td className="px-3 py-2 text-[var(--text-secondary)]">{ROLE_LABELS[m.role] || m.role}</td>
                                 <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.email || '—'}</td>
                                 <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.created_at ? new Date(m.created_at).toLocaleDateString('zh-CN') : '—'}</td>
-                                <td className="px-3 py-2 text-[var(--text-placeholder)]">—</td>
+                                <td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">免费</span></td>
                                 <td className="px-3 py-2 text-[var(--text-placeholder)]">—</td>
                                 {isSuperAdmin && (
                                   <td className="px-2 py-2">
