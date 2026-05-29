@@ -60,8 +60,9 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   useEffect(() => { setLocalCustomer(customer); }, [customer]);
   const [showKyc, setShowKyc] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editData, setEditData] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['basic-info', 'scores', 'ai-report', 'presales-report', 'allocation']));
 
   const toggleCollapse = (key: string) => {
@@ -84,11 +85,39 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
     '投资经验': 'investment_experience', '家庭状况': 'family_status', '理财目标': 'goals',
   };
 
-  const fields = (Object.entries(FIELD_KEYS) as [string, string][]).map(([label, key]) => {
-    const stored = String((sd as Record<string, unknown>)[key] ?? '');
-    const raw = stored && stored !== '未知' ? stored : '';
-    return [label, raw, key] as [string, string, string];
-  });
+  const ALL_FIELD_KEYS = [
+    'age', 'gender', 'occupation', 'position', 'education', 'address', 'contact',
+    'marital_status', 'family_members', 'industry', 'company_type', 'social_circle',
+    'main_income', 'side_income', 'income_stability', 'annual_income_range',
+    'deposit_amount', 'wealth_management', 'fund_stock', 'real_estate', 'vehicle',
+    'other_assets', 'total_asset_range',
+    'housing_loan', 'car_loan', 'business_loan', 'credit_card_debt', 'other_debt', 'monthly_debt_payment',
+    'available_funds', 'single_investment_cap',
+    'fund_usage_period', 'fund_purpose', 'liquidity_need', 'rigid_cash_time',
+    'risk_preference', 'investment_years', 'past_products', 'past_pnl_experience',
+    'investment_style', 'term_preference', 'core_concern',
+    'social_insurance', 'commercial_insurance', 'insurance_gap', 'insurance_preference',
+    'lifestyle', 'pain_points', 'cooperation_intent', 'referral_willingness',
+    'service_preference', 'communication_frequency', 'kyc_notes',
+  ];
+
+  const FIELD_LABELS: Record<string, string> = {
+    'age': '年龄', 'gender': '性别', 'occupation': '职业', 'position': '职务', 'education': '学历',
+    'address': '住址', 'contact': '联系方式', 'marital_status': '婚姻状况', 'family_members': '家庭成员',
+    'industry': '行业', 'company_type': '单位性质', 'social_circle': '社交圈层',
+    'main_income': '主业收入', 'side_income': '副业收入', 'income_stability': '收入稳定性', 'annual_income_range': '年收入区间',
+    'deposit_amount': '存款规模', 'wealth_management': '理财产品', 'fund_stock': '基金股票',
+    'real_estate': '房产', 'vehicle': '车辆', 'other_assets': '其他资产', 'total_asset_range': '总资产区间',
+    'housing_loan': '房贷', 'car_loan': '车贷', 'business_loan': '经营贷',
+    'credit_card_debt': '信用卡负债', 'other_debt': '其他负债', 'monthly_debt_payment': '月还款额',
+    'available_funds': '可投资资金', 'single_investment_cap': '单笔投资上限',
+    'fund_usage_period': '资金使用周期', 'fund_purpose': '资金用途', 'liquidity_need': '赎回灵活性', 'rigid_cash_time': '刚性用款时间',
+    'risk_preference': '风险偏好', 'investment_years': '投资年限', 'past_products': '过往产品', 'past_pnl_experience': '过往盈亏',
+    'investment_style': '投资偏好', 'term_preference': '期限偏好', 'core_concern': '核心关注',
+    'social_insurance': '社保医保', 'commercial_insurance': '商业保险', 'insurance_gap': '保障缺口', 'insurance_preference': '投保意向',
+    'lifestyle': '生活近况', 'pain_points': '金融痛点', 'cooperation_intent': '合作意向', 'referral_willingness': '转介绍意愿',
+    'service_preference': '服务偏好', 'communication_frequency': '沟通频率', 'kyc_notes': 'KYC备注',
+  };
 
   const ap = localCustomer.ai_profile as Record<string, string> | null || {};
 
@@ -113,27 +142,36 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   ] as [string, string, string][]).filter(([, v]) => v);
 
   const hasPrepData = ppSections.length > 0;
-  const hasAnyData = fields.some(([, val]) => !!val) || apSections.length > 0 || dimensions.length > 0;
+  const hasAnyData = apSections.length > 0 || dimensions.length > 0 || ((localCustomer.structured_data) && Object.keys(localCustomer.structured_data).length > 0);
 
-  const handleFieldEdit = (key: string, value: string) => {
-    setFieldEdits(prev => ({ ...prev, [key]: value }));
+  const openEditForm = () => {
+    const sd = (localCustomer.structured_data || {}) as Record<string, unknown>;
+    const init: Record<string, string> = {};
+    for (const key of ALL_FIELD_KEYS) {
+      init[key] = String(sd[key] ?? '');
+    }
+    init['_name'] = localCustomer.name || '';
+    setEditData(init);
+    setShowEditForm(true);
   };
 
-  const saveFieldEdits = async () => {
+  const handleEditSave = async () => {
     if (!('id' in localCustomer)) return;
-    const updatedSD = { ...(localCustomer.structured_data || {}) };
-    for (const [key, val] of Object.entries(fieldEdits)) {
-      updatedSD[key] = val || null;
+    setSaving(true);
+    const sd: Record<string, unknown> = {};
+    for (const key of ALL_FIELD_KEYS) {
+      const val = (editData[key] || '').trim();
+      if (val) sd[key] = val;
     }
     try {
       const updated = await updateCustomer((localCustomer as Customer).id, {
-        name: localCustomer.name,
-        structured_data: updatedSD,
+        name: editData['_name'] || localCustomer.name,
+        structured_data: sd,
       });
       setLocalCustomer(updated);
-      setEditingField(null);
-      setFieldEdits({});
-    } catch { /* silently skip */ }
+      setShowEditForm(false);
+    } catch { /* ignore */ }
+    setSaving(false);
   };
 
   const handleRegenerate = async () => {
@@ -351,6 +389,16 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
           <div className="space-y-5">
             {/* KYC 九宫格 — 所有客户 */}
             <div data-pdf-section="KYC 九宫格">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">客户资料</span>
+                </div>
+                {'id' in localCustomer && (
+                  <button onClick={openEditForm} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-all duration-200 pdf-hide">
+                    ✎ 编辑资料
+                  </button>
+                )}
+              </div>
               <KycGrid customer={localCustomer as Customer} />
             </div>
 
@@ -489,6 +537,64 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         <div className="text-center py-6">
           <p className="text-sm text-[var(--text-placeholder)]">暂无分析数据</p>
         </div>
+      )}
+
+      {/* Edit Customer Data Modal */}
+      {showEditForm && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowEditForm(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+            <div className="pointer-events-auto w-full max-w-2xl max-h-[90vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">编辑客户资料</h3>
+                <button onClick={() => setShowEditForm(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">姓名</label>
+                    <input value={editData['_name'] || ''} onChange={e => setEditData(prev => ({ ...prev, _name: e.target.value }))}
+                      className="w-full mt-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-colors" />
+                  </div>
+                  {[
+                    { title: '基础身份', fields: ['age','gender','occupation','position','education','address','contact','marital_status','family_members','industry','company_type','social_circle'] },
+                    { title: '资产与收支', fields: ['main_income','side_income','income_stability','annual_income_range','deposit_amount','wealth_management','fund_stock','real_estate','vehicle','other_assets','total_asset_range'] },
+                    { title: '负债情况', fields: ['housing_loan','car_loan','business_loan','credit_card_debt','other_debt','monthly_debt_payment'] },
+                    { title: '资金与投资', fields: ['available_funds','single_investment_cap','fund_usage_period','fund_purpose','liquidity_need','rigid_cash_time','risk_preference','investment_years','past_products','past_pnl_experience','investment_style','term_preference','core_concern'] },
+                    { title: '保险与保障', fields: ['social_insurance','commercial_insurance','insurance_gap','insurance_preference'] },
+                    { title: '生活与服务', fields: ['lifestyle','pain_points','cooperation_intent','referral_willingness','service_preference','communication_frequency','kyc_notes'] },
+                  ].map(group => (
+                    <div key={group.title}>
+                      <h4 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">{group.title}</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.fields.map(key => (
+                          <div key={key}>
+                            <label className="text-[10px] text-[var(--text-placeholder)]">{FIELD_LABELS[key] || key}</label>
+                            <input
+                              value={editData[key] || ''}
+                              onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
+                              className="w-full mt-0.5 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none transition-colors"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="px-5 py-3 border-t border-[var(--border-subtle)] flex items-center gap-2 flex-shrink-0">
+                <button onClick={handleEditSave} disabled={saving} className="flex-1 px-4 py-2 bg-[var(--btn-primary)] text-white text-sm rounded-full hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">
+                  {saving ? '保存中...' : '保存'}
+                </button>
+                <button onClick={() => setShowEditForm(false)} className="px-4 py-2 border border-[var(--border-default)] text-[var(--text-secondary)] text-sm rounded-full hover:text-[var(--text-primary)] transition-colors">
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

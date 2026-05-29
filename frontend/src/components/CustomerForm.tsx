@@ -32,11 +32,9 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
 
   // Form fields
   const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [assets, setAssets] = useState('');
-  const [riskPreference, setRiskPreference] = useState('');
+  const [formData, setFormData] = useState<Record<string, string>>({});
+
+  const updateField = (key: string, value: string) => setFormData(prev => ({ ...prev, [key]: value }));
 
   const handleAnalyze = async () => {
     if (!rawText.trim()) return;
@@ -56,29 +54,43 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
       if (profile) {
         await createCustomer({ name: profile.name, raw_input: rawText, structured_data: profile.structured_data as Record<string, unknown> | undefined, ai_profile: profile.ai_profile as Record<string, unknown> | undefined, scores: profile.scores ?? undefined });
       } else {
-        await createCustomer({
-          name: name || '未命名',
-          structured_data: {
-            age: age || null,
-            gender: gender || '未知',
-            occupation,
-            assets,
-            risk_preference: riskPreference,
-          },
-        });
+        const sd: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(formData)) { if (v.trim()) sd[k] = v.trim(); }
+        await createCustomer({ name: name || '未命名', structured_data: sd });
       }
       setProfile(null);
       setRawText('');
       setName('');
-      setAge('');
-      setGender('');
-      setOccupation('');
-      setAssets('');
-      setRiskPreference('');
+      setFormData({});
       onCreated();
     } catch {
       setError('保存失败');
     }
+  };
+
+  const FORM_SECTIONS = [
+    { title: '基础身份', fields: ['occupation','position','education','address','contact','marital_status','family_members','industry','company_type','social_circle'] },
+    { title: '资产与收支', fields: ['main_income','side_income','income_stability','annual_income_range','deposit_amount','wealth_management','fund_stock','real_estate','vehicle','other_assets','total_asset_range'] },
+    { title: '负债情况', fields: ['housing_loan','car_loan','business_loan','credit_card_debt','other_debt','monthly_debt_payment'] },
+    { title: '资金与投资', fields: ['available_funds','single_investment_cap','fund_usage_period','fund_purpose','liquidity_need','rigid_cash_time','risk_preference','investment_years','past_products','past_pnl_experience','investment_style','term_preference','core_concern'] },
+    { title: '保险与保障', fields: ['social_insurance','commercial_insurance','insurance_gap','insurance_preference'] },
+    { title: '生活与服务', fields: ['lifestyle','pain_points','cooperation_intent','referral_willingness','service_preference','communication_frequency','kyc_notes'] },
+  ];
+
+  const FLABELS: Record<string, string> = {
+    'occupation':'职业','position':'职务','education':'学历','address':'住址','contact':'联系方式',
+    'marital_status':'婚姻状况','family_members':'家庭成员','industry':'行业','company_type':'单位性质','social_circle':'社交圈层',
+    'main_income':'主业收入','side_income':'副业收入','income_stability':'收入稳定性','annual_income_range':'年收入区间',
+    'deposit_amount':'存款规模','wealth_management':'理财产品','fund_stock':'基金股票','real_estate':'房产','vehicle':'车辆',
+    'other_assets':'其他资产','total_asset_range':'总资产区间',
+    'housing_loan':'房贷','car_loan':'车贷','business_loan':'经营贷','credit_card_debt':'信用卡负债','other_debt':'其他负债','monthly_debt_payment':'月还款额',
+    'available_funds':'可投资资金','single_investment_cap':'单笔投资上限',
+    'fund_usage_period':'资金使用周期','fund_purpose':'资金用途','liquidity_need':'赎回灵活性','rigid_cash_time':'刚性用款时间',
+    'risk_preference':'风险偏好','investment_years':'投资年限','past_products':'过往产品','past_pnl_experience':'过往盈亏',
+    'investment_style':'投资偏好','term_preference':'期限偏好','core_concern':'核心关注',
+    'social_insurance':'社保医保','commercial_insurance':'商业保险','insurance_gap':'保障缺口','insurance_preference':'投保意向',
+    'lifestyle':'生活近况','pain_points':'金融痛点','cooperation_intent':'合作意向','referral_willingness':'转介绍意愿',
+    'service_preference':'服务偏好','communication_frequency':'沟通频率','kyc_notes':'KYC备注',
   };
 
   return (
@@ -159,52 +171,42 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
           </div>
         </div>
       ) : (
-        <div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">姓名</label>
+              <label className="text-[10px] text-[var(--text-secondary)]">姓名 *</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+                className="w-full mt-0.5 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">年龄</label>
-              <input type="text" value={age} onChange={e => setAge(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
+              <label className="text-[10px] text-[var(--text-secondary)]">年龄</label>
+              <input type="text" value={formData['age'] || ''} onChange={e => updateField('age', e.target.value)}
+                className="w-full mt-0.5 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">性别</label>
-              <select value={gender} onChange={e => setGender(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
-                <option value="">未知</option>
-                <option value="男">男</option>
-                <option value="女">女</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">职业</label>
-              <input type="text" value={occupation} onChange={e => setOccupation(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">资产状况</label>
-              <input type="text" value={assets} onChange={e => setAssets(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-placeholder)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">风险偏好</label>
-              <select value={riskPreference} onChange={e => setRiskPreference(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent-blue)] focus:shadow-[0_0_0_3px_rgba(88,166,255,0.15)] outline-none transition-all">
-                <option value="">未知</option>
-                <option value="保守">保守</option>
-                <option value="稳健">稳健</option>
-                <option value="激进">激进</option>
+              <label className="text-[10px] text-[var(--text-secondary)]">性别</label>
+              <select value={formData['gender'] || ''} onChange={e => updateField('gender', e.target.value)}
+                className="w-full mt-0.5 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg px-2 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none">
+                <option value="">-</option><option value="男">男</option><option value="女">女</option>
               </select>
             </div>
           </div>
-          <button onClick={handleSave} disabled={!name.trim()} className="btn btn-primary text-sm">
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/>
-            </svg>
+          {FORM_SECTIONS.map(sec => (
+            <div key={sec.title}>
+              <h4 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">{sec.title}</h4>
+              <div className="grid grid-cols-2 gap-1.5">
+                {sec.fields.map(key => (
+                  <div key={key}>
+                    <label className="text-[10px] text-[var(--text-placeholder)]">{FLABELS[key] || key}</label>
+                    <input type="text" value={formData[key] || ''} onChange={e => updateField(key, e.target.value)}
+                      className="w-full mt-0.5 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button onClick={handleSave} disabled={!name.trim()} className="btn btn-primary text-sm w-full">
+            <svg className="w-4 h-4 inline mr-1" viewBox="0 0 16 16" fill="currentColor"><path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/></svg>
             保存客户
           </button>
         </div>
