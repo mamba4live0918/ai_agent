@@ -149,13 +149,16 @@ export default function AllocationPlan({ customer, onUpdate }: Props) {
             </ResponsiveContainer>
             <p className="text-[10px] text-[var(--text-placeholder)] text-center mt-1">{plan.allocations.length} 个产品</p>
           </div>
-          <div className="flex-1 space-y-1.5 min-w-0">
+          <div className="flex-1 space-y-2 min-w-0">
             {plan.allocations.map((a, idx) => (
-              <div key={a.product_id} className="flex items-center gap-2 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
-                <span className="text-[var(--text-primary)] truncate flex-1">{a.product_name}</span>
-                <span className="font-mono text-[var(--text-primary)] flex-shrink-0">{Math.round(a.ratio * 100)}%</span>
-                <span className="text-[var(--text-placeholder)] flex-shrink-0">{a.amount.toLocaleString()}元</span>
+              <div key={a.product_id} className="text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
+                  <span className="text-[var(--text-primary)] truncate flex-1 font-medium">{a.product_name}</span>
+                  <span className="font-mono text-[var(--text-primary)] flex-shrink-0">{Math.round(a.ratio * 100)}%</span>
+                  <span className="text-[var(--text-placeholder)] flex-shrink-0">{a.amount.toLocaleString()}元</span>
+                </div>
+                {a.reason && <p className="text-[10px] text-[var(--text-placeholder)] mt-0.5 ml-[18px]">{a.reason}</p>}
               </div>
             ))}
           </div>
