@@ -443,6 +443,7 @@ export default function AdminUsers() {
         </div>
       )}
         </>
+      )}
 
       {/* Group Management Tab */}
       {tab === 'groups' && (
