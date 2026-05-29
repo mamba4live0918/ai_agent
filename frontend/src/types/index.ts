@@ -420,7 +420,7 @@ export interface Group {
   admin_id: string | null;
   admin_name: string | null;
   member_count: number;
-  members: { id: string; username: string }[];
+  members: { id: string; username: string; email: string; role: string; created_at: string | null }[];
   created_at: string;
 }
 

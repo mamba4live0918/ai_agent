@@ -518,13 +518,37 @@ export default function AdminUsers() {
                   <div>
                     <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-2">成员 ({g.members?.length || 0})</p>
                     {g.members && g.members.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {g.members.map((m: { id: string; username: string }) => (
-                          <span key={m.id} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-                            {m.username}
-                            {isSuperAdmin && (<button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)] ml-0.5">×</button>)}
-                          </span>
-                        ))}
+                      <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)]">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-[var(--bg-tertiary)]/50">
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">用户名</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">角色</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">邮箱</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">加入时间</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">订阅方案</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">剩余时间</th>
+                              {isSuperAdmin && <th className="px-2 py-2 w-8"></th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.members.map((m, idx) => (
+                              <tr key={m.id} className={`border-t border-[var(--border-subtle)] ${idx % 2 === 0 ? 'bg-[var(--bg-primary)]' : 'bg-[var(--bg-secondary)]/50'}`}>
+                                <td className="px-3 py-2 text-[var(--text-primary)] font-medium">{m.username}</td>
+                                <td className="px-3 py-2 text-[var(--text-secondary)]">{ROLE_LABELS[m.role] || m.role}</td>
+                                <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.email || '—'}</td>
+                                <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.created_at ? new Date(m.created_at).toLocaleDateString('zh-CN') : '—'}</td>
+                                <td className="px-3 py-2 text-[var(--text-placeholder)]">—</td>
+                                <td className="px-3 py-2 text-[var(--text-placeholder)]">—</td>
+                                {isSuperAdmin && (
+                                  <td className="px-2 py-2">
+                                    <button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)]">×</button>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : <p className="text-[10px] text-[var(--text-placeholder)] mb-3">暂无成员</p>}
                     {isSuperAdmin && (
