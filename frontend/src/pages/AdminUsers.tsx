@@ -87,8 +87,9 @@ export default function AdminUsers() {
     try {
       await addGroupMember(groupId, memberUserId.trim());
       setMemberUserId('');
-      loadGroups();
-    } catch (e: unknown) { setGroupError(e instanceof Error ? e.message : '添加成员失败'); }
+      await loadGroups();
+      return true;
+    } catch (e: unknown) { setGroupError(e instanceof Error ? e.message : '添加失败'); }
     setAddingMember(false);
   };
 

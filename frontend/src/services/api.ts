@@ -400,7 +400,7 @@ export const getGroupMembers = (groupId: string) =>
   request<import('../types').GroupMember[]>(`/groups/${groupId}/members`);
 
 export const addGroupMember = (groupId: string, userId: string) =>
-  request<import('../types').GroupMember>(`/groups/${groupId}/members/${userId}`, { method: 'POST' });
+  request<import('../types').GroupMember>(`/groups/${groupId}/members/${userId}`, { method: 'POST', body: '{}' });
 
 export const removeGroupMember = (groupId: string, userId: string) =>
   request<void>(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' });
