@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const close = useCallback(() => setSidebarOpen(false), []);
 
-  const baseClass = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border backdrop-blur-md';
+  const baseClass = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border backdrop-blur-md hover:shadow-lg hover:shadow-black/10';
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `${baseClass} ${

@@ -138,16 +138,16 @@ export default function RealTimeVoice() {
     : transcript;
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative overflow-hidden">
       {/* Sliding sidebar */}
       <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
         transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-12px)]'}`}>
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-4px)]'}`}>
         <div className="w-[220px] sm:w-[240px] h-full flex flex-col sidebar-glass relative">
         {/* Toggle button on right edge */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 rounded-r-lg bg-[var(--bg-tertiary)]/50
+          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 rounded-r-lg sidebar-toggle
             flex items-center justify-center
             hover:bg-[var(--bg-overlay)] hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
             transition-all duration-200 z-10 group/toggle"

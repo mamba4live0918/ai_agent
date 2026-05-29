@@ -99,14 +99,14 @@ export default function ChatPanel() {
       {/* Sliding container: sidebar with toggle button on its right edge */}
       <div className={`absolute left-0 top-0 bottom-0 z-20 flex flex-row
         transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-12px)]'}`}>
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-4px)]'}`}>
 
         {/* Sidebar card */}
         <div className="w-[220px] sm:w-[240px] h-full flex flex-col sidebar-glass relative">
           {/* Toggle button — attached to right edge of sidebar */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 rounded-r-lg bg-[var(--bg-tertiary)]/50
+            className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 rounded-r-lg sidebar-toggle
               flex items-center justify-center
               hover:bg-[var(--bg-overlay)] hover:shadow-[0_0_8px_rgba(88,166,255,0.15)]
               transition-all duration-200 z-10 group/toggle"
@@ -138,7 +138,7 @@ export default function ChatPanel() {
                 <button
                   key={c.id}
                   onClick={() => handleSelectConversation(c.id)}
-                  className={`w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors group backdrop-blur-md ${
+                  className={`w-full text-left rounded-xl border p-2.5 cursor-pointer transition-all duration-200 group backdrop-blur-md hover:shadow-lg hover:shadow-black/10 ${
                     conversationId === c.id
                       ? 'border-[var(--accent-blue)] bg-[var(--bg-overlay)]/80'
                       : 'border-transparent bg-[var(--bg-primary)]/40 hover:bg-[var(--bg-secondary)]/60'

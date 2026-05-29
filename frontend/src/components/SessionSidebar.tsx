@@ -123,7 +123,7 @@ export default function SessionSidebar({
           <button
             key={s.id}
             onClick={() => handleSelect(s.id)}
-            className={`relative w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors group backdrop-blur-md ${
+            className={`relative w-full text-left rounded-xl border p-2.5 cursor-pointer transition-all duration-200 group backdrop-blur-md hover:shadow-lg hover:shadow-black/10 ${
               selectedSessionId === s.id
                 ? 'border-[var(--accent-blue)] bg-[var(--bg-overlay)]/80'
                 : 'border-transparent bg-[var(--bg-primary)]/40 hover:bg-[var(--bg-secondary)]/60'
