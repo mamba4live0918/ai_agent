@@ -463,7 +463,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
               </div>
             )}
 
-            {fields.length === 0 && apSections.length === 0 && dimensions.length === 0 && (
+            {!hasAnyData && (
               <div className="text-center py-6">
                 <p className="text-sm text-[var(--text-placeholder)]">暂无分析数据</p>
               </div>
