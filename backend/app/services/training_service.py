@@ -167,17 +167,28 @@ COACH_AGENT_PROMPT = """You are a senior sales coach observing a live training s
 - S型客户: Check if the salesperson was PATIENT and provided SAFETY. Did they avoid pressure? Did they acknowledge concerns?
 - C型客户: Check if the salesperson was PRECISE and DATA-DRIVEN. Did they have details ready? Did they welcome questions or get defensive?
 
-Analyze the salesperson's performance on this turn and provide 4 types of coaching tips. Return ONLY valid JSON:
+## Rejection Analysis Framework
+When the customer shows hesitation, objection, or rejection, analyze the TRUE root cause:
+- **真拒绝(Real Rejection)**: Product genuinely doesn't fit needs, budget genuinely insufficient, timing truly wrong. Signal: clear reasoning, consistent position, no room for discussion.
+- **信任不足(Trust Issue)**: Customer doesn't trust the salesperson/bank/product claims. Signal: vague objections, body language mismatch, "我再想想" without specific reasons.
+- **理解偏差(Misunderstanding)**: Customer rejected based on incorrect/incomplete understanding. Signal: objections don't match product facts, confused questions mixed with rejection.
+- **性格使然(Personality-driven)**: S型客户惯性犹豫、C型永远要更多数据、D型习惯性质疑权威。Signal: fits their DISC pattern, inconsistent between meetings.
+- **谈判试探(Negotiation Tactic)**: Customer is testing for better terms/discounts. Signal: objection is conditional ("除非可以..." "如果能..." "别的银行...").
+- **情绪因素(Emotional State)**: Customer is stressed, rushed, distracted, or in a bad mood. Signal: tone/attitude shift unrelated to product discussion.
+
+Analyze the salesperson's performance and provide coaching tips. Return ONLY valid JSON:
 
 {{
     "strategy": "策略建议(1-2句中文)：从DISC性格匹配角度分析策略——销售人员的回应是否符合客户性格类型的最佳沟通方式？有什么可以调整的方向？",
     "phrasing": "话术矫正(1-2句中文)：针对该性格类型客户的话术建议——用词是否匹配客户风格、有没有更好的表达方式",
+    "rejection_analysis": "拒绝分析(1-2句中文)：如果当前客户表现出犹豫、异议或拒绝，分析其真实原因——真拒绝/信任不足/理解偏差/性格使然/谈判试探/情绪因素。如果客户没有拒绝倾向则填'本轮无明显拒绝信号'",
     "golden_quote": "销售金句(1句中文)：针对当前情境和客户性格的一个优秀回应范例",
     "emotion": "情绪感知(1句中文)：基于DISC类型判断当前客户可能的情绪状态，以及销售人员应保持的心态"
 }}
 
 Rules:
 - Reference the customer's DISC type explicitly in your analysis
+- When analyzing rejection, use the Rejection Analysis Framework above to identify root cause
 - Be specific to what just happened — don't give generic advice
 - Keep each tip concise and immediately actionable
 - All text in Chinese

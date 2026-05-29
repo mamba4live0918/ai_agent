@@ -245,6 +245,7 @@ export interface TrainingSession {
 export interface CoachTip {
   strategy: string;
   phrasing: string;
+  rejection_analysis?: string;
   golden_quote: string;
   emotion: string;
 }

@@ -8,8 +8,9 @@ import TrainingReviewComponent from './TrainingReview';
 const TIP_CONFIG: { key: keyof CoachTip; label: string; icon: string; color: string; borderColor: string }[] = [
   { key: 'strategy', label: '策略建议', icon: '💡', color: 'var(--accent-blue)', borderColor: 'var(--accent-blue)' },
   { key: 'phrasing', label: '话术矫正', icon: '🔧', color: 'var(--accent-green)', borderColor: 'var(--accent-green)' },
+  { key: 'rejection_analysis', label: '拒绝分析', icon: '🔍', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)' },
   { key: 'golden_quote', label: '销售金句', icon: '⭐', color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' },
-  { key: 'emotion', label: '情绪感知', icon: '🎯', color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' },
+  { key: 'emotion', label: '情绪感知', icon: '🎯', color: 'var(--accent-red)', borderColor: 'var(--accent-red)' },
 ];
 
 interface Props {
