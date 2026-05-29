@@ -452,9 +452,9 @@ export default function AdminUsers() {
       {tab === 'groups' && (
         <div className="space-y-4">
           {isSuperAdmin && (
-            <div className="flex gap-2">
-              <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="分组名称" className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
-              <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="描述（可选）" className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="分组名称" className="sm:flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+              <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="描述（可选）" className="sm:flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
               <button onClick={handleCreateGroup} disabled={creatingGroup || !newGroupName.trim()} className="px-4 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">
                 {creatingGroup ? '...' : '创建分组'}
               </button>
