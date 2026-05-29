@@ -15,7 +15,7 @@ interface Props {
   onRefresh?: (updated: Customer) => void;
 }
 
-type TabKey = 'analysis' | 'presales' | 'allocation';
+type TabKey = 'info' | 'analysis' | 'presales' | 'allocation';
 
 const DIMENSION_META: Record<string, { label: string; color: string }> = {
   wealth_scale:           { label: '财富规模', color: 'var(--accent-green)' },
@@ -27,7 +27,8 @@ const DIMENSION_META: Record<string, { label: string; color: string }> = {
 };
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'analysis', label: '客户分析' },
+  { key: 'info', label: '客户信息' },
+  { key: 'analysis', label: 'AI 分析' },
   { key: 'presales', label: '售前准备' },
   { key: 'allocation', label: '配置方案' },
 ];
@@ -54,7 +55,7 @@ function getScoreColor(v: number): string {
 
 export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('analysis');
+  const [activeTab, setActiveTab] = useState<TabKey>('info');
   const [prepLoading, setPrepLoading] = useState(false);
   const [localCustomer, setLocalCustomer] = useState(customer);
   useEffect(() => { setLocalCustomer(customer); }, [customer]);
@@ -384,15 +385,12 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
       {/* PDF export wrapper — all panels always rendered for PDF capture */}
       <div ref={reportRef} className="space-y-5">
-        {/* Tab 1: 客户分析 */}
-        <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
+        {/* Tab: 客户信息 */}
+        <div data-tab-panel style={{ display: activeTab === 'info' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            {/* Customer Info Cards */}
             <div data-pdf-section="客户信息">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">客户信息</span>
-                </div>
+                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">客户信息</span>
                 {'id' in localCustomer && (
                   <button onClick={openEditForm} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-all duration-200 pdf-hide">
                     ✎ 编辑资料
@@ -401,6 +399,12 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
               </div>
               <CustomerInfoCards customer={localCustomer as Customer} />
             </div>
+          </div>
+        </div>
+
+        {/* Tab: AI 分析 */}
+        <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
+          <div className="space-y-5">
 
             {dimensions.length > 0 && (
               <div data-pdf-section="评分总览">
