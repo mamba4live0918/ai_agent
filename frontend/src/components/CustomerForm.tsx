@@ -1,13 +1,34 @@
-﻿import { useState } from 'react';
-import { analyzeCustomer, createCustomer } from '../services/api';
+﻿import { useState, useRef } from 'react';
+import { analyzeCustomer, createCustomer, importCustomersCsv } from '../services/api';
 import type { CustomerProfile } from '../types';
 
 export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
-  const [mode, setMode] = useState<'text' | 'form'>('text');
+  const [mode, setMode] = useState<'text' | 'form' | 'csv'>('text');
+  const fileRef = useRef<HTMLInputElement>(null);
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [error, setError] = useState('');
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvResult, setCsvResult] = useState<{ imported: number; names: string[]; errors: string[] } | null>(null);
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvUploading(true);
+    setError('');
+    setCsvResult(null);
+    try {
+      const result = await importCustomersCsv(file);
+      setCsvResult(result);
+      if (result.imported > 0) onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'CSV导入失败');
+    } finally {
+      setCsvUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   // Form fields
   const [name, setName] = useState('');
@@ -82,9 +103,34 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
             }`}>
             表单录入
           </button>
+          <button onClick={() => setMode('csv')}
+            className={`px-3 py-1 text-xs font-medium border-l border-[var(--border-default)] transition-colors ${
+              mode === 'csv'
+                ? 'bg-[var(--btn-blue)] text-white'
+                : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
+            }`}>
+            CSV导入
+          </button>
         </div>
       </div>
 
+      {mode === 'csv' && (
+        <div className="space-y-3">
+          <p className="text-xs text-[var(--text-secondary)]">上传 CSV 文件批量导入客户。CSV 第一行为字段名（name, age, gender, occupation 等），每行一个客户。</p>
+          <input ref={fileRef} type="file" accept=".csv" onChange={handleCsvImport} className="hidden" />
+          <button onClick={() => fileRef.current?.click()} disabled={csvUploading} className="btn btn-secondary text-sm">
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/></svg>
+            {csvUploading ? '导入中...' : '选择 CSV 文件'}
+          </button>
+          {csvResult && (
+            <div className="p-3 rounded-xl bg-[var(--bg-secondary)] text-xs text-[var(--text-primary)]">
+              <p className="font-semibold">导入完成：{csvResult.imported} 条</p>
+              {csvResult.names.length > 0 && <p className="text-[var(--text-placeholder)] mt-1">{csvResult.names.slice(0, 10).join('、')}{csvResult.names.length > 10 ? '...' : ''}</p>}
+              {csvResult.errors.length > 0 && <p className="text-[var(--accent-red)] mt-1">{csvResult.errors.join('；')}</p>}
+            </div>
+          )}
+        </div>
+      )}
       {mode === 'text' ? (
         <div className="space-y-3">
           <textarea

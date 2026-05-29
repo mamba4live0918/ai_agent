@@ -1,8 +1,10 @@
 import copy
+import csv
+import io
 import math
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -228,6 +230,54 @@ def save_allocation_plan(
     db.commit()
     db.refresh(customer)
     return CustomerResponse.model_validate(customer)
+
+
+@router.post("/import-csv", status_code=201)
+def import_customers_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Import customers from CSV. First row must be headers matching structured_data field keys.
+    The 'name' column is required. All other columns go into structured_data."""
+    if not file.filename or not file.filename.lower().endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+
+    content = file.file.read()
+    try:
+        text = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = content.decode('gbk', errors='replace')
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV is empty or has no headers")
+
+    created = []
+    errors = []
+    for i, row in enumerate(reader, start=2):
+        name = row.pop('name', '').strip() if 'name' in row else ''
+        if not name:
+            errors.append(f"Row {i}: missing 'name' column, skipped")
+            continue
+
+        structured_data = {}
+        for key, val in row.items():
+            val = val.strip() if val else ''
+            if val:
+                structured_data[key] = val
+
+        customer = Customer(
+            name=name,
+            raw_input=f"CSV导入: {name}",
+            structured_data=structured_data,
+            user_id=current_user.id,
+        )
+        db.add(customer)
+        created.append(name)
+
+    db.commit()
+    return {"imported": len(created), "names": created, "errors": errors}
 
 
 @router.delete("/{customer_id}", status_code=204)

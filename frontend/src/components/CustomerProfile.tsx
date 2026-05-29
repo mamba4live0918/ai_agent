@@ -349,61 +349,9 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab 1: 客户分析 */}
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            {/* Basic info always shows 9-grid */}
-            <div data-pdf-section="基本信息">
-              <SectionHeader sectionKey="basic-info" label="基本信息" />
-              {!collapsed.has('basic-info') && <div className="grid grid-cols-3 gap-2 mt-2.5">
-                {fields.map(([label, value, key]) => {
-                  const displayValue = fieldEdits[key] !== undefined ? fieldEdits[key] : value;
-                  const isEmpty = !displayValue;
-                  const isEditing = editingField === key;
-
-                  return (
-                    <div
-                      key={key}
-                      className={`relative rounded-xl p-2.5 min-h-[72px] flex flex-col transition-all duration-200 ${
-                        isEmpty ? 'bg-[var(--bg-secondary)]/50 shadow-[var(--shadow-card)]' : 'bg-[var(--bg-primary)] shadow-[var(--shadow-card)]'
-                      }`}
-                    >
-                      <div className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1">{label}</div>
-                      {isEditing ? (
-                        <textarea
-                          className="flex-1 w-full bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-2xl p-1.5 text-xs text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent-blue)] transition-all duration-200"
-                          value={fieldEdits[key] || ''}
-                          onChange={e => handleFieldEdit(key, e.target.value)}
-                          rows={2}
-                        />
-                      ) : !isEmpty ? (
-                        <p className="text-sm text-[var(--text-primary)] font-medium flex-1">{displayValue}</p>
-                      ) : (
-                        <p className="text-sm text-[var(--border-default)] flex-1">—</p>
-                      )}
-
-                      <div className="flex items-center justify-end mt-1">
-                        {isEditing ? (
-                          <button
-                            onClick={() => saveFieldEdits()}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
-                          >
-                            保存
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setFieldEdits(prev => ({ ...prev, [key]: displayValue }));
-                              setEditingField(key);
-                            }}
-                            className="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200 pdf-hide"
-                          >
-                            ✎
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              }
+            {/* KYC 九宫格 — 所有客户 */}
+            <div data-pdf-section="KYC 九宫格">
+              <KycGrid customer={localCustomer as Customer} />
             </div>
 
             {dimensions.length > 0 && (
@@ -449,46 +397,21 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                         {regenerating ? '生成中...' : '⟳ 重新生成'}
                       </button>
                     )}
-                    {isHighValue && (
-                      <button
-                        onClick={() => setShowKyc(!showKyc)}
-                        className={`text-[10px] px-2 py-1 rounded-full transition-all duration-200 pdf-hide ${
-                          showKyc
-                            ? 'border border-[var(--accent-orange)]/40 text-[var(--accent-orange)] bg-[var(--accent-orange)]/10'
-                            : 'border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--accent-orange)] hover:border-[var(--accent-orange)]/30'
-                        }`}
-                      >
-                        {showKyc ? '回到 AI 分析' : 'KYC 九宫格'}
-                      </button>
-                    )}
                   </div>
                 </div>
                 {!collapsed.has('ai-report') && (
-                  showKyc ? (
-                    <div data-pdf-section="KYC 九宫格">
-                      <KycGrid customer={localCustomer as Customer} />
-                    </div>
-                  ) : (
-                    <div data-pdf-section="AI 分析报告" className="space-y-2">
-                      {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
-                    </div>
-                  )
+                  <div data-pdf-section="AI 分析报告" className="space-y-2">
+                    {apSections.map(([title, content, color]) => sectionBlock(title, content, color))}
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Show KYC toggle even when no AI profile, but customer is high value */}
-            {apSections.length === 0 && isHighValue && (
-              <div data-pdf-section="KYC 九宫格">
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">KYC 九宫格</h4>
-                  {'id' in localCustomer && (
-                    <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200 disabled:opacity-50">
-                      {regenerating ? '生成中...' : '⟳ 先生成 AI 分析'}
-                    </button>
-                  )}
-                </div>
-                <KycGrid customer={localCustomer as Customer} />
+            {apSections.length === 0 && 'id' in localCustomer && (
+              <div className="text-center py-4">
+                <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-3 py-1.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200 disabled:opacity-50">
+                  {regenerating ? '生成中...' : '⟳ 生成 AI 分析'}
+                </button>
               </div>
             )}
 
