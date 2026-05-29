@@ -92,12 +92,24 @@ def regenerate_customer_profile(
     customer = apply_user_filter(db.query(Customer), Customer, current_user).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
-    if not customer.raw_input:
-        raise HTTPException(status_code=400, detail="Customer has no raw_input to re-analyze")
 
     edited_sd = data.structured_data if data else None
     merged_sd = {**(customer.structured_data or {}), **(edited_sd or {})}
-    result = analyze_customer(customer.raw_input, user_id=str(current_user.id), edited_structured_data=merged_sd)
+
+    raw_input = customer.raw_input
+    if not raw_input or raw_input.startswith("CSV导入"):
+        # Build description from structured_data when no proper raw_input
+        sd = customer.structured_data or {}
+        parts = [customer.name]
+        for k, label in [("age","岁"), ("gender",""), ("occupation",""), ("industry","行业"),
+                         ("annual_income_range","年收入"), ("total_asset_range","总资产"),
+                         ("risk_preference","风险偏好"), ("investment_years","投资经验")]:
+            v = sd.get(k, "")
+            if v and v != "未知":
+                parts.append(f"{v}{label}")
+        raw_input = "，".join(parts) if len(parts) > 1 else customer.name
+
+    result = analyze_customer(raw_input, user_id=str(current_user.id), edited_structured_data=merged_sd)
     customer.name = result.get("name", customer.name)
     customer.structured_data = result.get("structured_data", customer.structured_data)
     customer.ai_profile = result.get("ai_profile", customer.ai_profile)
