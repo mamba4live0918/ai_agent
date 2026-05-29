@@ -119,12 +119,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 管理员
               </p>
             </div>
-            <NavLink to="/admin/groups" className={linkClass} onClick={close}>
-              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M7.25 1.75a.75.75 0 0 1 1.5 0v2.5a.75.75 0 0 1-1.5 0v-2.5Zm-5.5 5.5a.75.75 0 0 1 0-1.5h2.5a.75.75 0 0 1 0 1.5h-2.5Zm.97-4.03a.75.75 0 0 1 1.06 0l1.5 1.5a.75.75 0 0 1-1.06 1.06l-1.5-1.5a.75.75 0 0 1 0-1.06Zm9.06 1.06a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a.75.75 0 0 1 1.06 0ZM2.22 13.78a.75.75 0 0 1 0-1.06l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a.75.75 0 0 1-1.06 0ZM8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm4 2.5h1.25v1.25a.75.75 0 0 0 1.5 0V12H16a.75.75 0 0 0 0-1.5h-1.25V9.25a.75.75 0 0 0-1.5 0v1.25H12a.75.75 0 0 0 0 1.5Z"/>
-              </svg>
-              分组管理
-            </NavLink>
             <NavLink to="/admin/users" className={linkClass} onClick={close}>
               <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6.004 6.004 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups } from '../services/api';
+import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups, createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { User, Group } from '../types';
 
@@ -9,6 +9,7 @@ const ROLE_LABELS: Record<string, string> = { admin: '管理员', instructor: '�
 export default function AdminUsers() {
   const { user: me } = useAuth();
   const isSuperAdmin = me?.role === 'admin' && !me?.group_id;
+  const [tab, setTab] = useState<'users' | 'groups'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -20,6 +21,80 @@ export default function AdminUsers() {
   const [adding, setAdding] = useState(false);
   const [groupMap, setGroupMap] = useState<Record<string, string>>({});
   const pageSize = 20;
+
+  // Group management state
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDesc, setNewGroupDesc] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupDesc, setEditGroupDesc] = useState('');
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [memberUserId, setMemberUserId] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
+  const [groupError, setGroupError] = useState('');
+
+  const loadGroups = async () => {
+    setGroupLoading(true);
+    try {
+      const res = await getGroups(1, 200);
+      setGroups(res.items);
+    } catch { /* ignore */ }
+    setGroupLoading(false);
+  };
+
+  useEffect(() => { if (tab === 'groups') loadGroups(); }, [tab]);
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return;
+    setCreatingGroup(true);
+    setGroupError('');
+    try {
+      await createGroup({ name: newGroupName.trim(), description: newGroupDesc.trim() || undefined });
+      setNewGroupName('');
+      setNewGroupDesc('');
+      loadGroups();
+    } catch (e: unknown) { setGroupError(e instanceof Error ? e.message : '创建失败'); }
+    setCreatingGroup(false);
+  };
+
+  const handleUpdateGroup = async (id: string) => {
+    if (!editGroupName.trim()) return;
+    try {
+      await updateGroup(id, { name: editGroupName.trim(), description: editGroupDesc.trim() || undefined });
+      setEditingGroupId(null);
+      loadGroups();
+    } catch (e: unknown) { setGroupError(e instanceof Error ? e.message : '更新失败'); }
+  };
+
+  const handleDeleteGroup = async (id: string) => {
+    try {
+      await deleteGroup(id);
+      setDeletingGroupId(null);
+      loadGroups();
+    } catch { /* ignore */ }
+  };
+
+  const handleAddMember = async (groupId: string) => {
+    if (!memberUserId.trim()) return;
+    setAddingMember(true);
+    setGroupError('');
+    try {
+      await addGroupMember(groupId, memberUserId.trim());
+      setMemberUserId('');
+      loadGroups();
+    } catch (e: unknown) { setGroupError(e instanceof Error ? e.message : '添加成员失败'); }
+    setAddingMember(false);
+  };
+
+  const handleRemoveMember = async (groupId: string, userId: string) => {
+    try {
+      await removeGroupMember(groupId, userId);
+      loadGroups();
+    } catch { /* ignore */ }
+  };
 
   const load = () => {
     setLoading(true);
@@ -76,30 +151,30 @@ export default function AdminUsers() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-        <p className="text-sm text-[var(--text-secondary)]">加载中...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-      <div className="mb-6 sm:mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1">用户管理</h2>
-          <p className="text-xs sm:text-sm text-[var(--text-secondary)]">管理平台用户与角色分配</p>
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1">用户管理</h2>
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mb-3">管理平台用户、角色与分组</p>
+        <div className="tab-underline">
+          {[{ key: 'users', label: '用户列表' }, { key: 'groups', label: '分组管理' }].map(t => (
+            <button key={t.key} onClick={() => setTab(t.key as typeof tab)} className={`transition-all duration-200 ${tab === t.key ? 'active' : ''}`}>
+              {t.label}
+            </button>
+          ))}
         </div>
-        {isSuperAdmin && (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200"
-          >
-            添加用户
-          </button>
-        )}
       </div>
+
+      {tab === 'users' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs text-[var(--text-placeholder)]">{total} 个用户</span>
+            {isSuperAdmin && (
+              <button onClick={() => setShowAdd(true)} className="px-3 py-1.5 text-xs font-medium rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-all duration-200">
+                添加用户
+              </button>
+            )}
+          </div>
 
       {/* Add user modal */}
       {showAdd && (
@@ -365,6 +440,76 @@ export default function AdminUsers() {
               下一页
             </button>
           </div>
+        </div>
+      )}
+        </>
+
+      {/* Group Management Tab */}
+      {tab === 'groups' && (
+        <div className="space-y-4">
+          {isSuperAdmin && (
+            <div className="flex gap-2">
+              <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="分组名称" className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+              <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="描述（可选）" className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+              <button onClick={handleCreateGroup} disabled={creatingGroup || !newGroupName.trim()} className="px-4 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">
+                {creatingGroup ? '...' : '创建分组'}
+              </button>
+            </div>
+          )}
+          {groupError && <p className="text-[11px] text-[var(--accent-red)]">{groupError}</p>}
+          {groupLoading ? <p className="text-xs text-[var(--text-placeholder)]">加载中...</p> : groups.length === 0 ? <p className="text-xs text-[var(--text-placeholder)] text-center py-8">暂无分组</p> : (
+            <div className="space-y-3">
+              {groups.map(g => (
+                <div key={g.id} className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] p-4">
+                  {editingGroupId === g.id ? (
+                    <div className="flex gap-2 mb-3">
+                      <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                      <input value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                      <button onClick={() => handleUpdateGroup(g.id)} className="px-3 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white">保存</button>
+                      <button onClick={() => setEditingGroupId(null)} className="px-3 py-1.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h4>
+                        {g.description && <p className="text-[11px] text-[var(--text-placeholder)]">{g.description}</p>}
+                      </div>
+                      {isSuperAdmin && (
+                        <div className="flex gap-1">
+                          <button onClick={() => { setEditingGroupId(g.id); setEditGroupName(g.name); setEditGroupDesc(g.description || ''); }} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">编辑</button>
+                          {deletingGroupId === g.id ? (
+                            <><button onClick={() => handleDeleteGroup(g.id)} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-red)] text-white">确认删除</button>
+                            <button onClick={() => setDeletingGroupId(null)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button></>
+                          ) : (
+                            <button onClick={() => setDeletingGroupId(g.id)} className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-default)] text-[var(--accent-red)]">删除</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">成员</p>
+                    {g.members && g.members.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {g.members.map((m: { id: string; username: string }) => (
+                          <span key={m.id} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                            {m.username}
+                            {isSuperAdmin && (<button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)] ml-0.5">×</button>)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <p className="text-[10px] text-[var(--text-placeholder)] mb-2">暂无成员</p>}
+                    {isSuperAdmin && (
+                      <div className="flex gap-1.5">
+                        <input value={memberUserId} onChange={e => setMemberUserId(e.target.value)} placeholder="输入用户 ID 添加成员" className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+                        <button onClick={() => handleAddMember(g.id)} disabled={addingMember || !memberUserId.trim()} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">添加</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
