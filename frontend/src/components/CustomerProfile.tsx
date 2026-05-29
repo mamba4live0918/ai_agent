@@ -7,7 +7,7 @@ import { regenerateProfile, updateCustomer } from '../services/api';
 import CustomerRadar from './CustomerRadar';
 import ProductManager from './ProductManager';
 import AllocationPlan from './AllocationPlan';
-import KycGrid from './KycGrid';
+import CustomerInfoCards from './CustomerInfoCards';
 
 interface Props {
   customer: Customer | CustomerProfileType;
@@ -244,7 +244,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         await new Promise(r => setTimeout(r, 150));
 
         const kycEls = Array.from(el.querySelectorAll<HTMLElement>('[data-pdf-section]'))
-          .filter(s => s.getAttribute('data-pdf-section') === 'KYC 九宫格');
+          .filter(s => s.getAttribute('data-pdf-section') === '客户信息');
 
         // Insert KYC right after AI 分析报告 in the section order
         const aiAnalysisIndex = captures.findIndex(c => c.label === 'AI 分析报告');
@@ -258,7 +258,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
             scale: 3,
             logging: false,
           });
-          captures.splice(insertAt + k, 0, { label: 'KYC 九宫格', canvas });
+          captures.splice(insertAt + k, 0, { label: '客户信息', canvas });
         }
       }
 
@@ -387,11 +387,11 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab 1: 客户分析 */}
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
-            {/* KYC 九宫格 — 所有客户 */}
-            <div data-pdf-section="KYC 九宫格">
+            {/* Customer Info Cards */}
+            <div data-pdf-section="客户信息">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">客户资料</span>
+                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">客户信息</span>
                 </div>
                 {'id' in localCustomer && (
                   <button onClick={openEditForm} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-all duration-200 pdf-hide">
@@ -399,7 +399,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                   </button>
                 )}
               </div>
-              <KycGrid customer={localCustomer as Customer} />
+              <CustomerInfoCards customer={localCustomer as Customer} />
             </div>
 
             {dimensions.length > 0 && (
