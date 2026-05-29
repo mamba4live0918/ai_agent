@@ -1,20 +1,27 @@
+import concurrent.futures
 from duckduckgo_search import DDGS
 
 
-def web_search_finance(query: str, max_results: int = 5) -> str:
+def web_search_finance(query: str, max_results: int = 3) -> str:
     """Search the web for financial product information via DuckDuckGo.
-
-    Returns a formatted text block suitable for injection into an LLM prompt.
-    Returns empty string on failure.
+    Returns a formatted text block or empty string on failure/timeout.
     """
     if not query.strip():
         return ""
 
     search_query = f"{query} 理财产品 详情 风险 收益"
 
+    def _search():
+        try:
+            with DDGS() as ddgs:
+                return list(ddgs.text(search_query, max_results=max_results, region="cn-zh"))
+        except Exception:
+            return []
+
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(search_query, max_results=max_results, region="cn-zh"))
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(_search)
+            results = future.result(timeout=8)
     except Exception:
         return ""
 

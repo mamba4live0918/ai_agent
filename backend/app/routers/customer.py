@@ -12,7 +12,7 @@ from ..database import get_db
 from ..models.customer import Customer
 from ..models.product import Product
 from ..models.user import User
-from ..utils.auth import get_current_user, apply_user_filter
+from ..utils.auth import get_current_user, apply_user_filter, apply_document_filter
 from ..services.audit_service import log_action
 from ..schemas.customer import (
     CustomerCreate, CustomerAnalyzeRequest, CustomerAnalyzeResponse,
