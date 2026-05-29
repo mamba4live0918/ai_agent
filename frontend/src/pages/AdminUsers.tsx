@@ -486,7 +486,7 @@ export default function AdminUsers() {
           <>
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={close} />
             <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
-              <div className="pointer-events-auto w-full max-w-lg max-h-[65vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="pointer-events-auto w-full max-w-xl h-[72vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h3>
                   <div className="flex items-center gap-2">
@@ -543,7 +543,7 @@ export default function AdminUsers() {
                               </div>
                             )}
                           </div>
-                          <button onClick={() => { if (memberUserId) { handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); } }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50">确认</button>
+                          <button onClick={async () => { if (memberUserId) { await handleAddMember(g.id); setMemberGroupId(null); setMemberSearch(''); loadGroups(); } }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50">确认</button>
                           <button onClick={() => { setMemberGroupId(null); setMemberSearch(''); }} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
                         </div>
                       ) : (
