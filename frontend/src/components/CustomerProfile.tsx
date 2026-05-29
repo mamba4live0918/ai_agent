@@ -142,7 +142,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
   ] as [string, string, string][]).filter(([, v]) => v);
 
   const hasPrepData = ppSections.length > 0;
-  const hasAnyData = apSections.length > 0 || dimensions.length > 0 || ((localCustomer.structured_data) && Object.keys(localCustomer.structured_data).length > 0);
+  const hasAnyData = apSections.length > 0 || dimensions.length > 0 || (sd && Object.keys(sd).length > 0);
 
   const openEditForm = () => {
     const sd = (localCustomer.structured_data || {}) as Record<string, unknown>;
