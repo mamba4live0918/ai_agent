@@ -37,7 +37,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Request failed: ${res.status}`);
+    const msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail || err);
+    throw new Error(msg || `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
