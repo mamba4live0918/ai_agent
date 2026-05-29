@@ -33,6 +33,7 @@ export default function AdminUsers() {
   const [editGroupDesc, setEditGroupDesc] = useState('');
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [memberUserId, setMemberUserId] = useState('');
+  const [memberGroupId, setMemberGroupId] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [groupError, setGroupError] = useState('');
 
@@ -502,8 +503,20 @@ export default function AdminUsers() {
                     ) : <p className="text-[10px] text-[var(--text-placeholder)] mb-2">暂无成员</p>}
                     {isSuperAdmin && (
                       <div className="flex gap-1.5">
-                        <input value={memberUserId} onChange={e => setMemberUserId(e.target.value)} placeholder="输入用户 ID 添加成员" className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-2.5 py-1 text-[10px] text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
-                        <button onClick={() => handleAddMember(g.id)} disabled={addingMember || !memberUserId.trim()} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">添加</button>
+                        {memberGroupId === g.id ? (
+                          <>
+                            <select value={memberUserId} onChange={e => setMemberUserId(e.target.value)} className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-full px-2 py-1 text-[10px] text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none">
+                              <option value="">选择用户...</option>
+                              {users.filter(u => !u.group_id || u.group_id !== g.id).map(u => (
+                                <option key={u.id} value={u.id}>{u.username} ({ROLE_LABELS[u.role]})</option>
+                              ))}
+                            </select>
+                            <button onClick={() => { handleAddMember(g.id); setMemberGroupId(null); }} disabled={addingMember || !memberUserId} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">确认</button>
+                            <button onClick={() => setMemberGroupId(null)} className="px-2 py-1 text-[10px] rounded-full border border-[var(--border-default)] text-[var(--text-secondary)]">取消</button>
+                          </>
+                        ) : (
+                          <button onClick={() => { setMemberGroupId(g.id); setMemberUserId(''); }} className="px-3 py-1 text-[10px] rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">+ 添加成员</button>
+                        )}
                       </div>
                     )}
                   </div>
