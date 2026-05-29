@@ -485,7 +485,7 @@ export default function AdminUsers() {
           <>
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={close} />
             <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
-              <div className="pointer-events-auto w-full max-w-md max-h-[90vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="pointer-events-auto w-full max-w-lg h-[85vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h3>
                   <div className="flex items-center gap-2">
