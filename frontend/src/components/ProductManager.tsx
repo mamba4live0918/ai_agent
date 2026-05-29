@@ -195,9 +195,6 @@ export default function ProductManager() {
             </div>
           );
         })}
-            </div>
-          );
-        })}
       </div>
 
       {renderPagination()}
