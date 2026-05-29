@@ -10,7 +10,30 @@ _client = OpenAI(
     base_url=settings.deepseek_base_url,
 )
 
-ANALYSIS_PROMPT = """You are a professional customer analyst for financial sales. Your analysis must be thorough, data-driven, and actionable.
+ANALYSIS_PROMPT = """You are a professional customer analyst for financial sales across all banking scenarios: retail, corporate, wealth management, credit, and insurance. You must classify each customer using the DISC personality framework and practical frontline types.
+
+## Customer Personality Classification Reference
+
+### DISC Model (Professional - banking standard)
+- **D (Dominant/掌控型)**: strong-willed, goal-oriented, values efficiency. Business owners, HNW males, executives. Fast speech, blunt, skips small talk. Focus on returns, speed, advantages. Suits: business loans, large CDs, corporate banking.
+- **I (Influential/社交型)**: warm, extroverted, emotion-driven. White-collar, social, middle-aged women. Chats freely, asks about others. Focus on service, relationships, testimonials. Suits: wealth mgmt, insurance, credit cards.
+- **S (Steady/稳健型)**: gentle, risk-averse, cautious. LARGEST branch segment. Middle-aged/elderly, working families. Speaks little, never decides on spot ("consult family"). Focus on safety, stability. Suits: deposits, bonds, low-risk products.
+- **C (Conscientious/严谨型)**: rational, detail-oriented, skeptical. Civil servants, finance pros, highly educated. Questions everything, takes notes, compares. Focus on compliance, data, risk logic. Suits: complex products, trusts, portfolio allocation.
+
+### Practical Frontline Types
+1. 干脆果断型 2. 沉默寡言型 3. 健谈外向型 4. 多疑戒备型 5. 犹豫摇摆型 6. 重情认人型 7. 逐利精明型 8. 完美挑剔型
+
+### Financial Attribute Types (investment mindset)
+极致保守型 / 稳健平衡型 / 进取灵活型 / 冲动冒险型 / 佛系观望型
+
+### Personality Identification (5 communication stages)
+1. Opening: skips chat=D / chats freely=I / polite silence=S / immediate skepticism=多疑型
+2. Questions: only returns/process=D / scattered+stories=I / safety repetition=S / technical details=C
+3. Body language: lean forward=S / relaxed distracted=I / arms crossed noting=C / fidgeting=D
+4. Risk reaction: insists own view=D / excited by peers=I / backs off at "risk"=S / challenges every point=C
+5. Decision: on the spot=D / defers to family=S / takes all materials to research=C
+
+NOTE: Most customers are mixed types. Identify the DOMINANT type. Include both DISC and practical classification.
 
 Customer description:
 {raw_text}
@@ -44,10 +67,17 @@ Use this exact structure:
         "customer_potential": {{"value": 1-10, "reasoning": "一句评分依据"}},
         "communication_difficulty": {{"value": 1-10, "reasoning": "一句评分依据"}}
     }},
+    "personality_profile": {{
+        "disc_type": "D/I/S/C（主要性格类型）",
+        "disc_secondary": "D/I/S/C（次要性格类型，纯单一类型填null）",
+        "practical_type": "干脆果断型/沉默寡言型/健谈外向型/多疑戒备型/犹豫摇摆型/重情认人型/逐利精明型/完美挑剔型",
+        "financial_type": "极致保守型/稳健平衡型/进取灵活型/冲动冒险型/佛系观望型",
+        "personality_summary": "性格综合分析(3-4句)：基于DISC模型判断依据、典型行为特征、对该客户的核心沟通策略方向"
+    }},
     "ai_profile": {{
-        "persona_summary": "客户画像总结(4-6句，涵盖身份、性格、财务特征、核心关注点、潜在需求和合作可能性)",
+        "persona_summary": "客户画像总结(4-6句，涵盖身份、DISC性格类型、财务特征、核心关注点、潜在需求和合作可能性)",
         "financial_needs_analysis": "财务需求深度分析(4-6句，从资产配置、税务规划、传承安排、现金流管理等多角度剖析，指出当前理财方案的不足与机会)",
-        "communication_suggestions": "沟通策略与话术建议(4-6句，包括开场切入点、建立信任的方法、关键话题引导、应避免的表达方式、促成技巧)",
+        "communication_suggestions": "沟通策略与话术建议(4-6句)：基于DISC性格定制策略——D型给选择权不过多干预、I型先拉近关系再用案例带动、S型先讲安全建立信任、C型用数据和条款说话。包括开场切入点、关键话题引导、应避免的表达方式、促成技巧",
         "risk_warnings": "风险揭示与合规提示(4-6句，涵盖投资风险、法律风险、家庭风险、市场风险、以及合规销售注意事项)",
         "product_recommendations": "产品配置建议(4-6句，列出具体产品类型及推荐理由，说明与客户需求的匹配度，分主次优先级)",
         "next_steps": "详细跟进计划(4-6句，分阶段列出近期/中期/远期行动步骤，包括需要准备的资料、需要协调的团队资源)"
@@ -166,6 +196,9 @@ You have the following comprehensive client analysis to work with:
 【Client Structured Data】
 {structured_data}
 
+【Personality Profile (DISC + Practical Types)】
+{personality_profile}
+
 【AI Profile Analysis】
 {ai_profile}
 
@@ -178,17 +211,23 @@ Based on ALL the above information, generate a comprehensive pre-sales preparati
 
 {{
     "lifecycle_analysis": "客户生命周期阶段分析(4-6句)：判断客户当前处于哪个销售阶段（关系建立期/需求挖掘期/方案推荐期/促成成交期/售后维护期/深度开发期），说明判断依据，描述该阶段的关键特征和销售重点",
-    "potential_difficulties": "潜在难点与客户顾虑(4-6句)：基于客户画像和评分，预判销售过程中可能遇到的阻力——客户可能的异议、担忧、决策障碍。每一条都要结合客户的具体情况",
-    "response_scripts": "应对话术(4-6句)：针对上述潜在难点，给出具体的话术建议。包括开场切入方式、关键问题的提问方法、异议处理的回应模板。语言要自然，符合真实销售场景",
-    "mindset_preparation": "销售人员心态准备(4-6句)：这次销售应该保持什么样的心态？需要特别注意哪些沟通陷阱？如何在专业性和亲和力之间平衡？结合客户性格特点给出具体心态建议",
-    "maintenance_actions": "维护动作与跟进节奏(4-6句)：分阶段列出具体的跟进行动计划——今天沟通后立即做什么、本周内做什么、一个月内做什么。包括需要准备的材料、需要协调的团队资源、推荐的沟通频率"
+    "potential_difficulties": "潜在难点与客户顾虑(4-6句)：结合DISC性格类型预判阻力——D型反感啰嗦/I型容易走神/S型恐惧风险犹豫不决/C型纠结细节质疑条款。每一条结合客户具体情况",
+    "response_scripts": "应对话术(4-6句)：DISC定制化话术——D型直接讲核心给选择权、I型先寒暄用案例带动、S型先讲安全表达理解给时间、C型先展示数据条款欢迎提问。语言自然真实",
+    "mindset_preparation": "销售人员心态准备(4-6句)：针对DISC特定性格的沟通陷阱——对D型忌啰嗦、对I型忌太严肃、对S型忌急于成交施压、对C型忌含糊其辞夸海口。如何平衡专业性和亲和力？",
+    "maintenance_actions": "维护动作与跟进节奏(4-6句)：DISC定制跟进——D型简洁高效定期推送/I型保持互动节日问候/S型持续关怀定期回访/C型定期发送专业资讯市场分析。分阶段行动计划"
 }}
+
+## DISC Communication Quick Reference
+- D型客户: 简洁直接，给选项不替ta决定。聚焦收益/效率/竞争力。忌：啰嗦铺垫、替客户做主。
+- I型客户: 先拉近关系，用故事/案例/口碑带动。保持热情互动。忌：太严肃、数据轰炸、冷落客户。
+- S型客户: 从安全讲起，耐心温和不施压。给予充分时间，主动提供资料供家人商议。忌：急于成交、制造紧迫感。
+- C型客户: 用数据和条款说话，展现专业性。逐条讲解，欢迎提问。忌：含糊其辞、夸大收益、回避细节。
 
 Rules:
 - All text in Chinese
 - Each section MUST be 4-6 sentences, specific and actionable
-- Reference specific details from the client's profile (age, occupation, assets, risk preference, scores, etc.)
-- Do NOT give generic advice — tailor every section to THIS specific client
+- Explicitly reference the client's DISC type and tailor advice accordingly
+- Do NOT give generic advice — every suggestion must fit THIS specific client
 - For response_scripts, include actual phrases the salesperson can say
 - 【KB优先原则】有知识库匹配内容时优先基于KB分析。KB支撑的建议标注"📚"，KB未覆盖、AI自行判断的标注"💡AI分析"。严禁编造KB中不存在的信息"""
 
@@ -196,6 +235,7 @@ Rules:
 def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
     """Generate a pre-sales preparation report based on existing customer analysis."""
     structured_data = json.dumps(customer_data.get("structured_data") or {}, ensure_ascii=False, indent=2)
+    personality_profile = json.dumps(customer_data.get("personality_profile") or {}, ensure_ascii=False, indent=2)
     ai_profile = json.dumps(customer_data.get("ai_profile") or {}, ensure_ascii=False, indent=2)
     scores = json.dumps(customer_data.get("scores") or {}, ensure_ascii=False, indent=2)
 
@@ -212,6 +252,7 @@ def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
 
     prompt = PRESALES_PREP_PROMPT.format(
         structured_data=structured_data,
+        personality_profile=personality_profile,
         ai_profile=ai_profile,
         scores=scores,
         kb_context=kb_context,
