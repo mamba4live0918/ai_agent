@@ -405,6 +405,15 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
         {/* Tab: AI 分析 */}
         <div data-tab-panel style={{ display: activeTab === 'analysis' ? 'block' : 'none' }}>
           <div className="space-y-5">
+            {/* Regenerate button at top */}
+            {'id' in localCustomer && (
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[var(--text-placeholder)]">基于客户信息生成评分、画像和报告</span>
+                <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2.5 py-1 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-all duration-200 pdf-hide">
+                  {regenerating ? '生成中...' : '⟳ 重新生成 AI 分析'}
+                </button>
+              </div>
+            )}
 
             {dimensions.length > 0 && (
               <div data-pdf-section="评分总览">
@@ -443,13 +452,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
               <div>
                 <div className="flex items-center justify-between mb-2.5">
                   <SectionHeader sectionKey="ai-report" label="AI 分析报告" sublabel="由 DeepSeek 生成" />
-                  <div className="flex items-center gap-2">
-                    {'id' in localCustomer && (
-                      <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-2 py-1 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-placeholder)] transition-all duration-200 disabled:opacity-50 pdf-hide">
-                        {regenerating ? '生成中...' : '⟳ 重新生成'}
-                      </button>
-                    )}
-                  </div>
+                  <div className="flex items-center gap-2"></div>
                 </div>
                 {!collapsed.has('ai-report') && (
                   <div data-pdf-section="AI 分析报告" className="space-y-2">
@@ -461,8 +464,8 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
 
             {apSections.length === 0 && 'id' in localCustomer && (
               <div className="text-center py-4">
-                <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-3 py-1.5 rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-200 disabled:opacity-50">
-                  {regenerating ? '生成中...' : '⟳ 生成 AI 分析'}
+                <button onClick={handleRegenerate} disabled={regenerating} className="text-[10px] px-3 py-1.5 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-all duration-200">
+                  {regenerating ? '生成中...' : '⟳ 重新生成 AI 分析'}
                 </button>
               </div>
             )}
