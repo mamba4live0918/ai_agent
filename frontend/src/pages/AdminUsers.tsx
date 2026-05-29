@@ -485,7 +485,7 @@ export default function AdminUsers() {
           <>
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={close} />
             <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
-              <div className="pointer-events-auto w-full max-w-xl h-[72vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="pointer-events-auto w-full max-w-3xl h-[72vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">{g.name}</h3>
                   <div className="flex items-center gap-2">
@@ -522,24 +522,24 @@ export default function AdminUsers() {
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="bg-[var(--bg-tertiary)]/50">
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">用户名</th>
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">角色</th>
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">邮箱</th>
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">加入时间</th>
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">订阅方案</th>
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">剩余时间</th>
-                              {isSuperAdmin && <th className="px-2 py-2 w-8"></th>}
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">用户名</th>
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">角色</th>
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)] hidden sm:table-cell">邮箱</th>
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)] hidden sm:table-cell">加入</th>
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">订阅</th>
+                              <th className="px-2 py-2 text-left text-[10px] font-medium text-[var(--text-secondary)]">剩余</th>
+                              {isSuperAdmin && <th className="px-1 py-2 w-6"></th>}
                             </tr>
                           </thead>
                           <tbody>
                             {g.members.map((m, idx) => (
                               <tr key={m.id} className={`border-t border-[var(--border-subtle)] ${idx % 2 === 0 ? 'bg-[var(--bg-primary)]' : 'bg-[var(--bg-secondary)]/50'}`}>
-                                <td className="px-3 py-2 text-[var(--text-primary)] font-medium">{m.username}</td>
-                                <td className="px-3 py-2 text-[var(--text-secondary)]">{ROLE_LABELS[m.role] || m.role}</td>
-                                <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.email || '—'}</td>
-                                <td className="px-3 py-2 text-[var(--text-placeholder)]">{m.created_at ? new Date(m.created_at).toLocaleDateString('zh-CN') : '—'}</td>
-                                <td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">免费</span></td>
-                                <td className="px-3 py-2 text-[var(--text-placeholder)]">—</td>
+                                <td className="px-2 py-2 text-[var(--text-primary)] font-medium text-[10px] truncate max-w-[80px]">{m.username}</td>
+                                <td className="px-2 py-2 text-[var(--text-secondary)] text-[10px]">{ROLE_LABELS[m.role] || m.role}</td>
+                                <td className="px-2 py-2 text-[var(--text-placeholder)] text-[10px] hidden sm:table-cell truncate max-w-[120px]">{m.email || '—'}</td>
+                                <td className="px-2 py-2 text-[var(--text-placeholder)] text-[10px] hidden sm:table-cell">{m.created_at ? new Date(m.created_at).toLocaleDateString('zh-CN') : '—'}</td>
+                                <td className="px-2 py-2"><span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--btn-blue)]/20 text-[var(--accent-blue)]">免费</span></td>
+                                <td className="px-2 py-2 text-[var(--text-placeholder)] text-[10px]">—</td>
                                 {isSuperAdmin && (
                                   <td className="px-2 py-2">
                                     <button onClick={() => handleRemoveMember(g.id, m.id)} className="text-[var(--text-placeholder)] hover:text-[var(--accent-red)]">×</button>
