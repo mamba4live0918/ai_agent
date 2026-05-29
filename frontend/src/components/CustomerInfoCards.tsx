@@ -87,7 +87,7 @@ export default function CustomerInfoCards({ customer }: Props) {
               <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">{sec.title}</span>
               <span className="text-[10px] text-[var(--text-placeholder)] ml-auto">{filledFields.length}</span>
             </div>
-            <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
               {filledFields.map(f => {
                 const isContact = f.key === 'contact';
                 const masked = isContact && !showContact && f.value.length > 4

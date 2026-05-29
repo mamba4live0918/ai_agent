@@ -172,7 +172,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
         </div>
       ) : (
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <div>
               <label className="text-[10px] text-[var(--text-secondary)]">姓名 *</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -194,7 +194,7 @@ export default function CustomerForm({ onCreated }: { onCreated: () => void }) {
           {FORM_SECTIONS.map(sec => (
             <div key={sec.title}>
               <h4 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">{sec.title}</h4>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {sec.fields.map(key => (
                   <div key={key}>
                     <label className="text-[10px] text-[var(--text-placeholder)]">{FLABELS[key] || key}</label>

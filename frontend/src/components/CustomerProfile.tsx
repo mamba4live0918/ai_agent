@@ -572,7 +572,7 @@ export default function CustomerProfile({ customer, onPresalesPrep }: Props) {
                   ].map(group => (
                     <div key={group.title}>
                       <h4 className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">{group.title}</h4>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {group.fields.map(key => (
                           <div key={key}>
                             <label className="text-[10px] text-[var(--text-placeholder)]">{FIELD_LABELS[key] || key}</label>
