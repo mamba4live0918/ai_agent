@@ -286,10 +286,11 @@ export default function RealTimeVoice() {
         />
       </div>
 
-      {/* Right: Coach panel — overlay on mobile, static on desktop */}
+      {/* Right: Coach panel — slide-in on mobile, static on desktop */}
       <div className={`
-        ${coachOpen ? 'fixed inset-0 z-50 lg:static' : 'hidden lg:block'}
-        lg:w-[320px] lg:flex-shrink-0 bg-[var(--bg-primary)]
+        ${coachOpen ? 'fixed right-0 top-0 bottom-0 z-50 w-[85vw] max-w-[340px]' : 'hidden lg:block'}
+        lg:static lg:w-[320px] lg:flex-shrink-0 bg-[var(--bg-primary)]
+        ${coachOpen ? 'shadow-[-8px_0_30px_rgba(0,0,0,0.3)]' : ''}
       `}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-subtle)] lg:hidden">
           <span className="text-sm font-semibold text-[var(--text-primary)]">AI 教练</span>
