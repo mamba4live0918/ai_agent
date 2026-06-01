@@ -79,6 +79,11 @@ export default function RealtimeCoach({
 }: RealtimeCoachProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [tips, setTips] = useState<CoachTipItem[]>([]);
+
+  // Sync with parent's connected state
+  useEffect(() => {
+    if (_connected) setIsConnected(true);
+  }, [_connected]);
   const [collapsed, setCollapsed] = useState(false);
   /** Maps tip id -> currently displayed char count for typewriter */
   const [displayLen, setDisplayLen] = useState<Record<string, number>>({});
