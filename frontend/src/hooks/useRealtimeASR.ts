@@ -191,6 +191,10 @@ export function useRealtimeASR(): UseRealtimeASRState {
     reconnectCountRef.current = 0;
 
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('当前浏览器不支持录音，请使用 HTTPS 或 localhost 访问，或在桌面端 Chrome/Edge 打开');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
