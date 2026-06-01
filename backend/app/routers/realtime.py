@@ -24,6 +24,7 @@ from ..models.user import User
 from ..models.realtime_session import RealtimeSession, RealtimeSegment
 from ..services.realtime_asr import StreamingTranscriber
 from ..services.realtime_service import archive_session
+from ..services.trigger_engine import RuleEngine, CoachPromptBuilder
 from ..utils.auth import decode_access_token, get_current_user, apply_user_filter
 
 logger = logging.getLogger(__name__)
@@ -124,6 +125,11 @@ async def realtime_session(
         enable_speaker_clustering=True,
     )
 
+    # ---- Step 3b: initialize coach trigger engine -------------------------
+    rule_engine = RuleEngine()
+    coach_builder = CoachPromptBuilder()
+    recent_texts: list[str] = []
+
     # ---- Step 4: process audio chunks --------------------------------------
     loop = asyncio.get_running_loop()
     accumulated_segments: list[dict] = []
@@ -180,6 +186,37 @@ async def realtime_session(
                     "session_id": session_id,
                     "is_partial": False,
                 })
+
+                # --- Coach trigger evaluation ---
+                recent_texts.append(seg.text)
+                if len(recent_texts) > 10:
+                    recent_texts = recent_texts[-10:]
+
+                speaker_count = len(speaker_ids)
+                triggers = rule_engine.evaluate(
+                    text=seg.text,
+                    speaker_id=seg.speaker,
+                    speaker_count=speaker_count,
+                )
+
+                for trigger in triggers:
+                    try:
+                        coach_content = await coach_builder.generate_coach_tip(
+                            trigger=trigger,
+                            recent_transcript=[{"speaker": seg.speaker, "text": seg.text}],
+                            stream=False,
+                        )
+                        if coach_content:
+                            await websocket.send_json({
+                                "type": "coach_tip",
+                                "trigger": trigger.rule_id,
+                                "action": trigger.action,
+                                "content": coach_content,
+                                "session_id": session_id,
+                            })
+                            logger.info("Coach tip sent: trigger=%s action=%s", trigger.rule_id, trigger.action)
+                    except Exception:
+                        logger.exception("Coach prompt generation failed for trigger=%s", trigger.rule_id)
 
     except WebSocketDisconnect:
         logger.info("Realtime session disconnected: user=%s", user_id)

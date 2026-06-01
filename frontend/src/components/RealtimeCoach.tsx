@@ -13,6 +13,7 @@ interface CoachTipItem {
 
 interface RealtimeCoachProps {
   connected: boolean;
+  coachTip?: { trigger: string; action: string; content: string } | null;
   onConnect: () => void;
   onDisconnect: () => void;
 }
@@ -72,6 +73,7 @@ function formatTime(ts: number): string {
 
 export default function RealtimeCoach({
   connected: _connected,
+  coachTip,
   onConnect,
   onDisconnect,
 }: RealtimeCoachProps) {
@@ -86,6 +88,20 @@ export default function RealtimeCoach({
   const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tipsRef = useRef<CoachTipItem[]>([]);
   const pinnedRef = useRef<Set<string>>(new Set());
+
+  // Auto-add incoming coachTip to the list
+  useEffect(() => {
+    if (!coachTip?.content) return;
+    const newTip: CoachTipItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      trigger: coachTip.trigger || '',
+      content: coachTip.content,
+      timestamp: Date.now(),
+      isStreaming: false,
+      pinned: false,
+    };
+    setTips(prev => [newTip, ...prev].slice(0, 20));
+  }, [coachTip]);
   const dismissTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );

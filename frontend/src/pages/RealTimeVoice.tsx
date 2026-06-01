@@ -88,6 +88,7 @@ export default function RealTimeVoice() {
     start,
     stop,
     sendInterrupt,
+    coachTip,
   } = useRealtimeASR();
 
   const [coachConnected, setCoachConnected] = useState(false);
@@ -309,6 +310,7 @@ export default function RealTimeVoice() {
         <div className="flex-1 overflow-y-auto" style={{ height: coachOpen ? 'calc(100% - 41px)' : '100%' }}>
           <RealtimeCoach
             connected={coachConnected}
+            coachTip={coachTip}
             onConnect={() => setCoachConnected(true)}
             onDisconnect={() => setCoachConnected(false)}
           />

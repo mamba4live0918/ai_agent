@@ -12,12 +12,19 @@ export interface TranscriptSegment {
 
 export type ConnectionState = 'idle' | 'connecting' | 'streaming' | 'disconnected';
 
+export interface CoachTip {
+  trigger: string;
+  action: string;
+  content: string;
+}
+
 export interface UseRealtimeASRState {
   isRecording: boolean;
   connectionState: ConnectionState;
   transcript: TranscriptSegment[];
   partialText: string;
   error: string | null;
+  coachTip: CoachTip | null;
   start: () => Promise<void>;
   stop: () => void;
   sendInterrupt: () => void;
@@ -56,6 +63,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
   const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [partialText, setPartialText] = useState('');
+  const [coachTip, setCoachTip] = useState<CoachTip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
@@ -140,6 +148,12 @@ export function useRealtimeASR(): UseRealtimeASRState {
               ]);
               setPartialText('');
             }
+          } else if (data.type === 'coach_tip') {
+            setCoachTip({
+              trigger: data.trigger || '',
+              action: data.action || '',
+              content: data.content || '',
+            });
           } else if (data.type === 'error') {
             setError(data.message || '转录服务出错');
           }
@@ -297,6 +311,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
     transcript,
     partialText,
     error,
+    coachTip,
     start,
     stop,
     sendInterrupt,
