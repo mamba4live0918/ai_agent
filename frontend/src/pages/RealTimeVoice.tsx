@@ -94,6 +94,9 @@ export default function RealTimeVoice() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
 
+  // Sync coach connection with recording state
+  useEffect(() => { setCoachConnected(isRecording); }, [isRecording]);
+
   // Session history state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
