@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 function isTauri(): boolean {
   return !!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
