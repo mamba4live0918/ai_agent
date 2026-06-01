@@ -16,6 +16,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
+    mode: str = "flexible"  # "precise" or "flexible"
 
 
 class ChatResponse(BaseModel):
@@ -88,7 +89,7 @@ def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db), current_user:
 
     # Use namespaced conversation ID for RAG service
     namespaced_id = f"{current_user.id}:{conv.id}"
-    result = rag_chat(req.message, user_id=str(current_user.id), conversation_id=namespaced_id)
+    result = rag_chat(req.message, user_id=str(current_user.id), mode=req.mode, conversation_id=namespaced_id)
 
     # Save assistant message
     assistant_msg = ChatMessage(

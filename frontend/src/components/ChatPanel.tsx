@@ -16,6 +16,7 @@ export default function ChatPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [convLoading, setConvLoading] = useState(false);
+  const [mode, setMode] = useState<'precise' | 'flexible'>('precise');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +39,7 @@ export default function ChatPanel() {
     setInput('');
     setLoading(true);
     try {
-      const res: ChatResponse = await sendMessage(input, conversationId);
+      const res: ChatResponse = await sendMessage(input, conversationId, mode);
       if (!conversationId) setConversationId(res.conversation_id);
       setMessages(prev => [...prev, { role: 'assistant', content: res.answer, sources: res.sources }]);
       loadConversations();
@@ -181,6 +182,16 @@ export default function ChatPanel() {
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] rounded-t-xl flex-shrink-0">
           <span className="w-2 h-2 rounded-full bg-[var(--accent-green)]" />
           <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">知识库问答 · RAG</span>
+          <div className="flex items-center gap-1 mx-2 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-full p-0.5">
+            <button onClick={() => setMode('precise')}
+              className={`px-2.5 py-0.5 text-[10px] rounded-full transition-all duration-200 ${mode === 'precise' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              精准
+            </button>
+            <button onClick={() => setMode('flexible')}
+              className={`px-2.5 py-0.5 text-[10px] rounded-full transition-all duration-200 ${mode === 'flexible' ? 'bg-[var(--btn-blue)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              灵活
+            </button>
+          </div>
           <span className="text-[10px] text-[var(--text-placeholder)] font-mono ml-auto">
             {messages.length} 条消息
           </span>

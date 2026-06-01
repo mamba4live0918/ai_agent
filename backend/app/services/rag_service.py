@@ -2,7 +2,7 @@ import re
 from openai import OpenAI
 
 from ..config import settings
-from .embedding_service import retrieve_from_chroma
+from .embedding_service import retrieve_from_chroma, retrieve_hybrid
 
 _client = OpenAI(
     api_key=settings.deepseek_api_key,
@@ -20,26 +20,61 @@ def _get_or_create_history(conversation_id: str | None) -> tuple[str, list[tuple
     return cid, _conversations[cid]
 
 
-def retrieve_context(query: str, user_id: str, k: int = 8, filenames: list[str] | None = None) -> tuple[str, list[dict]]:
-    try:
-        docs = retrieve_from_chroma(query, user_id=user_id, k=k, filenames=filenames)
-    except Exception:
-        return "", []
-
+def _build_context(docs: list, mode: str) -> tuple[str, list[dict]]:
+    """Build context string and sources list from retrieved docs."""
     context_parts = []
     sources = []
     for i, doc in enumerate(docs):
-        filename = doc.metadata.get("filename", "Unknown")
-        page = doc.metadata.get("page", "Unknown")
+        if hasattr(doc, 'metadata'):
+            filename = doc.metadata.get("filename", "Unknown")
+            page = doc.metadata.get("page", "Unknown")
+            content = doc.page_content
+        else:
+            filename = doc.get("metadata", {}).get("filename", "Unknown")
+            page = doc.get("metadata", {}).get("page", "Unknown")
+            content = doc.get("content", "")
+
         context_parts.append(
-            f"[Document {i + 1}]\nFile: {filename}\nPage: {page}\nContent: {doc.page_content}"
+            f"[Document {i + 1}]\nFile: {filename}\nPage: {page}\nContent: {content}"
         )
-        sources.append({"filename": filename, "page": page, "preview": doc.page_content[:200]})
+        sources.append({"filename": filename, "page": page, "preview": content[:200]})
 
     return "\n\n".join(context_parts), sources
 
 
-def query_llm(question: str, context: str, conversation_id: str | None = None) -> dict:
+def retrieve_context(query: str, user_id: str, mode: str = "flexible", k: int = 8, filenames: list[str] | None = None) -> tuple[str, list[dict]]:
+    try:
+        if mode == "precise":
+            docs = retrieve_hybrid(query, user_id=user_id, mode="precise", k=6, filenames=filenames)
+        else:
+            docs = retrieve_hybrid(query, user_id=user_id, mode="flexible", k=12, filenames=filenames)
+    except Exception:
+        return "", []
+
+    return _build_context(docs, mode)
+
+
+PRECISE_PROMPT = """你是 SalesMate，一位严谨的知识库问答助手。你必须**严格基于**提供的文档内容回答。
+
+核心规则：
+- 回答语言：中文
+- 每一条陈述都必须能在文档中找到依据，**不得添加文档中没有的信息**
+- 每个关键观点必须标注来源，格式：〔来源：xxx.pdf〕
+- 如果文档中没有相关信息，直接回答"知识库中暂无相关内容"，**不要编造**
+- 可以引用多份文档，但如果文档间有矛盾，明确指出差异
+- 回答简洁专业，不要展开推测"""
+
+FLEXIBLE_PROMPT = """你是一位资深销售顾问助手，名叫 SalesMate。请用自然、专业但亲切的口吻回答用户问题。
+
+核心规则：
+- 回答语言：中文（除非用户用英文提问）
+- 保持对话感，像一位有经验的同事在分享见解
+- 优先基于知识库文档内容，但要自然融入回答，不要机械引用
+- 可以补充行业常识和实操经验，用【个人看法】开头区分
+- 可以跨文档综合推理"""
+
+
+def query_llm(question: str, context: str, mode: str = "flexible", conversation_id: str | None = None) -> dict:
     cid, history = _get_or_create_history(conversation_id)
 
     history_text = ""
@@ -48,36 +83,37 @@ def query_llm(question: str, context: str, conversation_id: str | None = None) -
 
     has_context = bool(context.strip())
 
-    base_rules = f"""你是一位资深销售顾问助手，名叫 SalesMate。请用自然、专业但亲切的口吻回答用户问题。
+    if mode == "precise":
+        rules = PRECISE_PROMPT
+        if has_context:
+            rules += f"""
 
-核心规则：
-- 回答语言：中文（除非用户用英文提问）
-- 保持对话感，像一位有经验的同事在分享见解，不要像在读说明书
-- 回答要有条理，但不要用"第一、第二、第三"这种生硬的序号，用自然的段落过渡
-- 可以补充行业常识和实操经验，但要简短精炼，不要喧宾夺主"""
-
-    if has_context:
-        rules = base_rules + f"""
+【知识库检索结果 — 这是你唯一的回答依据】
+---
+{context}
+---"""
+        else:
+            rules += "\n\n【注意】未检索到相关文档。请直接回复'知识库中暂无相关内容'。"
+        temperature = 0.1
+        max_tokens = 2000
+    else:
+        rules = FLEXIBLE_PROMPT
+        if has_context:
+            rules += f"""
 
 【知识库内容优先】
-以下是从你的知识库文档中检索到的相关内容，这些是你的主要回答依据：
+以下是从你的知识库文档中检索到的相关内容：
 ---
 {context}
 ---
 
-引用与标注规则：
-- 基于知识库内容做出的回答，在相关句末标注来源，如 〔来源：xxx.pdf〕
-- 如果多份文档内容有冲突或互补，明确指出差异并分别标注来源
-- 如果知识库内容不足以完全回答问题，如实说明哪些部分来自知识库、哪些是补充
-
-个人看法规则：
-- 你可以在知识库内容之外，补充你的专业判断或实操建议
-- 个人看法必须用 【个人看法】 开头，与知识库内容明确区分
-- 每条个人看法控制在 2-3 句以内，不要长篇大论"""
-    else:
-        rules = base_rules + """
-
-【注意】当前知识库为空，没有检索到相关文档。请基于你的专业知识回答用户问题，并在开头如实说明"知识库中暂无相关文档，以下是我的个人理解"。"""
+引用与标注：
+- 基于知识库内容的在句末标注 〔来源：xxx.pdf〕
+- 个人看法用 【个人看法】 开头，2-3句以内"""
+        else:
+            rules += "\n\n【注意】当前知识库为空。请基于专业知识回答，开头说明'知识库中暂无相关文档，以下是我的个人理解'。"
+        temperature = 0.3
+        max_tokens = 15000
 
     prompt = f"""{rules}
 
@@ -88,14 +124,16 @@ def query_llm(question: str, context: str, conversation_id: str | None = None) -
 
 请回答："""
 
+    sys_content = "你是 SalesMate，一位严谨的知识库问答助手。必须严格基于文档回答。" if mode == "precise" else "你是 SalesMate，一位资深销售顾问助手。你说话自然、专业、像一位值得信赖的同事。"
+
     response = _client.chat.completions.create(
         model=settings.llm_model,
         messages=[
-            {"role": "system", "content": "你是 SalesMate，一位资深销售顾问助手。你说话自然、专业、像一位值得信赖的同事。你严格基于知识库文档回答，同时能敏锐地补充实操经验，并始终明确区分两者。"},
+            {"role": "system", "content": sys_content},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.3,
-        max_tokens=15000,
+        temperature=temperature,
+        max_tokens=max_tokens,
     )
 
     answer = response.choices[0].message.content
@@ -106,9 +144,9 @@ def query_llm(question: str, context: str, conversation_id: str | None = None) -
     return {"answer": answer, "conversation_id": cid}
 
 
-def chat(message: str, user_id: str, conversation_id: str | None = None) -> dict:
-    context, sources = retrieve_context(message, user_id=user_id)
-    result = query_llm(message, context, conversation_id)
+def chat(message: str, user_id: str, mode: str = "flexible", conversation_id: str | None = None) -> dict:
+    context, sources = retrieve_context(message, user_id=user_id, mode=mode)
+    result = query_llm(message, context, mode=mode, conversation_id=conversation_id)
     result["sources"] = sources
     return result
 

@@ -275,10 +275,10 @@ export const saveAllocationPlan = (id: string, userPlan: Record<string, unknown>
   });
 
 // Chat
-export const sendMessage = (message: string, conversationId?: string) =>
+export const sendMessage = (message: string, conversationId?: string, mode?: string) =>
   request<import('../types').ChatResponse>('/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, conversation_id: conversationId || null }),
+    body: JSON.stringify({ message, conversation_id: conversationId || null, mode: mode || 'flexible' }),
   });
 
 export const getConversations = () =>
