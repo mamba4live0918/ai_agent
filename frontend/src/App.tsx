@@ -13,6 +13,8 @@ import RealTimeVoice from './pages/RealTimeVoice';
 import PostSalesAnalysis from './pages/PostSalesAnalysis';
 import FeedbackPage from './pages/Feedback';
 import InstructorDashboard from './pages/InstructorDashboard';
+import InstructorStudents from './pages/InstructorStudents';
+import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminFeedback from './pages/AdminFeedback';
 import Login from './pages/Login';
@@ -39,6 +41,8 @@ export default function App() {
                     <Layout>
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile/:userId" element={<Profile />} />
                         <Route path="/knowledge" element={<KnowledgeBase />} />
                         <Route path="/customers" element={<CustomerAnalysis />} />
                         <Route path="/products" element={<Products />} />
@@ -47,6 +51,7 @@ export default function App() {
                         <Route path="/realtime" element={<RealTimeVoice />} />
                         <Route path="/feedback" element={<FeedbackPage />} />
                         <Route path="/instructor" element={<InstructorDashboard />} />
+                        <Route path="/instructor/students" element={<InstructorStudents />} />
                         <Route path="/admin/users" element={<AdminUsers />} />
                         <Route path="/admin/feedback" element={<AdminFeedback />} />
                         <Route path="*" element={<Navigate to="/" replace />} />

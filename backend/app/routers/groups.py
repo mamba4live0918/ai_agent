@@ -12,7 +12,7 @@ from ..schemas.group import (
 )
 from ..utils.auth import get_current_user, require_admin
 
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter()
 
 
 def _is_super_admin(user: User) -> bool:
@@ -54,14 +54,13 @@ def create_group(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _is_super_admin(current_user):
-        raise HTTPException(status_code=403, detail="Only super admin can create groups")
     if db.query(Group).filter(Group.name == data.name).first():
         raise HTTPException(status_code=409, detail="Group name already taken")
+    admin_id = data.admin_id if _is_super_admin(current_user) and data.admin_id else current_user.id
     group = Group(
         name=data.name,
         description=data.description,
-        admin_id=data.admin_id,
+        admin_id=admin_id,
     )
     db.add(group)
     db.commit()
@@ -85,7 +84,7 @@ def list_groups(
     if _is_super_admin(current_user):
         query = db.query(Group)
     else:
-        # Group admin only sees their own groups
+        # Instructor/group admin sees groups they administer
         query = db.query(Group).filter(Group.admin_id == current_user.id)
 
     total = query.count()
@@ -129,8 +128,8 @@ def delete_group(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _is_super_admin(current_user):
-        raise HTTPException(status_code=403, detail="Only super admin can delete groups")
+    if not _is_super_admin(current_user) and group.admin_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only super admin or group admin can delete groups")
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")

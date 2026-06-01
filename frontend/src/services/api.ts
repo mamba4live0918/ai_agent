@@ -64,6 +64,21 @@ export const getInstructorPerUserStats = () =>
 export const getInstructorTrends = (granularity: 'weekly' | 'monthly' = 'weekly') =>
   request<import('../types').TrainingTrendPoint[]>(`/instructor/statistics/trends?granularity=${granularity}`);
 
+export const getAvailableStudents = () =>
+  request<{ id: string; username: string; email: string; role: string; group_id: string | null; created_at: string | null }[]>('/instructor/students/available');
+
+export const claimStudent = (userId: string, groupId: string) =>
+  request<{ detail: string }>(`/instructor/students/claim/${userId}?group_id=${groupId}`, { method: 'POST', body: '{}' });
+
+export const releaseStudent = (userId: string) =>
+  request<{ detail: string }>(`/instructor/students/release/${userId}`, { method: 'POST', body: '{}' });
+
+export const getUserDetail = (userId: string) =>
+  request<{ id: string; username: string; email: string; role: string; group_id: string | null; created_at: string | null; administered_groups: { id: string; name: string; description: string | null; member_count: number }[] }>(`/auth/users/${userId}`);
+
+export const updateProfile = (data: Record<string, string>) =>
+  request<{ username: string; email: string }>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
+
 export const exportReport = async (): Promise<void> => {
   const token = getToken();
   const fetcher = await tauriFetch();

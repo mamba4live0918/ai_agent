@@ -22,4 +22,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=UserRole.salesperson.value)
     group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="SET NULL"), nullable=True)
+    bio: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    avatar: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

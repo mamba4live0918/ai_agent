@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups, createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember } from '../services/api';
+import { getAllUsers, updateUserRole, deleteUser, createUser, getGroups, createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember, getUserDetail } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { User, Group } from '../types';
 
@@ -8,8 +9,10 @@ const ROLE_LABELS: Record<string, string> = { admin: '管理员', instructor: '�
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
+  const navigate = useNavigate();
   const isSuperAdmin = me?.role === 'admin' && !me?.group_id;
   const [tab, setTab] = useState<'users' | 'groups'>('users');
+  const [selectedUser, setSelectedUser] = useState<{ id: string; username: string; email: string; role: string; group_id: string | null; created_at: string | null; administered_groups: { id: string; name: string; description: string | null; member_count: number }[] } | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -246,7 +249,9 @@ export default function AdminUsers() {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    {u.username}
+                    <button onClick={async () => { try { const d = await getUserDetail(u.id); setSelectedUser(d); } catch { /* ignore */ } }} className="text-[var(--accent-blue)] hover:underline cursor-pointer">
+                      {u.username}
+                    </button>
                     {isSelf && <span className="ml-1.5 text-[10px] text-[var(--accent-blue)]">(你)</span>}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{u.email}</p>
@@ -288,9 +293,7 @@ export default function AdminUsers() {
                 ) : (
                   <span className="text-[11px] text-[var(--text-placeholder)]">未分组</span>
                 )}
-                {isSelf || !isSuperAdmin ? (
-                  <span className="text-xs text-[var(--text-secondary)]">{ROLE_LABELS[u.role]}</span>
-                ) : (
+                {isSuperAdmin && !isSelf ? (
                   <select
                     value={u.role}
                     onChange={(e) => handleRoleChange(u.id, e.target.value)}
@@ -300,6 +303,8 @@ export default function AdminUsers() {
                       <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                     ))}
                   </select>
+                ) : (
+                  <span className="text-xs text-[var(--text-secondary)]">{ROLE_LABELS[u.role]}</span>
                 )}
               </div>
 
@@ -453,10 +458,10 @@ export default function AdminUsers() {
         <div className="space-y-4">
           {isSuperAdmin && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="分组名称" className="sm:flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
+              <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="小组名称" className="sm:flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
               <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="描述（可选）" className="sm:flex-1 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent-blue)] outline-none" />
               <button onClick={handleCreateGroup} disabled={creatingGroup || !newGroupName.trim()} className="px-4 py-1.5 text-xs rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 transition-colors">
-                {creatingGroup ? '...' : '创建分组'}
+                {creatingGroup ? '...' : '创建小组'}
               </button>
             </div>
           )}
@@ -574,6 +579,50 @@ export default function AdminUsers() {
           </>
         );
       })()}
+      {/* User Detail Modal */}
+      {selectedUser && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" onClick={() => setSelectedUser(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+            <div className="pointer-events-auto w-full max-w-md max-h-[80vh] bg-[var(--bg-secondary)] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.16)] border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] flex-shrink-0">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{selectedUser.username}</h3>
+                <button onClick={() => setSelectedUser(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-placeholder)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div><span className="text-[var(--text-tertiary)]">用户名</span><p className="text-[var(--text-primary)] font-medium">{selectedUser.username}</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">角色</span><p className="text-[var(--text-primary)]">{selectedUser.role === 'instructor' ? '讲师' : selectedUser.role === 'admin' ? '管理员' : '销售'}</p></div>
+                  <div className="col-span-2"><span className="text-[var(--text-tertiary)]">邮箱</span><p className="text-[var(--text-primary)]">{selectedUser.email || '—'}</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">注册时间</span><p className="text-[var(--text-primary)]">{selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString('zh-CN') : '—'}</p></div>
+                  <div><span className="text-[var(--text-tertiary)]">所属小组</span><p className="text-[var(--text-primary)]">{selectedUser.group_id ? '已归属' : '未分组'}</p></div>
+                </div>
+                {selectedUser.administered_groups && selectedUser.administered_groups.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-2">管理的小组</p>
+                    <div className="space-y-1.5">
+                      {selectedUser.administered_groups.map(g => (
+                        <div key={g.id} className="flex items-center justify-between bg-[var(--bg-primary)] rounded-lg px-3 py-2 text-xs">
+                          <span className="text-[var(--text-primary)] font-medium">{g.name}</span>
+                          <span className="text-[var(--text-placeholder)]">{g.member_count} 人</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(selectedUser.role === 'instructor' || selectedUser.role === 'admin') && (
+                  <button onClick={() => { setSelectedUser(null); navigate('/instructor'); }}
+                    className="w-full text-xs px-3 py-2 rounded-full bg-[var(--btn-primary)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors">
+                    查看讲师端口 →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

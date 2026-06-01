@@ -109,6 +109,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </svg>
               讲师端口
             </NavLink>
+            {!isAdmin && (
+              <NavLink to="/instructor/students" className={linkClass} onClick={close}>
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6.004 6.004 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
+                </svg>
+                学员管理
+              </NavLink>
+            )}
           </>
         )}
 
@@ -160,12 +168,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
         {user && (
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 cursor-pointer hover:bg-[var(--bg-tertiary)]/50 rounded-xl p-1.5 -m-1.5 transition-colors" onClick={() => { navigate('/profile'); close(); }}>
             <div className="w-8 h-8 rounded-full bg-[var(--btn-blue)] flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 ring-2 ring-[var(--border-default)]">
               {user.username.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs text-[var(--text-primary)] font-medium truncate">{user.username}</div>
+              <div className="text-xs text-[var(--text-primary)] font-medium truncate">{[{ '': '🟢', busy: '⏳', study: '📚', fish: '🎣', meeting: '💼', away: '☕', travel: '✈️', leave: '🏖️' }[(user as Record<string, unknown>).status as string || ''] || '🟢']} {user.username}</div>
               <div className="text-[10px] text-[var(--text-secondary)]">
                 {user.role === 'admin' ? '管理员' : user.role === 'instructor' ? '讲师' : '销售'}
               </div>
