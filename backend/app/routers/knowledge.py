@@ -1,6 +1,9 @@
 import uuid
 import os
+import logging
 import shutil
+
+logger = logging.getLogger(__name__)
 from math import ceil
 import pandas as pd
 import mammoth
@@ -223,7 +226,13 @@ def upload_document(
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    docs = load_single_document(file_path)
+    logger.info(f"File saved: {raw_name} ({os.path.getsize(file_path)} bytes), starting document loading...")
+    try:
+        docs = load_single_document(file_path)
+    except Exception as e:
+        logger.exception(f"Document loading failed for {raw_name}")
+        os.remove(file_path)
+        raise HTTPException(status_code=400, detail=f"文档解析失败: {str(e)[:100]}")
     preview = get_content_preview(docs)
     chunk_count = index_document(file_path, user_id=str(current_user.id))
 
