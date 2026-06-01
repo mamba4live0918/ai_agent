@@ -32,7 +32,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Sales Assistant", version="0.1.0")
 
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180").split(",")
+# Increase upload size limit to 200MB for large documents
+from starlette.formparsers import MultiPartParser
+MultiPartParser.max_file_size = 200 * 1024 * 1024  # 200MB
+
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://192.168.110.140:5173,http://172.20.10.10:5173").split(",")
 
 # Rate limiter: 5/min login, 60/min global per IP
 app.add_middleware(RateLimitMiddleware)
