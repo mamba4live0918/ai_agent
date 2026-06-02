@@ -75,10 +75,6 @@ def reset_chroma():
         shutil.rmtree(settings.chroma_db_dir)
 
 
-def chunk_documents(docs: list[LCDocument]) -> list[LCDocument]:
-    return _text_splitter.split_documents(docs)
-
-
 def add_to_chroma(chunks: list[LCDocument]):
     batch_size = 4
     for i in range(0, len(chunks), batch_size):
@@ -152,7 +148,7 @@ def retrieve_from_chroma(query: str, user_id: str, k: int = 8, filenames: list[s
 def index_document(filepath: str, user_id: str | None = None) -> int:
     from ..utils.document_loader import load_single_document
     docs = load_single_document(filepath)
-    chunks = chunk_documents(docs)
+    chunks = _text_splitter.split_documents(docs)
     uid = user_id if user_id else "shared"
     for chunk in chunks:
         chunk.metadata["user_id"] = uid
