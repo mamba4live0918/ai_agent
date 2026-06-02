@@ -2,7 +2,7 @@ import json
 import re
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 
 _client = OpenAI(
@@ -224,17 +224,26 @@ def analyze_customer(raw_text: str, user_id: str, edited_structured_data: dict |
 
     prompt = ANALYSIS_PROMPT.format(raw_text=raw_text, kb_context=kb_context, manual_context=manual_context)
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "You are a financial customer analyst. Always respond with valid JSON only."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=4000,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "You are a financial customer analyst. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=4000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
     content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
     # Extract JSON from response (handle markdown code blocks)
@@ -323,17 +332,26 @@ def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
         kb_context=kb_context,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=4000,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=4000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
     content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
     json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)

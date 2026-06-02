@@ -8,7 +8,7 @@ from openai import OpenAI
 
 from opencc import OpenCC
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 
 _client = OpenAI(
@@ -247,17 +247,27 @@ def generate_report(messages: list[dict], customer_profile: dict | None, user_id
         kb_section=kb_section,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "You are a senior sales analyst. You generate detailed, actionable post-call analysis reports. Always respond in Chinese with valid JSON."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=15000,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "You are a senior sales analyst. You generate detailed, actionable post-call analysis reports. Always respond in Chinese with valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=15000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
 
-    result = _extract_json(response.choices[0].message.content)
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    result = _extract_json(content)
     result["kb_matches"] = kb_matches
     result["generated_at"] = datetime.utcnow().isoformat()
 
@@ -302,14 +312,24 @@ def generate_summary(messages: list[dict], user_id: str = "") -> dict:
 
     prompt = SUMMARY_PROMPT.format(transcript=transcript or "空对话", kb_context=kb_context)
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "You are an AI assistant. Generate concise, accurate summaries in Chinese. Always respond with valid JSON."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=4000,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "You are an AI assistant. Generate concise, accurate summaries in Chinese. Always respond with valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=4000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
 
-    return _extract_json(response.choices[0].message.content)
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)

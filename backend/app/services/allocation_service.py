@@ -2,7 +2,7 @@ import json
 import re
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 from .web_search_service import web_search_finance
 
@@ -85,17 +85,25 @@ def generate_allocation_plan(client_data: dict, products: list[dict], user_id: s
 
     prompt = ALLOCATION_PROMPT.format(client_data=client_json, products=products_json, kb_context=kb_context, web_context=web_context)
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "You are a senior wealth management advisor. Always respond with valid JSON only."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=8000,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "You are a senior wealth management advisor. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=8000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
     content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
     json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)

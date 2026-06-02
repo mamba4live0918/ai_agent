@@ -1,7 +1,7 @@
 import re
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .embedding_service import retrieve_from_chroma, retrieve_hybrid
 
 _client = OpenAI(
@@ -126,17 +126,26 @@ def query_llm(question: str, context: str, mode: str = "flexible", conversation_
 
     sys_content = "你是 SalesMate，一位严谨的知识库问答助手。必须严格基于文档回答。" if mode == "precise" else "你是 SalesMate，一位资深销售顾问助手。你说话自然、专业、像一位值得信赖的同事。"
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": sys_content},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": sys_content},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     answer = response.choices[0].message.content
+    if answer is None or answer.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
     answer = re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL).strip()
 
     history.append((question, answer))

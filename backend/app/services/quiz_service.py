@@ -3,7 +3,7 @@ import re
 import uuid
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 
 _client = OpenAI(
@@ -184,17 +184,25 @@ def generate_questions(
         type_distribution=type_distribution,
     ) + token_hint
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "你是一位资深销售培训教练，擅长设计销售场景应用题来检验学员的技能掌握程度。你需要创建真实的销售情境，测试学员能否运用话术、DISC性格分析、拒绝处理等技巧。你总是严格按照要求的 JSON 格式输出。"},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.7,
-        max_tokens=16384,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "你是一位资深销售培训教练，擅长设计销售场景应用题来检验学员的技能掌握程度。你需要创建真实的销售情境，测试学员能否运用话术、DISC性格分析、拒绝处理等技巧。你总是严格按照要求的 JSON 格式输出。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=16384,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     raw = response.choices[0].message.content or ""
+    if raw.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
     cleaned = _clean_llm_json(raw)
 
     try:
@@ -251,17 +259,25 @@ def grade_short_answer(stem: str, correct_answer: str, user_answer: str) -> dict
         user_answer=user_answer,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": "你是一位专业的教育评估师，严格按照 JSON 格式输出评分结果。"},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=512,
-    )
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": "你是一位专业的教育评估师，严格按照 JSON 格式输出评分结果。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=512,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
 
     raw = response.choices[0].message.content or ""
+    if raw.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
     cleaned = _clean_llm_json(raw)
 
     try:

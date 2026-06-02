@@ -2,7 +2,7 @@ import json
 import re
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 
 _client = OpenAI(
@@ -65,13 +65,24 @@ def generate_briefing(persona: dict, scenario: str, user_id: str) -> dict:
 
     prompt = BRIEFING_PROMPT.format(persona=persona_text, scenario=scenario_display, kb_context=kb_context)
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[{"role": "system", "content": "Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=2000,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "system", "content": "Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)
 
 
 # ──────────────────────────── Customer Agent ────────────────────────────
@@ -154,13 +165,24 @@ def simulate_customer(persona: dict, scenario: str, scenario_context: str, histo
         user_message=user_message,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[{"role": "system", "content": "You are a real customer in a sales simulation. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
-        temperature=0.7,
-        max_tokens=1000,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "system", "content": "You are a real customer in a sales simulation. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)
 
 
 # ──────────────────────────── Coach Agent ────────────────────────────
@@ -232,13 +254,24 @@ def simulate_coach(persona: dict, scenario: str, history_text: str, user_message
         customer_reply=customer_reply,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[{"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=1500,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1500,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)
 
 
 # ──────────────────────────── Quick Reply Suggestions ────────────────────────────
@@ -289,13 +322,24 @@ def generate_quick_replies(persona: dict, scenario: str, history_text: str, last
         last_customer_message=last_customer_message,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[{"role": "system", "content": "Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=500,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "system", "content": "Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=500,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)
 
 
 # ──────────────────────────── Review Generation ────────────────────────────
@@ -364,10 +408,21 @@ def generate_review(persona: dict, scenario: str, full_history: str, user_id: st
         full_history=full_history,
     )
 
-    response = _client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[{"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=4000,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = _client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "system", "content": "You are a senior sales coach. Always respond with valid JSON only."}, {"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=4000,
+        )
+    except Exception as e:
+        raise ServiceError(f"DeepSeek API call failed: {e}")
+
+    if not response.choices or not response.choices[0].message:
+        raise ServiceError("DeepSeek returned an empty response")
+
+    content = response.choices[0].message.content
+    if content is None or content.strip() == "":
+        raise ServiceError("DeepSeek returned empty content")
+
+    return _extract_json(content)

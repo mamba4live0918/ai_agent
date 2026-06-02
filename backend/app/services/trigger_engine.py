@@ -24,7 +24,7 @@ from typing import Optional
 import yaml
 from openai import OpenAI
 
-from ..config import settings
+from ..config import ServiceError, settings
 
 logger = logging.getLogger(__name__)
 
@@ -559,27 +559,26 @@ class CoachPromptBuilder:
                 max_tokens=512,
                 stream=stream,
             )
+        except Exception as e:
+            raise ServiceError(f"DeepSeek API call failed: {e}")
 
-            if stream:
-                accumulated = self._collect_stream(response)
-            else:
-                accumulated = response.choices[0].message.content or ""
+        if stream:
+            accumulated = self._collect_stream(response)
+        else:
+            if not response.choices or not response.choices[0].message:
+                raise ServiceError("DeepSeek returned an empty response")
+            accumulated = response.choices[0].message.content or ""
 
-            logger.info(
-                "Coach tip generated: rule=%s action=%s length=%d",
-                trigger.rule_id,
-                trigger.action,
-                len(accumulated),
-            )
-            return accumulated
+        if not accumulated.strip():
+            raise ServiceError("DeepSeek returned empty content")
 
-        except Exception:
-            logger.exception(
-                "DeepSeek API call failed for trigger rule=%s action=%s",
-                trigger.rule_id,
-                trigger.action,
-            )
-            return ""
+        logger.info(
+            "Coach tip generated: rule=%s action=%s length=%d",
+            trigger.rule_id,
+            trigger.action,
+            len(accumulated),
+        )
+        return accumulated
 
     # -- internals -----------------------------------------------------------
 
@@ -602,8 +601,11 @@ class CoachPromptBuilder:
         """Accumulate tokens from a streaming response."""
         chunks: list[str] = []
         for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                chunks.append(chunk.choices[0].delta.content)
+            if not chunk.choices or not chunk.choices[0].delta:
+                continue
+            content_piece = chunk.choices[0].delta.content or ""
+            if content_piece:
+                chunks.append(content_piece)
         return "".join(chunks)
 
 
