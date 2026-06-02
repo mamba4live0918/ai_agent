@@ -22,6 +22,12 @@ export function useCoachTips(): UseCoachTips {
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const idCounterRef = useRef(0);
 
+  // Refs to read current state inside callbacks without stale closures
+  const activeRef = useRef(activeTips);
+  activeRef.current = activeTips;
+  const pinnedRef = useRef(pinnedTips);
+  pinnedRef.current = pinnedTips;
+
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
@@ -45,53 +51,52 @@ export function useCoachTips(): UseCoachTips {
       isPinned: false,
     };
 
-    setActiveTips((prev) => {
-      // Only keep newest tip visible; move previous active to history
-      if (prev.length > 0) {
-        setHistoryTips((h) => [prev[0], ...h].slice(0, MAX_HISTORY));
-        // Clear old timer
-        const oldTimer = timersRef.current.get(prev[0].id);
-        if (oldTimer) {
-          clearTimeout(oldTimer);
-          timersRef.current.delete(prev[0].id);
-        }
+    // Move previous active tip to history (read from ref, not inside updater)
+    const prevActive = activeRef.current;
+    if (prevActive.length > 0) {
+      const old = prevActive[0];
+      setHistoryTips((h) => [old, ...h].slice(0, MAX_HISTORY));
+      const oldTimer = timersRef.current.get(old.id);
+      if (oldTimer) {
+        clearTimeout(oldTimer);
+        timersRef.current.delete(old.id);
       }
-      return [tip];
-    });
+    }
+
+    setActiveTips([tip]);
 
     // Schedule auto-dismiss
     const timer = setTimeout(() => {
       setActiveTips((prev) => prev.filter((t) => t.id !== id));
-      setHistoryTips((h) => [{ ...tip, isPinned: false }, ...h].slice(0, MAX_HISTORY));
+      setHistoryTips((h) => [tip, ...h].slice(0, MAX_HISTORY));
       timersRef.current.delete(id);
     }, AUTO_DISMISS_MS);
     timersRef.current.set(id, timer);
   }, []);
 
   const pinTip = useCallback((id: string) => {
-    setActiveTips((prev) => {
-      const found = prev.find((t) => t.id === id);
-      if (found) {
-        // Cancel timer
-        const timer = timersRef.current.get(id);
-        if (timer) {
-          clearTimeout(timer);
-          timersRef.current.delete(id);
-        }
-        const pinned = { ...found, isPinned: true };
-        setPinnedTips((pt) => [pinned, ...pt].slice(0, MAX_HISTORY));
-        return prev.filter((t) => t.id !== id);
+    // Check if this tip is currently active
+    const active = activeRef.current;
+    const found = active.find((t) => t.id === id);
+    if (found) {
+      // Pin: move from active to pinned, cancel timer
+      const timer = timersRef.current.get(id);
+      if (timer) {
+        clearTimeout(timer);
+        timersRef.current.delete(id);
       }
-      // Check pinnedTips (unpin)
-      setPinnedTips((pt) => {
-        const pf = pt.find((t) => t.id === id);
-        if (pf) {
-          return pt.filter((t) => t.id !== id);
-        }
-        return pt;
-      });
-      return prev;
-    });
+      setActiveTips((prev) => prev.filter((t) => t.id !== id));
+      setPinnedTips((pt) => [{ ...found, isPinned: true }, ...pt].slice(0, MAX_HISTORY));
+      return;
+    }
+
+    // Check if already pinned → unpin: move to history
+    const pinned = pinnedRef.current;
+    const pf = pinned.find((t) => t.id === id);
+    if (pf) {
+      setPinnedTips((prev) => prev.filter((t) => t.id !== id));
+      setHistoryTips((h) => [{ ...pf, isPinned: false }, ...h].slice(0, MAX_HISTORY));
+    }
   }, []);
 
   const dismissTip = useCallback((id: string) => {
@@ -101,13 +106,21 @@ export function useCoachTips(): UseCoachTips {
       clearTimeout(timer);
       timersRef.current.delete(id);
     }
-    setActiveTips((prev) => {
-      const found = prev.find((t) => t.id === id);
-      if (found) {
-        setHistoryTips((h) => [{ ...found, isPinned: false }, ...h].slice(0, MAX_HISTORY));
-      }
-      return prev.filter((t) => t.id !== id);
-    });
+
+    // Remove from active (read from ref)
+    const active = activeRef.current;
+    const foundActive = active.find((t) => t.id === id);
+    if (foundActive) {
+      setHistoryTips((h) => [{ ...foundActive, isPinned: false }, ...h].slice(0, MAX_HISTORY));
+    }
+    setActiveTips((prev) => prev.filter((t) => t.id !== id));
+
+    // Remove from pinned
+    const pinned = pinnedRef.current;
+    const foundPinned = pinned.find((t) => t.id === id);
+    if (foundPinned) {
+      setHistoryTips((h) => [{ ...foundPinned, isPinned: false }, ...h].slice(0, MAX_HISTORY));
+    }
     setPinnedTips((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
