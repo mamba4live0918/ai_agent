@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import io
 import logging
-import tempfile
 import wave
 from dataclasses import dataclass
 from typing import Optional
@@ -521,27 +520,6 @@ class ASRProcessor:
                 confidence=0.0,
             )
 
-    @staticmethod
-    def _resample_wav(wav_bytes: bytes, src_rate: int, dst_rate: int) -> bytes:
-        """Resample a WAV container from *src_rate* to *dst_rate* using torchaudio."""
-        try:
-            import torchaudio
-            import torchaudio.functional as F
-
-            with io.BytesIO(wav_bytes) as buf:
-                waveform, sr = torchaudio.load(buf)
-            if sr != src_rate:
-                waveform = F.resample(waveform, sr, dst_rate)
-            else:
-                waveform = F.resample(waveform, src_rate, dst_rate)
-            out_buf = io.BytesIO()
-            torchaudio.save(out_buf, waveform, dst_rate, format="wav")
-            return out_buf.getvalue()
-        except Exception:
-            logger.warning("torchaudio resample failed for WAV; passing through")
-            return wav_bytes
-
-
 # ---------------------------------------------------------------------------
 # Pyannote secondary VAD (false-positive filter)
 # ---------------------------------------------------------------------------
@@ -728,69 +706,10 @@ class StreamingTranscriber:
         return self._vad.total_seconds
 
     def get_speaker_names(self) -> dict[str, str]:
-        """Return the current speaker ID → role name mapping.
+        """Return the current speaker ID -> role name mapping.
 
         Returns an empty dict if speaker clustering is disabled.
         """
         if self._speaker_clustering is not None:
             return self._speaker_clustering.assign_speaker_roles()
         return {}
-
-    def transcribe_file(
-        self, file_path: str, chunk_duration_s: float = 0.5
-    ) -> list[ASRSegment]:
-        """Convenience: transcribe an entire audio file by streaming it
-        through the pipeline in *chunk_duration_s*-second chunks.
-
-        Parameters
-        ----------
-        file_path : str
-            Path to a WAV file (16-bit PCM mono, any sample rate).
-        chunk_duration_s : float
-            Duration of each streaming chunk in seconds.
-
-        Returns
-        -------
-        list[ASRSegment]
-        """
-        import wave as wav_mod
-
-        self.reset()
-
-        with wav_mod.open(file_path, "rb") as wf:
-            file_rate = wf.getframerate()
-            results: list[ASRSegment] = []
-
-            chunk_frames = int(file_rate * chunk_duration_s)
-            while True:
-                data = wf.readframes(chunk_frames)
-                if not data:
-                    break
-
-                # Resample to engine rate if needed
-                if file_rate != self.sample_rate:
-                    data = self._resample_pcm(data, file_rate, self.sample_rate)
-
-                results.extend(self.feed_chunk(data))
-
-        return results
-
-    @staticmethod
-    def _resample_pcm(pcm_bytes: bytes, src_rate: int, dst_rate: int) -> bytes:
-        """Resample raw PCM 16-bit mono bytes."""
-        if not pcm_bytes or src_rate == dst_rate:
-            return pcm_bytes
-        samples = _pcm_to_float32(pcm_bytes)
-        try:
-            import torchaudio.functional as F
-
-            t = torch.from_numpy(samples).unsqueeze(0)
-            resampled = F.resample(t, src_rate, dst_rate)
-            return _float32_to_pcm(resampled.squeeze(0).numpy())
-        except Exception:
-            # Crude linear interpolation fallback
-            ratio = dst_rate / src_rate
-            out_len = max(1, int(len(samples) * ratio))
-            indices = np.linspace(0, len(samples) - 1, out_len)
-            resampled = np.interp(indices, np.arange(len(samples)), samples).astype(np.float32)
-            return _float32_to_pcm(resampled)

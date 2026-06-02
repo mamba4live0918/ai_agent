@@ -1,20 +1,10 @@
 import uuid
-import enum
 from datetime import datetime
 from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from ..database import Base
-
-
-class ProductType(str, enum.Enum):
-    insurance = "保险"
-    fund = "基金"
-    wealth = "理财"
-    trust = "信托"
-    structured = "结构化"
-    other = "其他"
 
 
 class Product(Base):

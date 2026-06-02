@@ -17,7 +17,7 @@ from typing import Optional
 
 import numpy as np
 
-from ..config import ServiceError, settings
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,6 @@ def _pcm_bytes_to_waveform(audio_bytes: bytes, sample_rate: int):
     sample_rate : int
         The sample rate (passed through for convenience).
     """
-    import torch
     import torchaudio
 
     # Wrap raw PCM in a WAV container so torchaudio can load it
@@ -461,20 +460,7 @@ class OnlineSpeakerClustering:
         logger.debug("Speaker roles assigned: %s", role_map)
         return role_map
 
-    def get_speaker_name(self, speaker_id: str) -> str:
-        """Return the human-readable role name for a speaker ID.
-
-        If no clusters exist yet, returns the raw *speaker_id*.
-        """
-        role_map = self.assign_speaker_roles()
-        return role_map.get(speaker_id, speaker_id)
-
     # -- internals ------------------------------------------------------------
-
-    @staticmethod
-    def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        """Compute cosine similarity between two vectors."""
-        return _cosine_similarity(a, b)
 
     @staticmethod
     def _update_centroid(cluster: SpeakerCluster, alpha: float = 0.3) -> None:
@@ -504,124 +490,3 @@ class OnlineSpeakerClustering:
         if norm > 0:
             cluster.centroid = cluster.centroid / norm
 
-
-# ---------------------------------------------------------------------------
-# OverlapDetector
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class OverlapSegment:
-    """A region where two or more speakers overlap."""
-
-    start: float
-    end: float
-
-
-class OverlapDetector:
-    """Detect overlapping speech regions from recent VAD segments.
-
-    An overlap is flagged when two segments overlap by more than 50% of
-    the shorter segment's duration AND the overlapping region is at least
-    2 seconds long.
-
-    Parameters
-    ----------
-    min_overlap_ratio : float
-        Minimum overlap ratio (0-1) relative to the shorter segment's duration.
-        Default 0.5 (50%).
-    min_overlap_duration : float
-        Minimum overlap duration in seconds. Default 2.0.
-    """
-
-    def __init__(
-        self,
-        min_overlap_ratio: float = 0.5,
-        min_overlap_duration: float = 2.0,
-    ):
-        self._min_overlap_ratio = min_overlap_ratio
-        self._min_overlap_duration = min_overlap_duration
-
-    def detect(self, segments: list[dict]) -> list[OverlapSegment]:
-        """Detect overlapping speech regions.
-
-        Parameters
-        ----------
-        segments : list[dict]
-            Each dict must have keys: ``start`` (float), ``end`` (float),
-            and optionally ``speaker`` (str).  Segments with the same speaker
-            are not considered as overlapping.
-
-        Returns
-        -------
-        list[OverlapSegment]
-            Sorted by start time, merged where adjacent overlaps touch.
-        """
-        if len(segments) < 2:
-            return []
-
-        # Sort by start time
-        sorted_segs = sorted(segments, key=lambda s: (s["start"], s["end"]))
-
-        overlaps: list[OverlapSegment] = []
-
-        # Compare every pair — O(n^2) is fine for small n (VAD windows are
-        # typically <20 segments in a 30 s window)
-        n = len(sorted_segs)
-        for i in range(n):
-            si = sorted_segs[i]
-            for j in range(i + 1, n):
-                sj = sorted_segs[j]
-
-                # Skip same-speaker segments
-                if si.get("speaker") is not None and sj.get("speaker") is not None:
-                    if si["speaker"] == sj["speaker"]:
-                        continue
-
-                # Compute overlapping region
-                overlap_start = max(si["start"], sj["start"])
-                overlap_end = min(si["end"], sj["end"])
-                overlap_duration = overlap_end - overlap_start
-
-                if overlap_duration <= 0:
-                    continue
-
-                # Compute overlap ratio relative to the shorter segment
-                si_dur = si["end"] - si["start"]
-                sj_dur = sj["end"] - sj["start"]
-                shorter_dur = min(si_dur, sj_dur)
-
-                if shorter_dur <= 0:
-                    continue
-
-                overlap_ratio = overlap_duration / shorter_dur
-
-                if (
-                    overlap_ratio >= self._min_overlap_ratio
-                    and overlap_duration >= self._min_overlap_duration
-                ):
-                    overlaps.append(
-                        OverlapSegment(start=overlap_start, end=overlap_end)
-                    )
-
-        # Merge overlapping/adjacent overlap regions
-        return self._merge_overlaps(overlaps)
-
-    @staticmethod
-    def _merge_overlaps(overlaps: list[OverlapSegment]) -> list[OverlapSegment]:
-        """Merge overlapping or adjacent OverlapSegments into contiguous regions."""
-        if not overlaps:
-            return []
-
-        sorted_ov = sorted(overlaps, key=lambda o: o.start)
-        merged: list[OverlapSegment] = [sorted_ov[0]]
-
-        for current in sorted_ov[1:]:
-            last = merged[-1]
-            if current.start <= last.end:
-                # Overlapping or adjacent — merge
-                last.end = max(last.end, current.end)
-            else:
-                merged.append(current)
-
-        return merged

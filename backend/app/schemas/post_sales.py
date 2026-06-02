@@ -55,17 +55,3 @@ class SessionDetailResponse(SessionResponse):
     report: dict | None = None
 
 
-# --- Report ---
-class ReportResponse(BaseModel):
-    id: uuid.UUID
-    session_id: uuid.UUID
-    scores: dict
-    summary: str
-    sentiment_trajectory: list | None = None
-    key_moments: list | None = None
-    capability_radar: dict | None = None
-    kb_matches: list | None = None
-    deal_probability: dict | None = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}

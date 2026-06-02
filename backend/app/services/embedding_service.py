@@ -1,6 +1,4 @@
 import os
-import json
-import shutil
 import jieba
 from openai import OpenAI
 from rank_bm25 import BM25Okapi
@@ -64,15 +62,6 @@ _embedding_function = JinaEmbeddings(
     model=settings.embed_model,
     base_url=settings.jina_base_url,
 )
-
-
-def get_embedding_function():
-    return _embedding_function
-
-
-def reset_chroma():
-    if os.path.exists(settings.chroma_db_dir):
-        shutil.rmtree(settings.chroma_db_dir)
 
 
 def add_to_chroma(chunks: list[LCDocument]):

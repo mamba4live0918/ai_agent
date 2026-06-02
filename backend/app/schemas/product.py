@@ -17,10 +17,6 @@ class ProductCreate(BaseModel):
     fund_code: Optional[str] = None
 
 
-class ProductBatchImport(BaseModel):
-    products: list[ProductCreate]
-
-
 class ProductResponse(BaseModel):
     id: uuid.UUID
     name: str
