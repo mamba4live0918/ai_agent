@@ -37,6 +37,15 @@ electron/
 # Superpowers plugin
 .superpowers/
 
+# PDF cache
+.pdf_cache/
+
+# Graphify output
+graphify-out/
+
+# Category icons (uploaded)
+backend/category_icons/
+
 # Temporary files
 *.tmp
 goal_text.txt

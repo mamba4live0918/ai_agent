@@ -11,23 +11,39 @@ _client = OpenAI(
     base_url=settings.deepseek_base_url,
 )
 
-GENERATION_PROMPT = """你是一位资深的教育评估专家。请根据以下知识库内容，生成 {question_count} 道练习题。
+GENERATION_PROMPT = """你是一位资深销售培训教练，擅长通过场景化试题评估销售人员对技巧的掌握程度。
+
+请根据以下培训资料，生成 {question_count} 道**销售场景应用题**，用于检测销售人员培训后是否真正掌握了所学技巧。
 
 {context}
 
-题目要求：
+**核心出题原则：**
+- 你不是在考"记不记得住"，而是在考"会不会用"
+- 每道题必须是真实的销售场景，让答题者代入销售角色做判断
+- 题目考察的是：话术选择、客户类型判断、应对策略、沟通技巧、DISC性格分析、拒绝处理
+
+**题型要求：**
 - 题目类型分布：{type_distribution}
-- 每道题必须基于上述知识库内容，不能凭空编造
-- 选择题：4个选项（A/B/C/D），只有一个正确答案，干扰项要有迷惑性
-- 简答题：答案要具体，有明确的评分要点
-- 题目难度适中，考察对知识库内容的理解和应用
-- 题目之间尽量覆盖不同方面的知识点
+- 选择题：给出一个销售场景 + 4个应对话术/策略选项（A/B/C/D），只有一个最优答案，其他选项要是"看起来有道理但实际不对"的典型错误
+- 简答题：给出一个具体销售困境，要求学员写出应对策略和话术
+- 题目难度适中、实用性强，贴近一线销售实际工作
+- 题目之间覆盖不同类型的销售场景（初次接触、异议处理、价格谈判、促成成交、客户拒绝等）
+
+**选择题出题模板（优先使用）：**
+1. 场景应对型："客户说'我回去和老婆商量一下'，根据DISC性格分析，如果这位客户是S型（稳健型），以下哪种回应最有效？"
+2. 话术评价型："面对价格异议，以下四段话术中哪一段最符合'先认同再转移'的沟通策略？"
+3. 策略判断型："客户连续三次说'太贵了'，以下分析正确的是？"
+4. 拒绝分类型："根据培训中的6型拒绝分析，客户说'你们的产品不如XX公司的'属于哪种拒绝类型？应如何处理？"
+
+**简答题出题模板（优先使用）：**
+1. 场景应对型："客户是DISC中的D型（支配型），在第一次电话接触时就表现得很强势，要求你直接报最低价。请写出你的应对策略和核心话术（至少3个要点）。"
+2. 策略设计型："客户表示'最近资金紧张，过两个月再说'。请用培训中拒绝处理框架，设计一套完整的跟进方案。"
 
 **答案解析要求（重要）：**
-- 每道题的 explanation 必须详细，至少 3-4 句话
-- 选择题：逐项分析为什么选这个答案，说明每个干扰项为什么错误，引用知识库原文作为依据
-- 简答题：列出完整的评分要点（至少 3 个），每个要点说明其分值和判断标准，给出满分回答范例
-- 所有解析必须引用知识库原文片段作为支撑
+- 每道题的 explanation 必须详细，说明为什么这是最优解
+- 选择题：逐项分析每个选项，引用培训资料中的方法论作为判断依据，说明最优选项为什么正确、干扰项为什么是常见错误
+- 简答题：列出完整评分要点（至少3个），每个要点给出判断标准，提供满分回答范例
+- 解析中引用知识库原文作为理论支撑
 
 请严格按照以下 JSON 数组格式输出，不要输出任何其他内容：
 
@@ -35,17 +51,17 @@ GENERATION_PROMPT = """你是一位资深的教育评估专家。请根据以下
 [
   {{
     "type": "choice",
-    "stem": "题目题干",
+    "stem": "题目题干（必须是具体销售场景）",
     "options": {{"A": "选项A", "B": "选项B", "C": "选项C", "D": "选项D"}},
     "correct_answer": "A",
-    "explanation": "正确答案是A。解析：（1）根据知识库原文'...'，A选项正确反映了...；（2）B选项错误，因为...；（3）C选项与原文'...'矛盾；（4）D选项混淆了...的概念。因此选A。",
+    "explanation": "正确答案是A。逐项分析：（1）A选项正确，因为根据培训中的XX原则...；（2）B是常见错误，很多销售会...但实际上...；（3）C的问题在于...；（4）D忽略了客户的...。",
     "kb_reference": {{"title": "来源文档名", "preview": "相关原文片段"}}
   }},
   {{
     "type": "short_answer",
-    "stem": "题目题干",
-    "correct_answer": "参考答案：要点1、要点2、要点3...（完整详细）",
-    "explanation": "评分标准：（1）要点1（x分）：需包含...才算正确；（2）要点2（x分）：...；（3）要点3（x分）：...。满分回答范例：...",
+    "stem": "题目题干（必须是具体销售困境）",
+    "correct_answer": "应对策略：\n1. 要点一（具体话术和理由）\n2. 要点二（具体话术和理由）\n3. 要点三（具体话术和理由）",
+    "explanation": "评分标准：（1）要点1（3分）：需包含XX策略/话术，体现对客户心理的把握；（2）要点2（3分）：需运用XX方法论；（3）要点3（4分）：需展示完整的沟通闭环。满分范例：...",
     "kb_reference": {{"title": "来源文档名", "preview": "相关原文片段"}}
   }}
 ]
@@ -99,35 +115,45 @@ def generate_questions(
     import os
     from ..models.knowledge import Category, Document
 
-    # Build search query and retrieve context
-    search_query = "销售知识 综合"
+    # Build search query — focus on sales techniques, scripts, objection handling, DISC
+    search_queries = [
+        "销售技巧 话术 客户沟通 应对策略",
+        "异议处理 价格谈判 促成成交 拒绝应对",
+        "DISC性格分析 客户分类 沟通策略",
+        "售前准备 客户需求挖掘 资产配置",
+    ]
     doc_titles: list[str] = []
     doc_filenames: list[str] | None = None
 
     if document_ids:
-        # Document-level: fetch documents from DB, use titles for search
         docs = db_session.query(Document).filter(Document.id.in_(document_ids)).all()
         if docs:
             doc_titles = [d.title for d in docs]
             doc_filenames = [os.path.basename(d.file_path) for d in docs]
-            search_query = " ".join(doc_titles)
     elif category_id:
         cat = db_session.query(Category).filter(Category.id == category_id).first()
         if cat:
-            search_query = cat.name
+            search_queries = [cat.name]
 
-    # Retrieve KB context — filter by filenames when specific docs are selected
-    context = search_knowledge_base(search_query, user_id=user_id, k=10, filenames=doc_filenames)
+    # Retrieve KB context — multiple queries for broader coverage of sales skills
+    all_contexts: list[str] = []
+    seen = set()
+    for sq in search_queries:
+        part = search_knowledge_base(sq, user_id=user_id, k=5, filenames=doc_filenames)
+        if part.strip() and part.strip() not in seen:
+            seen.add(part.strip())
+            all_contexts.append(part.strip())
+    context = "\n\n---\n\n".join(all_contexts) if all_contexts else ""
     if not context.strip():
-        context = "（知识库为空，请基于通用销售知识出题）"
+        context = "（知识库为空，请基于通用销售技巧和DISC性格沟通理论出题）"
 
-    # Emphasize scope restriction in prompt
+    # Emphasize scope restriction and skill-assessment purpose in prompt
     if doc_titles:
         doc_list = "\n".join(f"- {t}" for t in doc_titles)
         context = (
-            f"【重要：出题范围严格限定以下文档，不得超出此范围】\n"
+            f"【出题范围：以下培训文档】\n"
             f"{doc_list}\n\n"
-            f"以下是上述文档中检索到的相关内容：\n{context}"
+            f"以下是文档中检索到的销售技巧相关内容：\n{context}"
         )
 
     # Build type distribution string with specific counts
@@ -147,20 +173,25 @@ def generate_questions(
     else:
         type_distribution = f"混合出题，包含{'和'.join(type_labels.get(t, t) for t in question_types)}"
 
+    # For large question sets, add token-saving instruction
+    token_hint = ""
+    if question_count > 10:
+        token_hint = "\n**注意：题目数量较多，每道题的 explanation 控制在 2-3 句话即可，简答题的评分要点 2-3 个即可。优先保证题目质量而非解析长度。**"
+
     prompt = GENERATION_PROMPT.format(
         question_count=question_count,
         context=context,
         type_distribution=type_distribution,
-    )
+    ) + token_hint
 
     response = _client.chat.completions.create(
         model=settings.llm_model,
         messages=[
-            {"role": "system", "content": "你是一位资深的教育评估专家，擅长根据学习材料设计高质量的练习题。你总是严格按照要求的 JSON 格式输出。"},
+            {"role": "system", "content": "你是一位资深销售培训教练，擅长设计销售场景应用题来检验学员的技能掌握程度。你需要创建真实的销售情境，测试学员能否运用话术、DISC性格分析、拒绝处理等技巧。你总是严格按照要求的 JSON 格式输出。"},
             {"role": "user", "content": prompt},
         ],
         temperature=0.7,
-        max_tokens=4096,
+        max_tokens=16384,
     )
 
     raw = response.choices[0].message.content or ""
@@ -172,12 +203,15 @@ def generate_questions(
         # Fallback: try to find JSON array in the text
         m = re.search(r"\[[\s\S]*\]", cleaned)
         if m:
-            questions = json.loads(m.group(0))
+            try:
+                questions = json.loads(m.group(0))
+            except json.JSONDecodeError:
+                raise ValueError(f"LLM返回了无效JSON，最后200字符: ...{raw[-200:]}")
         else:
-            raise ValueError(f"Failed to parse LLM response as JSON: {raw[:500]}")
+            raise ValueError(f"LLM返回中没有找到JSON数组，最后200字符: ...{raw[-200:]}")
 
     if not isinstance(questions, list):
-        raise ValueError(f"LLM did not return a JSON array: {raw[:500]}")
+        raise ValueError(f"LLM没有返回JSON数组，前500字符: {raw[:500]}")
 
     # Validate and fill defaults
     result = []

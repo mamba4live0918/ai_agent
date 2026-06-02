@@ -1,13 +1,37 @@
 import os
+import subprocess
 import pandas as pd
 from langchain_community.document_loaders import (
     PyMuPDFLoader,
     TextLoader,
     Docx2txtLoader,
-    UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
 )
 from langchain_core.documents import Document as LCDocument
+from pptx import Presentation
+
+
+def _load_pptx(filepath: str) -> list:
+    """Load PPTX using python-pptx (no unstructured dependency)."""
+    prs = Presentation(filepath)
+    filename = os.path.basename(filepath)
+    docs = []
+    full_text = []
+    for slide_num, slide in enumerate(prs.slides, 1):
+        slide_texts = []
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    t = para.text.strip()
+                    if t:
+                        slide_texts.append(t)
+        if slide_texts:
+            text = f"Slide {slide_num}:\n" + "\n".join(slide_texts)
+            docs.append(LCDocument(page_content=text, metadata={"filename": filename, "slide": slide_num}))
+            full_text.append(text)
+    if not docs:
+        docs.append(LCDocument(page_content="(no text content)", metadata={"filename": filename}))
+    return docs
 
 
 EXTENSION_LOADERS = {
@@ -16,8 +40,8 @@ EXTENSION_LOADERS = {
     ".doc": UnstructuredWordDocumentLoader,
     ".docx": Docx2txtLoader,
     ".md": TextLoader,
-    ".ppt": UnstructuredPowerPointLoader,
-    ".pptx": UnstructuredPowerPointLoader,
+    ".ppt": None,   # legacy .ppt not supported — will raise
+    ".pptx": None,  # handled via _load_pptx
 }
 
 EXCEL_EXTENSIONS = {".xlsx", ".xls", ".xlsm", ".csv"}
@@ -53,13 +77,20 @@ def load_single_document(filepath: str) -> list:
     if ext in EXCEL_EXTENSIONS:
         return _load_excel(filepath)
 
+    # Handle PPTX via python-pptx (no unstructured dependency)
+    if ext == ".pptx":
+        return _load_pptx(filepath)
+
+    if ext == ".ppt":
+        raise ValueError("Legacy .ppt format is not supported. Please convert to .pptx.")
+
     loader_cls = EXTENSION_LOADERS.get(ext)
     if loader_cls is None:
         raise ValueError(f"Unsupported file type: {ext}")
 
     if ext in (".txt", ".md"):
         loader = loader_cls(filepath, encoding="utf-8")
-    elif ext in (".doc", ".ppt", ".pptx"):
+    elif ext == ".doc":
         loader = loader_cls(filepath, mode="single")
     else:
         loader = loader_cls(filepath)
@@ -82,3 +113,34 @@ def load_document_content(filepath: str) -> str:
     """Load full text content of a document for preview."""
     docs = load_single_document(filepath)
     return "\n\n".join(doc.page_content for doc in docs)
+
+
+def convert_to_pdf(filepath: str) -> str | None:
+    """Convert PPTX/DOCX to PDF via LibreOffice headless. Returns PDF path or None."""
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext not in (".pptx", ".ppt", ".docx", ".doc"):
+        return None
+    out_dir = os.path.join(os.path.dirname(filepath), ".pdf_cache")
+    os.makedirs(out_dir, exist_ok=True)
+    pdf_name = os.path.splitext(os.path.basename(filepath))[0] + ".pdf"
+    pdf_path = os.path.join(out_dir, pdf_name)
+    if os.path.exists(pdf_path):
+        return pdf_path
+    try:
+        soffice = os.environ.get("SOFFICE_PATH", "soffice")
+        if os.name == "nt" and soffice == "soffice":
+            for base in [os.environ.get("ProgramFiles", "C:/Program Files"), os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")]:
+                path = os.path.join(base, "LibreOffice/program/soffice.exe")
+                if os.path.exists(path):
+                    soffice = path
+                    break
+        subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf", "--outdir", out_dir, filepath],
+            check=True, capture_output=True, timeout=120,
+            env={**os.environ, "HOME": os.path.expanduser("~")},
+        )
+        if os.path.exists(pdf_path):
+            return pdf_path
+    except Exception:
+        pass
+    return None

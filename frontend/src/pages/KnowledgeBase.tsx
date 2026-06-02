@@ -192,13 +192,14 @@ export default function KnowledgeBase() {
     closePreview();
     setPreviewId(doc.id);
 
-    if (doc.file_type.toLowerCase() === 'pdf') {
+    const previewAsPdf = ['pdf', 'ppt', 'pptx'].includes(doc.file_type.toLowerCase());
+    if (previewAsPdf) {
       setPreviewLoading(true);
       try {
         const url = await getDocumentBlobUrl(doc.id);
         setPdfPreviewUrl(url);
       } catch {
-        setPreviewError('PDF 加载失败');
+        setPreviewError('文档加载失败');
       } finally {
         setPreviewLoading(false);
       }

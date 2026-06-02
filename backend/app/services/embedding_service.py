@@ -10,6 +10,7 @@ from langchain_core.documents import Document as LCDocument
 from langchain_core.embeddings import Embeddings
 
 from ..config import settings
+from httpx import Timeout
 
 
 
@@ -24,7 +25,7 @@ class JinaEmbeddings(Embeddings):
     """Jina AI embedding function using OpenAI-compatible API."""
 
     def __init__(self, api_key: str, model: str, base_url: str):
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        self._client = OpenAI(api_key=api_key, base_url=base_url, timeout=Timeout(60.0, connect=10.0))
         self._model = model
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:

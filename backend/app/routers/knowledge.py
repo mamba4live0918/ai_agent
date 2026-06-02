@@ -24,7 +24,7 @@ from ..schemas.knowledge import (
 )
 from ..services.embedding_service import index_document, delete_from_chroma
 from ..services.audit_service import log_action
-from ..utils.document_loader import get_content_preview, load_single_document, load_document_content
+from ..utils.document_loader import get_content_preview, load_single_document, load_document_content, convert_to_pdf
 
 router = APIRouter()
 
@@ -229,12 +229,15 @@ def upload_document(
     logger.info(f"File saved: {raw_name} ({os.path.getsize(file_path)} bytes), starting document loading...")
     try:
         docs = load_single_document(file_path)
-    except Exception as e:
-        logger.exception(f"Document loading failed for {raw_name}")
+        preview = get_content_preview(docs)
+        chunk_count = index_document(file_path, user_id=str(current_user.id))
+    except HTTPException:
         os.remove(file_path)
-        raise HTTPException(status_code=400, detail=f"文档解析失败: {str(e)[:100]}")
-    preview = get_content_preview(docs)
-    chunk_count = index_document(file_path, user_id=str(current_user.id))
+        raise
+    except Exception as e:
+        logger.exception(f"Document processing failed for {raw_name}")
+        os.remove(file_path)
+        raise HTTPException(status_code=400, detail=f"文档处理失败: {str(e)[:100]}")
 
     cat_uuid = uuid.UUID(category_id)
     doc = Document(
@@ -377,6 +380,12 @@ def download_document(doc_id: uuid.UUID, request: Request, token: str | None = Q
     media_type = media_types.get(doc.file_type, "application/octet-stream")
     inline = request.query_params.get("inline", "").lower() == "true"
     if inline:
+        # For PPTX/PPT/DOCX/DOC, convert to PDF for inline preview
+        pdf_path = convert_to_pdf(doc.file_path)
+        if pdf_path:
+            resp = FileResponse(pdf_path, media_type="application/pdf")
+            resp.headers["Content-Disposition"] = "inline"
+            return resp
         resp = FileResponse(doc.file_path, media_type=media_type)
         resp.headers["Content-Disposition"] = "inline"
         return resp

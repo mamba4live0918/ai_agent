@@ -48,8 +48,8 @@ def create_quiz_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if req.question_count < 1 or req.question_count > 20:
-        raise HTTPException(status_code=400, detail="题目数量需在 1-20 之间")
+    if req.question_count < 1 or req.question_count > 40:
+        raise HTTPException(status_code=400, detail="题目数量需在 1-40 之间")
     if not req.question_types:
         raise HTTPException(status_code=400, detail="至少选择一种题目类型")
     for t in req.question_types:

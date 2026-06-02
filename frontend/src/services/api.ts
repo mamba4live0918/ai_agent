@@ -172,7 +172,9 @@ export const uploadDocument = async (file: File, categoryId: string, _onProgress
   });
   if (!res.ok) {
     if (res.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-    throw new Error('Upload failed');
+    let msg = 'Upload failed';
+    try { const body = await res.json(); if (body.detail) msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail); } catch {}
+    throw new Error(msg);
   }
   return res.json();
 };
@@ -358,7 +360,9 @@ export const uploadPostSalesAudio = async (id: string, file: File) => {
   });
   if (!res.ok) {
     if (res.status === 401) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-    throw new Error('Upload failed');
+    let msg = 'Upload failed';
+    try { const body = await res.json(); if (body.detail) msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail); } catch {}
+    throw new Error(msg);
   }
   return res.json() as Promise<import('../types').PostSalesMessage[]>;
 };

@@ -26,7 +26,7 @@ export default function QuizPanel({ documents, categories }: Props) {
   const setCounts = (choice: number, short: number) => {
     if (choice < 0 || short < 0) return;
     const total = choice + short;
-    if (total < 1 || total > 20) return;
+    if (total < 1 || total > 40) return;
     setChoiceCount(choice);
     setShortAnswerCount(short);
   };
@@ -408,7 +408,7 @@ export default function QuizPanel({ documents, categories }: Props) {
           <div>
             <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">题目数量</label>
             <div className="flex gap-2 items-center">
-              {[3, 5, 10, 15].map(n => (
+              {[3, 5, 10, 20, 30].map(n => (
                 <button
                   key={n}
                   onClick={() => distributeTotal(n)}
@@ -424,11 +424,11 @@ export default function QuizPanel({ documents, categories }: Props) {
               <input
                 type="number"
                 min={1}
-                max={20}
-                value={[3, 5, 10, 15].includes(questionCount) ? '' : questionCount}
+                max={40}
+                value={[3, 5, 10, 20, 30].includes(questionCount) ? '' : questionCount}
                 onChange={e => {
                   const v = parseInt(e.target.value, 10);
-                  if (!isNaN(v) && v >= 1 && v <= 20) distributeTotal(v);
+                  if (!isNaN(v) && v >= 1 && v <= 40) distributeTotal(v);
                 }}
                 placeholder="自定义"
                 className="w-[68px] px-2 py-1.5 text-xs text-center rounded-full border border-dashed border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] transition-colors"

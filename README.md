@@ -38,6 +38,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── post_sales.py    # PostSalesSession / PostSalesMessage
 │   │   │   ├── feedback.py      # Feedback (评分 + 评价)
 │   │   │   ├── realtime_session.py  # RealtimeSession / RealtimeSegment / RealtimeCoachEvent
+│   │   │   ├── quiz.py           # QuizSession / QuizQuestion / QuizAnswer
 │   │   │   └── chat.py           # ChatConversation / ChatMessage (对话持久化)
 │   │   ├── schemas/             # Pydantic 请求/响应
 │   │   │   ├── auth.py          # UserRegister, UserLogin, UserResponse, TokenResponse
@@ -56,8 +57,9 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── post_sales.py    # 售后分析（会话 + 音频上传 + 报告生成）
 │   │   │   ├── feedback.py      # 用户反馈（提交/统计/管理员查看）
 │   │   │   ├── groups.py        # 分组管理 CRUD + 成员管理
+│   │   │   ├── quiz.py          # 知识库练习（场景模拟生成 + 自动评分）
 │   │   │   ├── realtime.py      # WebSocket 实时语音陪跑（ASR + 教练 + TTS）
-│   │   │   └── chat.py          # RAG 问答
+│   │   │   └── chat.py          # RAG 问答（精确/灵活双模式）
 │   │   ├── services/
 │   │   │   ├── rag_service.py   # DeepSeek 推理 + 对话管理 + 知识库检索工具
 │   │   │   ├── embedding_service.py  # ChromaDB 索引（分批嵌入，中文友好分割）
@@ -70,7 +72,8 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── speaker_clustering.py # 在线说话人聚类（pyannote embedding）
 │   │   │   ├── trigger_engine.py     # 触发器引擎（YAML 规则 + DeepSeek 教练提示）
 │   │   │   ├── realtime_service.py   # 实时会话归档（bulk persist）
-│   │   │   └── tts_service.py        # edge-tts 语音合成 + 流式输出
+│   │   │   ├── tts_service.py        # edge-tts 语音合成 + 流式输出
+│   │   │   └── quiz_service.py       # 知识库场景模拟练习生成 + 自动评分
 │   │   └── utils/
 │   │       ├── auth.py              # JWT + bcrypt + 认证依赖注入 + 用户/文档过滤
 │   │       └── document_loader.py    # 文档加载 (PDF/DOCX/TXT/MD/PPTX)
@@ -112,6 +115,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── RealtimeTranscript.tsx # 实时转录面板（说话人彩色标签）
 │   │   │   ├── RealtimeCoach.tsx    # 实时教练提示（打字机效果）
 │   │   │   ├── PdfPreview.tsx       # 原生浏览器 PDF 预览弹窗
+│   │   │   ├── QuizPanel.tsx       # 知识库练习面板（选择题+简答题+自动评分）
 │   │   │   ├── TauriTitlebar.tsx    # Windows 桌面应用自定义标题栏
 │   │   │   └── FeedbackForm.tsx     # 反馈表单（星级 + 评价）
 │   │   ├── services/api.ts      # API 调用封装（含上传进度跟踪）
@@ -235,6 +239,15 @@ npm run dev
 | GET | `/api/knowledge/documents/{id}` | 文档详情 |
 | DELETE | `/api/knowledge/documents/{id}` | 删除文档（同步清理 ChromaDB 向量） |
 
+### 知识库练习
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/quiz/generate` | 生成练习（支持选择题+简答题，最多 40 题，基于知识库内容） |
+| GET | `/api/quiz/sessions` | 练习记录列表 |
+| GET | `/api/quiz/sessions/{id}` | 练习详情（含题目 + 答案 + 评分） |
+| POST | `/api/quiz/sessions/{id}/submit` | 提交答案（自动评分+反馈，简答题 AI 评判） |
+| DELETE | `/api/quiz/sessions/{id}` | 删除练习记录 |
+
 ### 客户分析
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -326,12 +339,14 @@ npm run dev
 - 一键导出 CSV 报表（含评分/表达逻辑/专业准确度/情绪情商）
 
 **知识库**
-- 分类浏览（财经法税/沟通技巧/行业知识/销售案例）
+- 分类浏览（财经法税/沟通技巧/行业知识/销售案例），支持无限层级子分类
 - 文档上传自动索引到 ChromaDB（PDF/DOCX/TXT/MD/PPTX），带上传进度条
+- PPT/PPTX 自动转 PDF 浏览器内预览（LibreOffice headless 转换）
+- PDF/DOCX/PPTX 文档支持内联预览（iframe + blob URL）
 - 文档按用户隔离 + 基础共享文档（user_id=NULL）全员可见
-- 全文搜索 + RAG 智能问答（上下文感知，跨文档推理）
-- PDF 文档支持原生浏览器内预览（iframe + blob URL，工具栏/导航面板完整可用）
+- 全文搜索 + RAG 智能问答（精准/灵活双模式切换）
 - 删除文档同步清理 ChromaDB 向量
+- 场景模拟练习：基于知识库自动生成选择题+简答题，AI 自动评分反馈
 
 **知识库优先生成（KB-First）**
 - 所有 AI 生成（客户分析/售前准备/资产配置）调用 LLM 前先检索知识库
