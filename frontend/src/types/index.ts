@@ -552,7 +552,8 @@ export const TRIGGER_CONFIG: Record<string, { icon: string; label: string; color
   objection:            { icon: '⚠️', label: '反对处理', color: '#ffa657' },
   long_silence:         { icon: '🧊', label: '静默提醒', color: '#79c0ff' },
   emotional_shift:      { icon: '🎯', label: '情绪感知', color: '#ff7be1' },
-  multi_party:          { icon: '🎯', label: '情绪感知', color: '#ff7be1' },
+  multi_party:          { icon: '👥', label: '多人讨论', color: '#bc8cff' },
 };
 
-export const DEFAULT_TRIGGER = { icon: '💡', label: '教练提示', color: '#a371f7' };
+export type TriggerConfigValue = { icon: string; label: string; color: string };
+export const DEFAULT_TRIGGER: TriggerConfigValue = { icon: '💡', label: '教练提示', color: '#a371f7' };
