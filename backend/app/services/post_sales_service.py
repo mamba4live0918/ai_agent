@@ -106,18 +106,24 @@ def transcribe_audio(file_path: str) -> list[dict]:
     Returns list of segments: [{"start": float, "end": float, "text": str, "speaker": str}]
     """
     if not shutil.which("ffmpeg"):
-        raise RuntimeError("ffmpeg not found — install ffmpeg to enable audio transcription")
+        raise ServiceError("ffmpeg not found — install ffmpeg to enable audio transcription")
 
     os.makedirs(settings.audio_upload_dir, exist_ok=True)
 
     wav_path = file_path.rsplit(".", 1)[0] + "_16k.wav"
     try:
-        subprocess.run([
+        result = subprocess.run([
             "ffmpeg", "-y", "-i", file_path,
             "-ar", "16000", "-ac", "1", "-f", "wav", wav_path,
-        ], capture_output=True, check=True)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"ffmpeg conversion failed: {e.stderr.decode()}") from e
+        ], capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            raise ServiceError(f"ffmpeg conversion failed: {result.stderr}")
+    except ServiceError:
+        raise
+    except subprocess.TimeoutExpired:
+        raise ServiceError("ffmpeg conversion timed out after 60s")
+    except Exception as e:
+        raise ServiceError(f"ffmpeg conversion failed: {e}")
 
     # Whisper transcription
     try:
@@ -126,9 +132,9 @@ def transcribe_audio(file_path: str) -> list[dict]:
         whisper_segments, _ = model.transcribe(wav_path, beam_size=5)
         segments = [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in whisper_segments]
     except ImportError:
-        raise RuntimeError("faster-whisper not installed — run: pip install faster-whisper")
+        raise ServiceError("faster-whisper not installed — run: pip install faster-whisper")
     except Exception as e:
-        raise RuntimeError(f"Transcription failed: {e}") from e
+        raise ServiceError(f"Transcription failed: {e}")
 
     # Speaker diarization (best-effort)
     diarization = _run_diarization(wav_path)

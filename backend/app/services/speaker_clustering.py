@@ -17,7 +17,7 @@ from typing import Optional
 
 import numpy as np
 
-from ..config import settings
+from ..config import ServiceError, settings
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +205,7 @@ class SpeakerEmbedder:
 
                 return emb
 
-        except Exception:
+        except Exception as e:
             logger.warning(
                 "SpeakerEmbedder: extraction failed, using random embedding",
                 exc_info=True,

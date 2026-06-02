@@ -1,6 +1,8 @@
 import concurrent.futures
 from duckduckgo_search import DDGS
 
+from app.config import ServiceError
+
 
 def web_search_finance(query: str, max_results: int = 3) -> str:
     """Search the web for financial product information via DuckDuckGo.
@@ -15,15 +17,19 @@ def web_search_finance(query: str, max_results: int = 3) -> str:
         try:
             with DDGS() as ddgs:
                 return list(ddgs.text(search_query, max_results=max_results, region="cn-zh"))
-        except Exception:
-            return []
+        except Exception as e:
+            raise ServiceError(f"Web search API failed: {e}")
 
     try:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(_search)
             results = future.result(timeout=8)
-    except Exception:
-        return ""
+    except ServiceError:
+        raise
+    except concurrent.futures.TimeoutError:
+        raise ServiceError("Web search API request timed out after 8s")
+    except Exception as e:
+        raise ServiceError(f"Web search API request failed: {e}")
 
     if not results:
         return ""

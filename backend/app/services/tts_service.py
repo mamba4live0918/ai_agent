@@ -27,6 +27,8 @@ from typing import AsyncIterator, Optional
 
 import edge_tts
 
+from ..config import ServiceError
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -109,13 +111,13 @@ class TTSService:
             chunks: list[bytes] = []
             async for chunk in self.synthesize_stream(text, used_voice):
                 chunks.append(chunk)
+            if not chunks:
+                raise ServiceError("TTS returned no audio data")
             return b"".join(chunks)
-        except Exception:
-            logger.exception(
-                "TTS synthesis failed (voice=%s, text_len=%d)",
-                used_voice, len(text),
-            )
-            return b""
+        except ServiceError:
+            raise
+        except Exception as e:
+            raise ServiceError(f"TTS synthesis failed: {e}")
 
     async def synthesize_stream(
         self,
@@ -149,12 +151,8 @@ class TTSService:
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
                     yield chunk["data"]
-        except Exception:
-            logger.exception(
-                "TTS streaming synthesis failed (voice=%s, text_len=%d)",
-                used_voice, len(text),
-            )
-            # generator exits cleanly — caller receives what was yielded so far
+        except Exception as e:
+            raise ServiceError(f"TTS synthesis failed: {e}")
 
     async def synthesize_base64(
         self,

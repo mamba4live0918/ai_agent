@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from opencc import OpenCC
 
-from ..config import settings
+from ..config import ServiceError, settings
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +483,9 @@ class ASRProcessor:
                 best_of=3,
                 repetition_penalty=1.2,
             )
+            if info is None:
+                raise ServiceError("ASR transcription failed: no info returned")
+
             texts: list[str] = []
             confidences: list[float] = []
             seg_start: float = 0.0
