@@ -1,6 +1,5 @@
 import json
 import re
-import uuid
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base

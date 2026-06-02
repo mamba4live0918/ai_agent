@@ -1,5 +1,4 @@
 import uuid
-import math
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -10,7 +9,7 @@ from ..schemas.group import (
     GroupCreate, GroupUpdate, GroupResponse,
     GroupMemberResponse, GroupListResponse,
 )
-from ..utils.auth import get_current_user, require_admin
+from ..utils.auth import get_current_user
 
 router = APIRouter()
 

@@ -1,5 +1,5 @@
 from ..config import ServiceError, settings
-from .embedding_service import retrieve_from_chroma, retrieve_hybrid
+from .embedding_service import retrieve_hybrid
 from .prompt_templates import clean_llm_content, get_deepseek_client
 
 _client = get_deepseek_client()

@@ -5,7 +5,7 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import settings, check_secret_key
+from .config import check_secret_key
 from .database import engine, Base
 from .routers import knowledge, customer, chat, product, training, auth, instructor, post_sales, feedback, groups, realtime, quiz
 from .middleware.rate_limit import RateLimitMiddleware

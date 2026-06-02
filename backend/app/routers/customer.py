@@ -6,7 +6,6 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from ..database import get_db
 from ..models.customer import Customer

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.user import User
 from ..schemas.auth import UserRegister, UserLogin, UserResponse, TokenResponse, RoleUpdateRequest, UserListResponse
-from ..utils.auth import hash_password, verify_password, create_access_token, get_current_user, require_admin, require_instructor, require_super_admin
+from ..utils.auth import hash_password, verify_password, create_access_token, get_current_user, require_instructor, require_super_admin
 from ..services.audit_service import log_action
 
 router = APIRouter()
