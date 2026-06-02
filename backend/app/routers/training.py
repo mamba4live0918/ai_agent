@@ -280,14 +280,13 @@ def get_quick_replies(session_id: uuid.UUID, db: Session = Depends(get_db), curr
             break
 
     history_text = _format_history(all_messages)
-    result = generate_quick_replies(
+    return generate_quick_replies(
         persona=session.persona,
         scenario=session.scenario,
         history_text=history_text,
         last_customer_message=last_customer,
         user_id=str(current_user.id),
     )
-    return result
 
 
 # ──────────────────────────── POST /sessions/{id}/end ────────────────────────────

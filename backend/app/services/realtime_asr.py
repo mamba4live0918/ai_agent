@@ -192,8 +192,7 @@ class VADProcessor:
 
         # Convert to float32
         chunk = _pcm_to_float32(audio_bytes)
-        chunk_list = chunk.tolist()
-        self._audio_buffer.extend(chunk_list)
+        self._audio_buffer.extend(chunk.tolist())
         self._total_samples_in += len(chunk)
 
         # Resample to VAD rate if needed
@@ -202,8 +201,7 @@ class VADProcessor:
         else:
             vad_chunk = chunk
 
-        vad_list = vad_chunk.tolist()
-        self._vad_buffer.extend(vad_list)
+        self._vad_buffer.extend(vad_chunk.tolist())
 
         completed: list[VADSegment] = []
 
