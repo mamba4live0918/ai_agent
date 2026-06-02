@@ -2,8 +2,35 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { PostSalesSessionDetail, PostSalesMessage, Customer } from '../types';
-import { uploadPostSalesAudio, endPostSalesSession, updatePostSalesSession, getCustomers } from '../services/api';
+import { uploadPostSalesAudio, getPostSalesSession, endPostSalesSession, updatePostSalesSession, getCustomers } from '../services/api';
 import PostSalesReport from './PostSalesReport';
+
+// ─── Audio transcription polling ───
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40; // 2 minutes total
+
+/** CSS for tech-style animations injected once */
+const TECH_KEYFRAMES = `
+@keyframes waveform {
+  0%,100% { height:4px; }
+  25% { height:12px; }
+  50% { height:6px; }
+  75% { height:14px; }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 4px rgba(249,115,22,0.15); }
+  50% { box-shadow: 0 0 12px rgba(249,115,22,0.35); }
+}
+@keyframes status-blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+`;
 
 interface Props {
   session: PostSalesSessionDetail;
@@ -25,6 +52,7 @@ function formatDuration(seconds: number): string {
 export default function PostSalesSession({ session, onSessionUpdated }: Props) {
   const [messages, setMessages] = useState<PostSalesMessage[]>(session.messages || []);
   const [uploading, setUploading] = useState(false);
+  const [pollingTimers, setPollingTimers] = useState<Set<string>>(new Set());
   const [ending, setEnding] = useState(false);
   const [report, setReport] = useState<Record<string, unknown> | null>(session.report as unknown as Record<string, unknown> | null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -186,6 +214,33 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
     setIsRecording(false);
   }, []);
 
+  /** Poll until transcription completes (audio message changes from "transcribing" → "transcribed" or "failed") */
+  const pollTranscription = useCallback((sid: string, attempt = 0) => {
+    if (attempt >= POLL_MAX_ATTEMPTS) {
+      setPollingTimers(prev => { const n = new Set(prev); n.delete(sid); return n; });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const detail = await getPostSalesSession(sid);
+        setMessages(detail.messages);
+        // Check if any audio message is still transcribing
+        const stillTranscribing = detail.messages.some(
+          m => m.content.includes('transcribing...')
+        );
+        if (stillTranscribing) {
+          pollTranscription(sid, attempt + 1);
+        } else {
+          setPollingTimers(prev => { const n = new Set(prev); n.delete(sid); return n; });
+        }
+      } catch {
+        pollTranscription(sid, attempt + 1);
+      }
+    }, POLL_INTERVAL_MS);
+    // Store timer ref for cleanup
+    setPollingTimers(prev => { const n = new Set(prev); n.add(sid); return n; });
+  }, []);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -193,6 +248,8 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
     try {
       const results = await uploadPostSalesAudio(session.id, file);
       setMessages(prev => [...prev, ...results]);
+      // Start polling for transcription completion
+      pollTranscription(session.id);
     } catch (err) { console.error('Audio upload failed:', err); }
     finally {
       setUploading(false);
@@ -375,7 +432,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                 </svg>
                 {uploading ? '上传中...' : '上传录音'}
               </button>
-              <input ref={fileInputRef} type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.flac,.wma,.aiff,.m4b" onChange={handleFileUpload} className="hidden" />
               <button
                 onClick={handleEnd}
                 disabled={ending || messages.length === 0}
@@ -412,16 +469,36 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
             </div>
           </div>
         )}
+        <style>{TECH_KEYFRAMES}</style>
         {messages.map(msg => {
           const roleInfo = ROLE_LABEL[msg.role] || { label: msg.role, color: 'bg-[var(--text-placeholder)]' };
           const isTranscribed = /^【(?:销售|客户|其他[\d]*)】\[[\d.]+s-[\d.]+s\]|^\[[\d.]+s-[\d.]+s\]/.test(msg.content);
-          const isAudio = msg.content.startsWith('[Audio uploaded');
-          // Clean display text: strip speaker tag and timestamp
-          const displayText = isAudio
-            ? msg.content.replace('[Audio uploaded: ', '录音文件: ').replace(']', '')
-            : isTranscribed
-            ? msg.content.replace(/^(?:【.+?】)?\[[\d.]+s-[\d.]+s\]\s*/, '')
-            : msg.content;
+          const isUploaded = msg.content.startsWith('[Uploaded');
+          const isTranscribing = msg.content.includes('transcribing...');
+          const isFailed = msg.content.includes('Transcription failed');
+          const isTranscribedDone = msg.content.startsWith('[Audio transcribed');
+          const isAudio = isUploaded || isTranscribedDone || isFailed;
+
+          // Clean display text
+          let displayText = msg.content;
+          let subtitle = '';
+          if (isTranscribing) {
+            const fname = msg.content.match(/\[Uploaded:\s*(.+?)\s*—/)?.[1] || msg.audio_file || '';
+            displayText = fname || '音频文件';
+            subtitle = '⏳ AI 正在转写...';
+          } else if (isFailed) {
+            const fname = msg.content.match(/\[Uploaded:\s*(.+?)\s*\]/)?.[1] || msg.audio_file || '';
+            displayText = fname || '音频文件';
+            subtitle = '❌ 转写失败';
+          } else if (isTranscribedDone) {
+            displayText = msg.content.replace('[Audio transcribed: ', '').replace(/ — \d+ segments\]$/, '') + ']';
+            subtitle = '✅ 转写完成';
+          } else if (isUploaded) {
+            displayText = msg.content.replace('[Uploaded: ', '').replace(']', '');
+          } else if (isTranscribed) {
+            displayText = msg.content.replace(/^(?:【.+?】)?\[[\d.]+s-[\d.]+s\]\s*/, '');
+          }
+
           return (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'salesperson' ? 'justify-end' : ''}`}>
               {msg.role !== 'salesperson' && (
@@ -432,7 +509,7 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
               <div className={`max-w-[75%] ${msg.role === 'salesperson' ? 'order-[-1]' : ''}`}>
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[10px] text-[var(--text-secondary)]">{roleInfo.label}</span>
-                  {isAudio && (
+                  {isAudio && !isTranscribing && (
                     <svg className="w-3 h-3 text-[var(--accent-orange)]" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
                     </svg>
@@ -446,11 +523,45 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
                 <div className={`px-3 py-2 rounded-lg text-sm leading-relaxed ${
                   msg.role === 'salesperson'
                     ? 'bg-[var(--btn-blue)] text-white rounded-tr-sm'
+                    : isTranscribing
+                    ? 'bg-[var(--bg-tertiary)] border border-[var(--accent-orange)]/50 text-[var(--text-primary)] rounded-tl-sm relative overflow-hidden'
+                    : isFailed
+                    ? 'bg-[var(--bg-tertiary)] border border-[var(--accent-red)]/40 text-[var(--text-primary)] rounded-tl-sm'
                     : isAudio
-                    ? 'bg-[var(--bg-tertiary)] border border-[var(--accent-orange)] text-[var(--text-primary)] rounded-tl-sm'
+                    ? 'bg-[var(--bg-tertiary)] border border-[var(--accent-green)]/30 text-[var(--text-primary)] rounded-tl-sm'
                     : 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-tl-sm'
                 }`}>
-                  {displayText}
+                  {/* Scanning line animation for transcribing state */}
+                  {isTranscribing && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+                      <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--accent-orange)]/60 to-transparent" style={{ animation: 'scanline 1.5s linear infinite' }} />
+                      <div className="absolute inset-0" style={{ animation: 'glow-pulse 2s ease-in-out infinite' }} />
+                    </div>
+                  )}
+                  <div className="relative z-[1]">
+                    <div className="text-xs font-medium text-[var(--text-primary)] truncate">{displayText}</div>
+                    {subtitle && (
+                      <div className={`text-[10px] mt-0.5 flex items-center gap-1.5 ${
+                        isTranscribing ? 'text-[var(--accent-orange)]' :
+                        isFailed ? 'text-[var(--accent-red)]' :
+                        'text-[var(--accent-green)]'
+                      }`}>
+                        {isTranscribing && (
+                          <span className="flex items-end gap-[1.5px] h-3">
+                            {[0,1,2,3,4].map(i => (
+                              <span key={i} className="w-[1.5px] bg-[var(--accent-orange)] rounded-full" style={{
+                                animation: `waveform 0.6s ease-in-out ${i * 0.1}s infinite`,
+                              }} />
+                            ))}
+                          </span>
+                        )}
+                        <span style={isTranscribing ? { animation: 'status-blink 1.5s ease-in-out infinite' } : {}}>{subtitle}</span>
+                        {isTranscribing && (
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent-orange)]" style={{ animation: 'status-blink 0.8s ease-in-out infinite' }} />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <span className="text-[9px] text-[var(--text-placeholder)] mt-0.5 block">
                   {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
@@ -459,23 +570,12 @@ export default function PostSalesSession({ session, onSessionUpdated }: Props) {
             </div>
           );
         })}
-        {messages.length > 0 && !isCompleted && !uploading && (
+        {messages.length > 0 && !isCompleted && (
           <p className="text-[10px] text-[var(--text-placeholder)] text-center pt-2">
             录音将自动转为对话记录，点击「结束通话」生成 AI 分析报告
           </p>
         )}
         </div>
-
-        {/* Uploading overlay */}
-        {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-primary)]/80 z-10">
-            <div className="text-center">
-              <div className="animate-spin w-10 h-10 border-3 border-[var(--accent-blue)] border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-sm text-[var(--text-primary)] font-medium mb-1">正在处理录音</p>
-              <p className="text-xs text-[var(--text-placeholder)]">音频上传中，转录完成后将自动显示对话记录</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* PDF Preview Modal */}

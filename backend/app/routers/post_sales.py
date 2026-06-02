@@ -1,12 +1,13 @@
 import math
 import os
+import threading
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..database import get_db
+from ..database import SessionLocal, get_db
 from ..models.customer import Customer
 from ..models.post_sales import PostSalesSession, PostSalesMessage
 from ..models.user import User
@@ -157,8 +158,48 @@ def add_message(session_id: uuid.UUID, data: AddMessageRequest, db: Session = De
 
 # ──────────────────────────── POST /sessions/{id}/audio ────────────────────────────
 
+def _transcribe_task(file_path: str, audio_msg_id: uuid.UUID, session_id: uuid.UUID):
+    """Run transcription in background, update DB when done."""
+    db = SessionLocal()
+    try:
+        segments = transcribe_audio(file_path)
+        results: list[PostSalesMessage] = []
+        for seg in segments:
+            speaker = seg.get("speaker", "未知")
+            role_map = {"销售": "salesperson", "客户": "customer"}
+            role = role_map.get(speaker, "system")
+            speaker_label = f"【{speaker}】" if speaker not in ("未知",) else ""
+            transcript_msg = PostSalesMessage(
+                session_id=session_id,
+                role=role,
+                content=f"{speaker_label}[{seg['start']:.1f}s-{seg['end']:.1f}s] {seg['text']}".strip(),
+            )
+            db.add(transcript_msg)
+            results.append(transcript_msg)
+
+        # Update audio message status
+        audio_msg = db.query(PostSalesMessage).filter(PostSalesMessage.id == audio_msg_id).first()
+        if audio_msg:
+            audio_msg.content = f"[Audio transcribed: {os.path.basename(file_path)} — {len(segments)} segments]"
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        audio_msg = db.query(PostSalesMessage).filter(PostSalesMessage.id == audio_msg_id).first()
+        if audio_msg:
+            audio_msg.content += f" (Transcription failed: {str(e)[:200]})"
+        db.commit()
+    finally:
+        db.close()
+
+
 @router.post("/sessions/{session_id}/audio", response_model=list[MessageResponse])
-def upload_audio(session_id: uuid.UUID, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def upload_audio(
+    session_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None,
+):
     session = apply_user_filter(db.query(PostSalesSession), PostSalesSession, current_user) \
         .filter(PostSalesSession.id == session_id).first()
     if not session:
@@ -175,43 +216,21 @@ def upload_audio(session_id: uuid.UUID, file: UploadFile = File(...), db: Sessio
     with open(file_path, "wb") as f:
         f.write(file.file.read())
 
-    # Save audio file reference
+    # Save audio file reference — return immediately
     audio_msg = PostSalesMessage(
         session_id=session.id,
         role="system",
-        content=f"[Audio uploaded: {file_name}]",
+        content=f"[Uploaded: {file_name} — transcribing...]",
         audio_file=file_name,
     )
     db.add(audio_msg)
+    db.commit()
+    db.refresh(audio_msg)
 
-    # Attempt transcription
-    try:
-        segments = transcribe_audio(file_path)
-        results = []
-        for seg in segments:
-            speaker = seg.get("speaker", "未知")
-            # Map Chinese speaker labels to message roles
-            role_map = {"销售": "salesperson", "客户": "customer"}
-            role = role_map.get(speaker, "system")
-            speaker_label = f"【{speaker}】" if speaker not in ("未知",) else ""
-            transcript_msg = PostSalesMessage(
-                session_id=session.id,
-                role=role,
-                content=f"{speaker_label}[{seg['start']:.1f}s-{seg['end']:.1f}s] {seg['text']}".strip(),
-            )
-            db.add(transcript_msg)
-            results.append(transcript_msg)
-        db.commit()
-        for r in results:
-            db.refresh(r)
-        db.refresh(audio_msg)
-        return [MessageResponse.model_validate(audio_msg)] + [MessageResponse.model_validate(m) for m in results]
-    except Exception as e:
-        # Save error but don't block — user can still add text messages
-        audio_msg.content += f" (Transcription failed: {str(e)[:200]})"
-        db.commit()
-        db.refresh(audio_msg)
-        return [MessageResponse.model_validate(audio_msg)]
+    # Run transcription in background
+    background_tasks.add_task(_transcribe_task, file_path, audio_msg.id, session.id)
+
+    return [MessageResponse.model_validate(audio_msg)]
 
 
 # ──────────────────────────── POST /sessions/{id}/end ────────────────────────────
