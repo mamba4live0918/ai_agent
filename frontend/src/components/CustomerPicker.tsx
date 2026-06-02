@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Customer } from '../types';
 import { getCustomers } from '../services/api';
 
@@ -93,7 +93,7 @@ export default function CustomerPicker({ selected, onSelect, onClear }: Customer
                   <span className="font-medium">{c.name}</span>
                   {c.ai_profile && (
                     <span className="text-[var(--text-placeholder)] ml-2">
-                      {(c.ai_profile as Record<string, unknown>).disc_type || ''}
+                      {(c.ai_profile as any).disc_type || ''}
                     </span>
                   )}
                 </button>

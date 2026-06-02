@@ -1,4 +1,3 @@
-import React from 'react';
 import type { ConnectionState } from '../hooks/useRealtimeASR';
 
 interface RecordingBarProps {

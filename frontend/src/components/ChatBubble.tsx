@@ -1,5 +1,3 @@
-import React from 'react';
-
 export interface ChatBubbleProps {
   text: string;
   timestamp: number;    // seconds offset in recording

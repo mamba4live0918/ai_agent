@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
 import type { TranscriptSegment } from '../hooks/useRealtimeASR';
 import { useCoachTips } from '../hooks/useCoachTips';
