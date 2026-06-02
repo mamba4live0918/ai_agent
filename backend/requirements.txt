@@ -24,3 +24,6 @@ pyannote.audio>=3.0
 opencc-python-reimplemented==0.1.7
 silero-vad>=6.0
 edge-tts>=6.0
+
+# FunASR benchmark (Chinese-optimized ASR alternative)
+funasr>=1.0
