@@ -1,6 +1,24 @@
+import os
 import secrets
 import warnings
+from pydantic import field_validator, ValidationInfo
 from pydantic_settings import BaseSettings
+
+
+class ServiceError(Exception):
+    """Raised when an external service (LLM, Embedding, etc.) returns an unexpected response."""
+    pass
+
+
+def _require(key: str) -> str:
+    """Return env var value. Raise immediately if unset — fail fast, not silently."""
+    val = os.getenv(key)
+    if not val:
+        raise RuntimeError(
+            f"Required environment variable '{key}' is not set. "
+            f"Add it to your .env file in the backend directory."
+        )
+    return val
 
 
 class Settings(BaseSettings):
@@ -22,6 +40,13 @@ class Settings(BaseSettings):
     asr_model_size: str = "large-v3-turbo"  # faster-whisper model: tiny, small, medium, large-v3-turbo
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
+
+    @field_validator("deepseek_api_key", "jina_api_key")
+    @classmethod
+    def check_required(cls, v: str, info: ValidationInfo) -> str:
+        if not v:
+            return _require(info.field_name.upper())
+        return v
 
 
 settings = Settings()
