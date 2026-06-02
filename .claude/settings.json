@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Stop-Process -Id 2280 -Force)",
+      "PowerShell(Start-Process -FilePath \"c:\\\\Users\\\\Mamba4live\\\\Desktop\\\\intern\\\\ai_trainer\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -ArgumentList \"-m uvicon\", \"app.main:app\", \"--port 8000\", \"--reload\" -WorkingDirectory \"c:\\\\Users\\\\Mamba4live\\\\Desktop\\\\intern\\\\ai_trainer\\\\backend\" -WindowStyle Hidden)",
+      "PowerShell(Start-Process -FilePath \"c:\\\\Users\\\\Mamba4live\\\\Desktop\\\\intern\\\\ai_trainer\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -ArgumentList \"-m\", \"uvicorn\", \"app.main:app\", \"--port\", \"8000\", \"--reload\" -WorkingDirectory \"c:\\\\Users\\\\Mamba4live\\\\Desktop\\\\intern\\\\ai_trainer\\\\backend\" -WindowStyle Hidden)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/health\")",
+      "PowerShell($token = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYjAzMDA5MTUtMGZlZC00MTM1LWIxZTktNjVmMzliNjliZDNiIiwiZXhwIjoxNzgwMDIwMTM2fQ.taUxjImTXUqcqHN3JR409HAZhjyAlboPs8yzgcJOmig\"; $headers = @{Authorization=\"Bearer $token\"}; Write-Output \"=== GET /auth/me ===\"; Invoke-RestMethod -Uri \"http://localhost:8000/api/auth/me\" -Headers $headers | ConvertTo-Json; Write-Output \"=== POST /auth/register \\(e2e_test_user\\) ===\"; try { $regBody = @{username=\"e2e_test_user\";email=\"e2e_test@test.local\";password=\"test123456\"} | ConvertTo-Json; Invoke-RestMethod -Uri \"http://localhost:8000/api/auth/register\" -Method Post -Body $regBody -ContentType \"application/json\" | ConvertTo-Json } catch { Write-Output \"Register result: $\\($_.Exception.Message\\)\" })"
+    ]
+  }
+}

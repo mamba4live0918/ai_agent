@@ -12,7 +12,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from ..models.realtime_session import RealtimeSession, RealtimeSegment
+from ..models.realtime_session import RealtimeSession, RealtimeSegment, RealtimeCoachEvent
 
 
 def archive_session(
@@ -20,8 +20,10 @@ def archive_session(
     user_id: str,
     segments: list[dict],
     speaker_count: int = 0,
+    coach_events: list[dict] | None = None,
 ) -> str:
-    """Persist a completed real-time session with all its transcription segments.
+    """Persist a completed real-time session with all its transcription segments
+    and coach events.
 
     Parameters
     ----------
@@ -35,6 +37,9 @@ def archive_session(
     speaker_count:
         The number of unique speakers detected in the session (0 if no speaker
         diarization was performed).
+    coach_events:
+        Optional list of coach event dicts, each containing ``trigger_rule``,
+        ``coach_content``, and optionally ``segment_id``.
 
     Returns
     -------
@@ -62,5 +67,17 @@ def archive_session(
                 confidence=seg.get("confidence", 0.0),
             )
         )
+
+    # Persist coach events if any
+    if coach_events:
+        for evt in coach_events:
+            db.add(
+                RealtimeCoachEvent(
+                    session_id=session.id,
+                    trigger_rule=evt.get("trigger_rule", "unknown"),
+                    coach_content=evt.get("coach_content", ""),
+                    segment_id=evt.get("segment_id"),
+                )
+            )
 
     return str(session.id)

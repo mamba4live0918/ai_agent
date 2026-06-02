@@ -11,6 +11,7 @@ WebSocket handshake using the existing JWT infrastructure.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -21,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from ..database import SessionLocal, get_db
 from ..models.user import User
-from ..models.realtime_session import RealtimeSession, RealtimeSegment
+from ..models.realtime_session import RealtimeSession, RealtimeSegment, RealtimeCoachEvent
 from ..services.realtime_asr import StreamingTranscriber
 from ..services.realtime_service import archive_session
 from ..services.trigger_engine import RuleEngine, CoachPromptBuilder
@@ -121,7 +122,7 @@ async def realtime_session(
         sample_rate=16000,
         vad_threshold=0.5,
         min_speech_duration_ms=1000,
-        max_speech_duration_s=8.0,
+        max_speech_duration_s=6.0,       # shorter segments → less speaker overlap per segment
         enable_speaker_clustering=True,
     )
 
@@ -129,10 +130,12 @@ async def realtime_session(
     rule_engine = RuleEngine()
     coach_builder = CoachPromptBuilder()
     recent_texts: list[str] = []
+    customer_profile: str = ""  # Set by client via JSON control message
 
-    # ---- Step 4: process audio chunks --------------------------------------
+    # ---- Step 4: process audio + control messages -------------------------
     loop = asyncio.get_running_loop()
     accumulated_segments: list[dict] = []
+    accumulated_coach_events: list[dict] = []
     speaker_ids: set[str] = set()
     session_started_at = datetime.utcnow()
 
@@ -143,8 +146,34 @@ async def realtime_session(
 
     try:
         while True:
-            audio_bytes: bytes = await websocket.receive_bytes()
+            # Receive either binary audio or JSON control messages
+            message = await websocket.receive()
 
+            if message["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect()
+
+            # ── Text / control messages ──
+            if "text" in message:
+                try:
+                    ctrl = json.loads(message["text"])
+                    if ctrl.get("type") == "set_customer":
+                        customer_profile = ctrl.get("profile", "")
+                        logger.info(
+                            "Customer profile updated for session %s: %s",
+                            session_id, customer_profile[:80] if customer_profile else "(cleared)",
+                        )
+                    elif ctrl.get("type") == "interrupt":
+                        # TTS interrupt acknowledged (Phase 4 placeholder)
+                        logger.debug("Interrupt received for session %s", session_id)
+                except Exception:
+                    logger.debug("Failed to parse control message", exc_info=True)
+                continue
+
+            # ── Binary audio messages ──
+            if "bytes" not in message:
+                continue
+
+            audio_bytes: bytes = message["bytes"]
             if not audio_bytes:
                 continue
 
@@ -204,6 +233,7 @@ async def realtime_session(
                         coach_content = await coach_builder.generate_coach_tip(
                             trigger=trigger,
                             recent_transcript=[{"speaker": seg.speaker, "text": seg.text}],
+                            customer_profile=customer_profile,
                             stream=False,
                         )
                         if coach_content:
@@ -213,6 +243,12 @@ async def realtime_session(
                                 "action": trigger.action,
                                 "content": coach_content,
                                 "session_id": session_id,
+                            })
+                            # Accumulate for DB persistence
+                            accumulated_coach_events.append({
+                                "trigger_rule": trigger.rule_id,
+                                "coach_content": coach_content,
+                                "segment_id": None,  # segments not yet in DB
                             })
                             logger.info("Coach tip sent: trigger=%s action=%s", trigger.rule_id, trigger.action)
                     except Exception:
@@ -237,6 +273,7 @@ async def realtime_session(
                     user_id=user_id,
                     segments=accumulated_segments,
                     speaker_count=len(speaker_ids),
+                    coach_events=accumulated_coach_events if accumulated_coach_events else None,
                 )
                 # Override the generated start/end times with actual values
                 s = db_archive.query(RealtimeSession).filter(
@@ -355,6 +392,13 @@ def get_session(
         .all()
     )
 
+    coach_events = (
+        db.query(RealtimeCoachEvent)
+        .filter(RealtimeCoachEvent.session_id == session_id)
+        .order_by(RealtimeCoachEvent.created_at)
+        .all()
+    )
+
     return {
         "session": {
             "id": str(session.id),
@@ -378,6 +422,16 @@ def get_session(
                 "created_at": seg.created_at.isoformat() if seg.created_at else None,
             }
             for seg in segments
+        ],
+        "coach_events": [
+            {
+                "id": str(evt.id),
+                "trigger_rule": evt.trigger_rule,
+                "coach_content": evt.coach_content,
+                "segment_id": str(evt.segment_id) if evt.segment_id else None,
+                "created_at": evt.created_at.isoformat() if evt.created_at else None,
+            }
+            for evt in coach_events
         ],
     }
 

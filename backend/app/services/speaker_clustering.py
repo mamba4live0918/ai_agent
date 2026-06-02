@@ -269,8 +269,8 @@ class OnlineSpeakerClustering:
     def __init__(
         self,
         max_speakers: int = 4,
-        similarity_threshold: float = 0.45,
-        min_segment_duration_ms: int = 1000,
+        similarity_threshold: float = 0.35,
+        min_segment_duration_ms: int = 1500,
     ):
         if max_speakers < 1:
             raise ValueError("max_speakers must be >= 1")
@@ -463,7 +463,7 @@ class OnlineSpeakerClustering:
     # -- internals ------------------------------------------------------------
 
     @staticmethod
-    def _update_centroid(cluster: SpeakerCluster, alpha: float = 0.3) -> None:
+    def _update_centroid(cluster: SpeakerCluster, alpha: float = 0.2) -> None:
         """Update centroid via exponential moving average (EMA) for stability.
 
         EMA prevents a single noisy embedding from pulling the centroid away
@@ -474,7 +474,9 @@ class OnlineSpeakerClustering:
         ----------
         alpha : float
             Weight for the newest embedding (0 < alpha <= 1). Lower values
-            make the centroid more conservative (default 0.3).
+            make the centroid more conservative (default 0.2). With 0.2,
+            each new segment only shifts the centroid 20% toward itself,
+            so a single unusual tone/volume won't cause misclassification.
         """
         if not cluster.embeddings:
             return

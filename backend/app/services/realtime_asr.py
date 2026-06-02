@@ -641,7 +641,12 @@ class StreamingTranscriber:
         self._speaker_clustering = None
         if enable_speaker_clustering:
             from .speaker_clustering import OnlineSpeakerClustering
-            self._speaker_clustering = OnlineSpeakerClustering(similarity_threshold=0.40)
+            # Lower threshold = harder to create new clusters (prevents one person → multiple IDs)
+            # Higher min_segment_duration = short segments always assigned to last speaker
+            self._speaker_clustering = OnlineSpeakerClustering(
+                similarity_threshold=0.35,
+                min_segment_duration_ms=1500,
+            )
 
         # Track cumulative time offset for segments
         self._processed_seconds = 0.0

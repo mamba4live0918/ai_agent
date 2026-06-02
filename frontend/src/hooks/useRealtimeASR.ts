@@ -28,6 +28,7 @@ export interface UseRealtimeASRState {
   start: () => Promise<void>;
   stop: () => void;
   sendInterrupt: () => void;
+  sendCustomerProfile: (profile: string) => void;
   mediaStream: MediaStream | null;
 }
 
@@ -36,7 +37,7 @@ const TARGET_SAMPLE_RATE = 16000; // 16 kHz PCM mono — matches backend ASR
 const BUFFER_SIZE = 512;          // 512 samples = 32 ms per chunk
 
 function getWsUrl(): string {
-  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+  const apiBase = import.meta.env.VITE_API_BASE || '/api';
   const wsBase = apiBase.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
   const token = localStorage.getItem('token');
   return `${wsBase}/ws/realtime/session?token=${token || ''}`;
@@ -305,6 +306,12 @@ export function useRealtimeASR(): UseRealtimeASRState {
     }
   }, []);
 
+  const sendCustomerProfile = useCallback((profile: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'set_customer', profile }));
+    }
+  }, []);
+
   return {
     isRecording,
     connectionState,
@@ -315,6 +322,7 @@ export function useRealtimeASR(): UseRealtimeASRState {
     start,
     stop,
     sendInterrupt,
+    sendCustomerProfile,
     mediaStream,
   };
 }
