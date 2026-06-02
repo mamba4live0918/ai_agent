@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDocument
 from langchain_core.embeddings import Embeddings
 
-from ..config import settings
+from ..config import settings, ServiceError
 from httpx import Timeout
 
 
@@ -29,11 +29,33 @@ class JinaEmbeddings(Embeddings):
         self._model = model
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        resp = self._client.embeddings.create(model=self._model, input=texts)
-        return [d.embedding for d in sorted(resp.data, key=lambda x: x.index)]
+        try:
+            resp = self._client.embeddings.create(model=self._model, input=texts)
+        except Exception as e:
+            raise ServiceError(f"Jina Embedding API call failed: {e}")
+
+        if not resp.data or len(resp.data) == 0:
+            raise ServiceError("Jina Embedding returned empty data")
+
+        embeddings = []
+        for item in sorted(resp.data, key=lambda x: x.index):
+            if item.embedding is None or len(item.embedding) == 0:
+                raise ServiceError(f"Jina Embedding returned null/empty embedding for item {item.index}")
+            embeddings.append(item.embedding)
+        return embeddings
 
     def embed_query(self, text: str) -> list[float]:
-        resp = self._client.embeddings.create(model=self._model, input=[text])
+        try:
+            resp = self._client.embeddings.create(model=self._model, input=[text])
+        except Exception as e:
+            raise ServiceError(f"Jina Embedding API call failed: {e}")
+
+        if not resp.data or len(resp.data) == 0:
+            raise ServiceError("Jina Embedding returned empty data")
+
+        if resp.data[0].embedding is None or len(resp.data[0].embedding) == 0:
+            raise ServiceError("Jina Embedding returned null/empty embedding")
+
         return resp.data[0].embedding
 
 
@@ -61,31 +83,37 @@ def add_to_chroma(chunks: list[LCDocument]):
     batch_size = 4
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
-        if i == 0:
-            Chroma.from_documents(
-                documents=batch,
-                embedding=_embedding_function,
-                persist_directory=settings.chroma_db_dir,
-            )
-        else:
-            vectorstore = Chroma(
-                persist_directory=settings.chroma_db_dir,
-                embedding_function=_embedding_function,
-            )
-            vectorstore.add_documents(batch)
+        try:
+            if i == 0:
+                Chroma.from_documents(
+                    documents=batch,
+                    embedding=_embedding_function,
+                    persist_directory=settings.chroma_db_dir,
+                )
+            else:
+                vectorstore = Chroma(
+                    persist_directory=settings.chroma_db_dir,
+                    embedding_function=_embedding_function,
+                )
+                vectorstore.add_documents(batch)
+        except Exception as e:
+            raise ServiceError(f"ChromaDB write operation failed: {e}")
 
 
 def get_or_create_vectorstore() -> Chroma:
-    if not os.path.exists(settings.chroma_db_dir) or not os.listdir(settings.chroma_db_dir):
-        return Chroma.from_documents(
-            documents=[],
-            embedding=_embedding_function,
+    try:
+        if not os.path.exists(settings.chroma_db_dir) or not os.listdir(settings.chroma_db_dir):
+            return Chroma.from_documents(
+                documents=[],
+                embedding=_embedding_function,
+                persist_directory=settings.chroma_db_dir,
+            )
+        return Chroma(
             persist_directory=settings.chroma_db_dir,
+            embedding_function=_embedding_function,
         )
-    return Chroma(
-        persist_directory=settings.chroma_db_dir,
-        embedding_function=_embedding_function,
-    )
+    except Exception as e:
+        raise ServiceError(f"ChromaDB write operation failed: {e}")
 
 
 def retrieve_from_chroma(query: str, user_id: str, k: int = 8, filenames: list[str] | None = None) -> list:
@@ -110,7 +138,15 @@ def retrieve_from_chroma(query: str, user_id: str, k: int = 8, filenames: list[s
     else:
         where_filter = user_filter
 
-    return vectorstore.similarity_search(query, k=k, filter=where_filter)
+    try:
+        results = vectorstore.similarity_search(query, k=k, filter=where_filter)
+    except Exception as e:
+        raise ServiceError(f"ChromaDB query failed: {e}")
+
+    if not results:
+        return []  # No match — return empty, not an error
+
+    return results
 
 
 def index_document(filepath: str, user_id: str | None = None) -> int:
@@ -133,8 +169,8 @@ def delete_from_chroma(filename: str) -> None:
             embedding_function=_embedding_function,
         )
         vectorstore.delete(where={"filename": filename})
-    except Exception:
-        pass
+    except Exception as e:
+        raise ServiceError(f"ChromaDB write operation failed: {e}")
 
 
 # ── BM25 Hybrid Search ──
@@ -155,8 +191,8 @@ def _build_bm25_index() -> tuple[BM25Okapi | None, list[dict]]:
     vectorstore = Chroma(persist_directory=settings.chroma_db_dir, embedding_function=_embedding_function)
     try:
         results = vectorstore.get(include=["documents", "metadatas"])
-    except Exception:
-        return None, []
+    except Exception as e:
+        raise ServiceError(f"ChromaDB read operation failed: {e}")
 
     documents = results.get("documents", [])
     metadatas = results.get("metadatas", [])
