@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -47,8 +47,8 @@ def feedback_stats(db: Session = Depends(get_db)):
 
 @router.get("/feedback/all", response_model=FeedbackAdminList, dependencies=[Depends(require_admin)])
 def admin_all_feedback(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

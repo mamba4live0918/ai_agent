@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CustomerCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
     raw_input: str | None = None
     structured_data: dict | None = None
     ai_profile: dict | None = None
@@ -14,7 +14,7 @@ class CustomerCreate(BaseModel):
 
 
 class CustomerAnalyzeRequest(BaseModel):
-    raw_text: str
+    raw_text: str = Field(..., min_length=1, max_length=10000)
 
 
 class CustomerAnalyzeResponse(BaseModel):

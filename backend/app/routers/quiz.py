@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..models.user import User
@@ -209,8 +209,8 @@ def submit_answer(
 
 @router.get("/sessions", response_model=list[QuizSessionListItem])
 def list_quiz_sessions(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

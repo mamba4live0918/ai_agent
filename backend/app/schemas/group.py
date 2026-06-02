@@ -1,17 +1,17 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GroupCreate(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=10000)
     admin_id: UUID | None = None
 
 
 class GroupUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(None, max_length=255)
+    description: str | None = Field(None, max_length=10000)
     admin_id: UUID | None = None
 
 

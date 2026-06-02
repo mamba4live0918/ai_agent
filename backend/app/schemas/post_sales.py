@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # --- Session ---
@@ -47,7 +47,7 @@ class UpdateSessionRequest(BaseModel):
 
 
 class AddMessageRequest(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=10000)
 
 
 class SessionDetailResponse(SessionResponse):

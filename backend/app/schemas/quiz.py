@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class QuizGenerateRequest(BaseModel):
@@ -12,8 +12,8 @@ class QuizGenerateRequest(BaseModel):
 
 
 class QuizAnswerRequest(BaseModel):
-    question_id: str
-    user_answer: str
+    question_id: str = Field(..., min_length=1, max_length=255)
+    user_answer: str = Field(..., min_length=1, max_length=10000)
 
 
 class QuizAnswerResponse(BaseModel):

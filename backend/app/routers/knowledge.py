@@ -3,6 +3,8 @@ import os
 import logging
 import shutil
 
+import filetype
+
 logger = logging.getLogger(__name__)
 from math import ceil
 import pandas as pd
@@ -30,6 +32,14 @@ router = APIRouter()
 
 DOCUMENTS_DIR = "./documents"
 CATEGORY_ICONS_DIR = "./category_icons"
+
+ALLOWED_MIMES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
 
 
 def _doc_to_response(doc: Document, db: Session) -> DocumentResponse:
@@ -221,10 +231,19 @@ def upload_document(
     if ext not in (".pdf", ".doc", ".docx", ".txt", ".md", ".ppt", ".pptx", ".xls", ".xlsx", ".xlsm", ".csv"):
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
+    # Read file bytes for MIME validation
+    contents = file.file.read()
+    kind = filetype.guess(contents)
+    if kind is None or kind.mime not in ALLOWED_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {kind.mime if kind else 'unknown'}. Allowed: PDF, DOCX, TXT, MD, PPTX"
+        )
+
     os.makedirs(DOCUMENTS_DIR, exist_ok=True)
     file_path = os.path.join(DOCUMENTS_DIR, raw_name)
     with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(contents)
 
     logger.info(f"File saved: {raw_name} ({os.path.getsize(file_path)} bytes), starting document loading...")
     try:

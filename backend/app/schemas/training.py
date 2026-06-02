@@ -1,26 +1,26 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # --- Persona ---
 class PersonaInput(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
     age: int | None = None
-    gender: str | None = None
-    occupation: str | None = None
-    personality: str | None = None
-    investment_experience: str | None = None
-    wealth_level: str | None = None
-    risk_preference: str | None = None
-    goals: str | None = None
+    gender: str | None = Field(None, max_length=50)
+    occupation: str | None = Field(None, max_length=255)
+    personality: str | None = Field(None, max_length=10000)
+    investment_experience: str | None = Field(None, max_length=10000)
+    wealth_level: str | None = Field(None, max_length=255)
+    risk_preference: str | None = Field(None, max_length=255)
+    goals: str | None = Field(None, max_length=10000)
 
 
 # --- Session ---
 class CreateSessionRequest(BaseModel):
     customer_id: str | None = None
     persona: PersonaInput | None = None
-    scenario: str
+    scenario: str = Field(..., min_length=1, max_length=10000)
 
 
 class SessionResponse(BaseModel):
@@ -66,7 +66,7 @@ class SessionDetailResponse(SessionResponse):
 
 
 class SendMessageRequest(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=10000)
 
 
 class SendMessageResponse(BaseModel):

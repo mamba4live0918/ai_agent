@@ -1,17 +1,17 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProductCreate(BaseModel):
-    name: str
-    type: str
+    name: str = Field(..., min_length=1, max_length=255)
+    type: str = Field(..., min_length=1, max_length=50)
     risk_level: int
     expected_return: float
     min_investment: float
-    description: Optional[str] = None
-    issuer: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=10000)
+    issuer: Optional[str] = Field(None, max_length=255)
     target_tags: Optional[list[str]] = None
     lock_period: Optional[str] = None
     fund_code: Optional[str] = None
