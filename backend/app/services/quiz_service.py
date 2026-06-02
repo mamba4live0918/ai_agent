@@ -1,15 +1,12 @@
 import json
 import re
 import uuid
-from openai import OpenAI
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
+from .prompt_templates import clean_llm_content, get_deepseek_client
 
-_client = OpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url,
-)
+_client = get_deepseek_client()
 
 GENERATION_PROMPT = """你是一位资深销售培训教练，擅长通过场景化试题评估销售人员对技巧的掌握程度。
 
@@ -90,15 +87,8 @@ GRADING_PROMPT = """你是一位专业的教育评估师。请对学生的简答
 ```"""
 
 
-def _clean_llm_json(text: str) -> str:
-    """Extract JSON from LLM response, stripping markdown fences and think blocks."""
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
-    if m:
-        text = m.group(1).strip()
-    # Strip control characters that break JSON parsing (except \t, \n, \r)
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
-    return text.strip()
+# clean_llm_json replaced by clean_llm_content from prompt_templates
+_clean_llm_json = clean_llm_content  # backward-compatible alias
 
 
 def generate_questions(

@@ -1,25 +1,10 @@
 import json
-import re
-from openai import OpenAI
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
+from .prompt_templates import extract_json as _extract_json, get_deepseek_client
 
-_client = OpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url,
-)
-
-
-def _extract_json(content: str) -> dict:
-    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
-    if json_match:
-        content = json_match.group(1)
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return {"raw": content, "error": "JSON parse failed"}
+_client = get_deepseek_client()
 
 
 # ──────────────────────────── Briefing (manual persona) ────────────────────────────

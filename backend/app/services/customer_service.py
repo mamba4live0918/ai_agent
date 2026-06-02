@@ -1,14 +1,10 @@
 import json
-import re
-from openai import OpenAI
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
+from .prompt_templates import clean_llm_content, get_deepseek_client
 
-_client = OpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url,
-)
+_client = get_deepseek_client()
 
 ANALYSIS_PROMPT = """You are a professional customer analyst for financial sales across all banking scenarios: retail, corporate, wealth management, credit, and insurance. You must classify each customer using the DISC personality framework and practical frontline types.
 
@@ -244,12 +240,7 @@ def analyze_customer(raw_text: str, user_id: str, edited_structured_data: dict |
     if content is None or content.strip() == "":
         raise ServiceError("DeepSeek returned empty content")
 
-    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-
-    # Extract JSON from response (handle markdown code blocks)
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
-    if json_match:
-        content = json_match.group(1)
+    content = clean_llm_content(content)
 
     try:
         result = json.loads(content)
@@ -352,11 +343,7 @@ def generate_presales_prep(customer_data: dict, user_id: str) -> dict:
     if content is None or content.strip() == "":
         raise ServiceError("DeepSeek returned empty content")
 
-    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
-    if json_match:
-        content = json_match.group(1)
+    content = clean_llm_content(content)
 
     try:
         result = json.loads(content)

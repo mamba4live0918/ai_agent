@@ -1,15 +1,11 @@
 import json
-import re
-from openai import OpenAI
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 from .web_search_service import web_search_finance
+from .prompt_templates import clean_llm_content, get_deepseek_client
 
-_client = OpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url,
-)
+_client = get_deepseek_client()
 
 ALLOCATION_PROMPT = """You are a senior wealth management advisor. Generate a comprehensive asset allocation plan for the client.
 
@@ -104,13 +100,9 @@ def generate_allocation_plan(client_data: dict, products: list[dict], user_id: s
     content = response.choices[0].message.content
     if content is None or content.strip() == "":
         raise ServiceError("DeepSeek returned empty content")
-    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+    content = clean_llm_content(content)
 
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
-    if json_match:
-        content = json_match.group(1)
-
-    # Remove BOM and control characters that break JSON
+    # Remove BOM that breaks JSON
     content = content.replace("﻿", "")
 
     try:

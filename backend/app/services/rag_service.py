@@ -1,13 +1,8 @@
-import re
-from openai import OpenAI
-
 from ..config import ServiceError, settings
 from .embedding_service import retrieve_from_chroma, retrieve_hybrid
+from .prompt_templates import clean_llm_content, get_deepseek_client
 
-_client = OpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url,
-)
+_client = get_deepseek_client()
 
 # In-memory conversation store: {conversation_id: [(user, assistant), ...]}
 _conversations: dict[str, list[tuple[str, str]]] = {}
@@ -146,7 +141,7 @@ def query_llm(question: str, context: str, mode: str = "flexible", conversation_
     if answer is None or answer.strip() == "":
         raise ServiceError("DeepSeek returned empty content")
 
-    answer = re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL).strip()
+    answer = clean_llm_content(answer)
 
     history.append((question, answer))
 

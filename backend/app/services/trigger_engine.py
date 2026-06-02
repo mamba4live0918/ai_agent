@@ -22,9 +22,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import yaml
-from openai import OpenAI
 
 from ..config import ServiceError, settings
+from .prompt_templates import get_deepseek_client
 
 logger = logging.getLogger(__name__)
 
@@ -455,10 +455,7 @@ class CoachPromptBuilder:
     }
 
     def __init__(self):
-        self._client = OpenAI(
-            api_key=settings.deepseek_api_key,
-            base_url=settings.deepseek_base_url,
-        )
+        self._client = get_deepseek_client()
 
     # -- public API ---------------------------------------------------------
 
