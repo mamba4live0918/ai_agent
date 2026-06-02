@@ -71,7 +71,7 @@ r = test("login", "POST", "/auth/login", {"username": "admin", "password": "admi
 if r:
     TOKEN = r["access_token"]
     test("login returns user+token", "POST", "/auth/login",
-         {"username": "admin", "password": "admin123"},
+         {"username": "admin", "password": "admin123"}, expect_status=200,
          checks=lambda r: validate_exists(r, "access_token", "user"))
 else:
     print("CRITICAL: Cannot login, skipping remaining tests")
@@ -79,18 +79,20 @@ else:
 
 test("register new user", "POST", "/auth/register",
      {"username": "e2e_regression", "email": "e2e_reg@test.local", "password": "test123"},
+     expect_status=201,
      checks=lambda r: validate_value(r.get("user", {}), "username", "e2e_regression"))
 
-test("get current user", "GET", "/auth/me",
+test("get current user", "GET", "/auth/me", expect_status=200,
      checks=lambda r: validate_value(r, "username", "admin"))
 
 # ─── Knowledge Base ───
 print("\n=== Knowledge Base ===")
-cats = test("list categories", "GET", "/knowledge/categories",
+cats = test("list categories", "GET", "/knowledge/categories", expect_status=200,
             checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
 
 new_cat = test("create category", "POST", "/knowledge/categories",
                {"name": "e2e_test_cat", "description": "E2E regression test"},
+               expect_status=200,
                checks=lambda r: validate_value(r, "name", "e2e_test_cat"))
 if new_cat:
     CREATED_IDS["categories"].append(new_cat["id"])
@@ -104,13 +106,14 @@ if cats and len(cats) > 0:
     cat0 = cats[0]
     test(f"get category icon (no icon)", "GET", f"/knowledge/categories/icons/nonexistent.png", expect_status=404)
 
-test("list documents", "GET", "/knowledge/documents?page=1&page_size=5",
+test("list documents", "GET", "/knowledge/documents?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "items", "total"))
 
 # ─── Quiz ───
 print("\n=== Quiz ===")
 quiz = test("create quiz (choice)", "POST", "/quiz/sessions",
-            {"category_id": None, "document_ids": None, "question_count": 2, "question_types": ["choice"]})
+            {"category_id": None, "document_ids": None, "question_count": 2, "question_types": ["choice"]},
+            expect_status=200)
 if quiz:
     validate_exists(quiz, "id", "status", "questions")
     validate_value(quiz, "status", "active")
@@ -118,90 +121,135 @@ if quiz:
         CREATED_IDS["quiz_sessions"].append(quiz["id"])
         q1 = quiz["questions"][0]
         test("answer quiz choice", "POST", f"/quiz/sessions/{quiz['id']}/answers",
-             {"question_id": q1["id"], "user_answer": "A"})
+             {"question_id": q1["id"], "user_answer": "A"}, expect_status=200)
 
-test("list quiz sessions", "GET", "/quiz/sessions",
+test("list quiz sessions", "GET", "/quiz/sessions", expect_status=200,
      checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
 
 # ─── Customer Analysis ───
 print("\n=== Customer Analysis ===")
-test("list customers", "GET", "/customers?page=1&page_size=3",
+test("list customers", "GET", "/customers?page=1&page_size=3", expect_status=200,
      checks=lambda r: validate_exists(r, "items", "total"))
 
 new_cust = test("create customer", "POST", "/customers",
-                {"name": "e2e_test_customer"},
+                {"name": "e2e_test_customer"}, expect_status=201,
                 checks=lambda r: validate_value(r, "name", "e2e_test_customer"))
 if new_cust:
     CREATED_IDS["customers"].append(new_cust["id"])
-    test("get customer detail", "GET", f"/customers/{new_cust['id']}",
+    test("get customer detail", "GET", f"/customers/{new_cust['id']}", expect_status=200,
          checks=lambda r: validate_value(r, "id", new_cust["id"]))
     test("analyze customer", "POST", "/customers/analyze",
-         {"raw_text": "35岁IT工程师，年薪60万"})
+         {"raw_text": "35岁IT工程师，年薪60万"}, expect_status=200)
 
 # ─── Products ───
 print("\n=== Products ===")
-test("list products", "GET", "/products?page=1&page_size=3",
+test("list products", "GET", "/products?page=1&page_size=3", expect_status=200,
      checks=lambda r: validate_exists(r, "items", "total"))
 
 # ─── Training ───
 print("\n=== Training ===")
-test("list training sessions", "GET", "/training/sessions?page=1&page_size=5",
+test("list training sessions", "GET", "/training/sessions?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "items", "total"))
 
 if CREATED_IDS["customers"]:
     cust_id = CREATED_IDS["customers"][0]
     train_sess = test("create training session", "POST", "/training/sessions",
-                      {"customer_id": cust_id, "scenario": "产品讲解"})
+                      {"customer_id": cust_id, "scenario": "产品讲解"}, expect_status=201)
     if train_sess:
         CREATED_IDS["training_sessions"].append(train_sess["id"])
 
 # ─── Post-Sales ───
 print("\n=== Post-Sales ===")
-test("list post-sales sessions", "GET", "/post-sales/sessions?page=1&page_size=5",
+test("list post-sales sessions", "GET", "/post-sales/sessions?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "items", "total"))
 
 # ─── Chat ───
 print("\n=== Chat ===")
-test("list conversations", "GET", "/chat/conversations",
+test("list conversations", "GET", "/chat/conversations", expect_status=200,
      checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
 
 # ─── Feedback ───
 print("\n=== Feedback ===")
-test("get my feedback", "GET", "/feedback/my",
+test("get my feedback", "GET", "/feedback/my", expect_status=200,
      checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
-test("get feedback stats", "GET", "/feedback/stats",
+test("get feedback stats", "GET", "/feedback/stats", expect_status=200,
      checks=lambda r: validate_exists(r, "total", "average"))
 test("submit feedback", "POST", "/feedback",
      {"rating": 5, "category": "e2e", "comment": "E2E regression test"},
+     expect_status=201,
      checks=lambda r: validate_value(r, "rating", 5))
 
 # ─── Admin ───
 print("\n=== Admin ===")
-test("list users (admin)", "GET", "/auth/users?page=1&page_size=5",
+test("list users (admin)", "GET", "/auth/users?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "total", "items"))
 
 # ─── Groups ───
 print("\n=== Groups ===")
-test("list groups", "GET", "/groups?page=1&page_size=5",
+test("list groups", "GET", "/groups?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "total", "items"))
 new_group = test("create group", "POST", "/groups",
                  {"name": "e2e_test_group", "description": "E2E regression"},
+                 expect_status=201,
                  checks=lambda r: validate_value(r, "name", "e2e_test_group"))
 if new_group:
     CREATED_IDS["groups"].append(new_group["id"])
 
+# ─── Auth Boundaries ───
+print("\n=== Auth Boundaries ===")
+
+# Register a non-admin user for boundary testing
+sales_user = test("register sales user", "POST", "/auth/register",
+    {"username": "e2e_sales_boundary", "email": "e2e_boundary@test.local", "password": "test123"},
+    expect_status=201)
+sales_token = None
+if sales_user:
+    sales_token = sales_user.get("access_token")
+
+if sales_token:
+    # Save admin token and switch to salesperson
+    admin_token = TOKEN
+    TOKEN = sales_token
+
+    # Test that salesperson cannot access instructor-required endpoints
+    test("salesperson cannot list users", "GET", "/auth/users?page=1&page_size=5",
+         expect_status=403)
+    test("salesperson cannot access instructor stats", "GET", "/instructor/statistics/overview",
+         expect_status=403)
+    test("salesperson cannot access feedback all", "GET", "/feedback/all",
+         expect_status=403)
+
+    # Restore admin token
+    TOKEN = admin_token
+else:
+    print("  WARNING: Could not register boundary test user, skipping auth boundary tests")
+
+# ─── 404 Boundaries ───
+print("\n=== 404 Boundaries ===")
+import uuid
+fake_id = str(uuid.uuid4())
+
+test("404 on non-existent customer", "GET", f"/customers/{fake_id}", expect_status=404)
+test("404 on non-existent training session", "GET", f"/training/sessions/{fake_id}", expect_status=404)
+test("404 on non-existent quiz session", "GET", f"/quiz/sessions/{fake_id}", expect_status=404)
+test("404 on non-existent post-sales session", "GET", f"/post-sales/sessions/{fake_id}", expect_status=404)
+test("404 on non-existent category", "DELETE", f"/knowledge/categories/{fake_id}", expect_status=404)
+test("404 on non-existent document", "GET", f"/knowledge/documents/{fake_id}", expect_status=404)
+test("404 on non-existent product", "GET", f"/products/{fake_id}", expect_status=404)
+test("404 on non-existent group", "DELETE", f"/groups/{fake_id}", expect_status=404)
+
 # ─── Instructor ───
 print("\n=== Instructor ===")
-test("instructor overview", "GET", "/instructor/statistics/overview",
+test("instructor overview", "GET", "/instructor/statistics/overview", expect_status=200,
      checks=lambda r: validate_exists(r, "total_users", "total_sessions"))
-test("instructor per-user stats", "GET", "/instructor/statistics/per-user",
+test("instructor per-user stats", "GET", "/instructor/statistics/per-user", expect_status=200,
      checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
-test("instructor trends", "GET", "/instructor/statistics/trends?granularity=weekly",
+test("instructor trends", "GET", "/instructor/statistics/trends?granularity=weekly", expect_status=200,
      checks=lambda r: None if isinstance(r, list) else (_ for _ in ()).throw(AssertionError("not a list")))
 
 # ─── Realtime ───
 print("\n=== Realtime ===")
-test("list realtime sessions", "GET", "/realtime/sessions?page=1&page_size=5",
+test("list realtime sessions", "GET", "/realtime/sessions?page=1&page_size=5", expect_status=200,
      checks=lambda r: validate_exists(r, "total", "items"))
 
 # ─── Cleanup ───
@@ -221,13 +269,14 @@ for sess_id in CREATED_IDS["training_sessions"]:
 for gid in CREATED_IDS["groups"]:
     test(f"delete group", "DELETE", f"/groups/{gid}", expect_status=204)
 
-# Cleanup test user
+# Cleanup test users
 users_resp, _ = request("GET", "/auth/users?page=1&page_size=50")
 if users_resp:
     for u in users_resp.get("items", []):
         if u.get("username") == "e2e_regression":
-            test(f"delete test user", "DELETE", f"/auth/users/{u['id']}", expect_status=204)
-            break
+            test(f"delete test user e2e_regression", "DELETE", f"/auth/users/{u['id']}", expect_status=204)
+        elif u.get("username") == "e2e_sales_boundary":
+            test(f"delete test user e2e_sales_boundary", "DELETE", f"/auth/users/{u['id']}", expect_status=204)
 
 # ─── Summary ───
 total = PASS + FAIL
