@@ -521,4 +521,38 @@ export interface RealtimeSessionDetail {
     created_at: string | null;
   };
   segments: RealtimeSegmentDetail[];
+  coach_events?: Array<{
+    id: string;
+    trigger_rule: string;
+    coach_content: string;
+    segment_id: string | null;
+    created_at: string;
+  }>;
 }
+
+// ─── Coach Tip Display (inline bubble) ───
+
+export interface CoachTipDisplay {
+  id: string;
+  trigger: string;
+  action: string;
+  content: string;
+  color: string;
+  icon: string;
+  label: string;
+  timestamp: number;
+  isPinned: boolean;
+}
+
+export const TRIGGER_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
+  hesitation:           { icon: '💡', label: '策略建议', color: '#a371f7' },
+  price_objection:      { icon: '💰', label: '价格异议', color: '#ff7b72' },
+  competitor_mention:   { icon: '🔍', label: '竞品分析', color: '#d29922' },
+  commitment_signal:    { icon: '⭐', label: '销售金句', color: '#3fb950' },
+  objection:            { icon: '⚠️', label: '反对处理', color: '#ffa657' },
+  long_silence:         { icon: '🧊', label: '静默提醒', color: '#79c0ff' },
+  emotional_shift:      { icon: '🎯', label: '情绪感知', color: '#ff7be1' },
+  multi_party:          { icon: '🎯', label: '情绪感知', color: '#ff7be1' },
+};
+
+export const DEFAULT_TRIGGER = { icon: '💡', label: '教练提示', color: '#a371f7' };
