@@ -1,7 +1,7 @@
 """
 Online speaker diarization for real-time audio streams.
 
-Provides speaker embedding extraction (via pyannote/embedding), incremental
+Provides speaker embedding extraction (via FunASR cam++), incremental
 clustering for 2-4 speakers, and overlap detection for VAD segments.
 
 All classes are designed to work with raw PCM 16-bit mono audio bytes, following
@@ -10,45 +10,28 @@ the same conventions as realtime_asr.py.
 
 from __future__ import annotations
 
-import io
 import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 
-from ..config import settings
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Helper: PCM bytes -> torch waveform
+# Speaker Embedder — FunASR cam++ (7.2M params, 192-dim)
 # ---------------------------------------------------------------------------
 
+_campp_model = None
 
-def _pcm_bytes_to_waveform(audio_bytes: bytes, sample_rate: int):
-    """Convert raw PCM 16-bit mono bytes to a torch waveform tensor.
 
-    Returns
-    -------
-    waveform : torch.Tensor
-        Shape (1, num_samples), float32.
-    sample_rate : int
-        The sample rate (passed through for convenience).
-    """
-    import torchaudio
+def _get_campp():
+    global _campp_model
+    if _campp_model is None:
+        from funasr import AutoModel
 
-    # Wrap raw PCM in a WAV container so torchaudio can load it
-    buf = io.BytesIO()
-    with __import__("wave").open(buf, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)  # 16-bit
-        wf.setframerate(sample_rate)
-        wf.writeframes(audio_bytes)
-
-    buf.seek(0)
-    waveform, sr = torchaudio.load(buf)
-    return waveform, sr
+        _campp_model = AutoModel(model="cam++", disable_update=True)
+    return _campp_model
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -66,19 +49,13 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 
 class SpeakerEmbedder:
-    """Extract 512-dim speaker embeddings from audio segments.
+    """Extract speaker embeddings using FunASR cam++ model (7.2M params, 192-dim).
 
-    Uses the ``pyannote/embedding`` model via pyannote.audio.  Requires
-    ``HUGGINGFACE_TOKEN`` in settings.  Falls back to a random embedding when
-    the model cannot be loaded, so the pipeline never crashes.
-
-    Embeddings are extracted once and cached via a simple per-instance dict
-    keyed on a hash of the audio bytes (to avoid re-extracting identical
-    segments within a session).
+    Falls back to random embedding when the model cannot be loaded,
+    so the pipeline never crashes.
     """
 
-    # pyannote/embedding output dimension
-    EMBEDDING_DIM = 512
+    EMBEDDING_DIM = 192  # cam++ output dimension (pyannote was 512)
 
     def __init__(self):
         self._model = None
@@ -87,67 +64,35 @@ class SpeakerEmbedder:
         self._cache: dict[int, np.ndarray] = {}
 
     def _ensure_model(self) -> bool:
-        """Lazy-load the embedding model. Returns True on success."""
         if self._load_attempted:
             return self._model_available
-
         self._load_attempted = True
 
-        if not settings.huggingface_token:
-            logger.warning(
-                "SpeakerEmbedder: HUGGINGFACE_TOKEN not set. "
-                "Speaker embeddings will be random (no diarization)."
-            )
-            return False
-
         try:
-            from pyannote.audio import Model
-
-            self._model = Model.from_pretrained(
-                "pyannote/embedding",
-                token=settings.huggingface_token,
-            )
+            self._model = _get_campp()
             self._model_available = True
-            logger.info("SpeakerEmbedder: pyannote/embedding model loaded")
+            logger.info("SpeakerEmbedder: cam++ model loaded")
             return True
         except Exception:
             logger.warning(
-                "SpeakerEmbedder: failed to load pyannote/embedding model. "
+                "SpeakerEmbedder: failed to load cam++. "
                 "Speaker embeddings will be random.",
                 exc_info=True,
             )
             return False
 
     def extract_embedding(self, audio_bytes: bytes, sample_rate: int) -> np.ndarray:
-        """Return a ``EMBEDDING_DIM``-dim speaker embedding vector.
-
-        Parameters
-        ----------
-        audio_bytes : bytes
-            Raw PCM 16-bit mono audio for a speech segment.
-        sample_rate : int
-            Sample rate of the audio bytes.
-
-        Returns
-        -------
-        np.ndarray
-            Shape ``(EMBEDDING_DIM,)``, float32.
-        """
+        """Return a ``EMBEDDING_DIM``-dim speaker embedding vector."""
         if not audio_bytes or len(audio_bytes) < sample_rate // 10:
-            # Too short for meaningful embedding — return zeros
-            logger.debug("SpeakerEmbedder: segment too short (%d bytes)", len(audio_bytes))
             return np.zeros(self.EMBEDDING_DIM, dtype=np.float32)
 
-        # Check cache (hash of audio bytes)
         key = hash(audio_bytes)
         if key in self._cache:
             return self._cache[key].copy()
 
         embedding = self._extract_impl(audio_bytes, sample_rate)
 
-        # Cap cache size at 200 entries
         if len(self._cache) >= 200:
-            # Remove oldest entry (dict insertion-ordered in Python 3.7+)
             oldest = next(iter(self._cache))
             del self._cache[oldest]
         self._cache[key] = embedding
@@ -155,73 +100,61 @@ class SpeakerEmbedder:
         return embedding.copy()
 
     def _extract_impl(self, audio_bytes: bytes, sample_rate: int) -> np.ndarray:
-        """Actual extraction logic, with fallback to random embedding."""
         if not self._ensure_model():
             return self._random_embedding()
 
         try:
-            import torch
+            import tempfile
+            import wave
+            import os
 
-            waveform, sr = _pcm_bytes_to_waveform(audio_bytes, sample_rate)
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+            try:
+                with os.fdopen(tmp_fd, "wb") as tmp:
+                    with wave.open(tmp, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(sample_rate)
+                        wf.writeframes(audio_bytes)
 
-            # Resample to 16 kHz if needed (pyannote/embedding expects 16 kHz)
-            if sr != 16000:
-                import torchaudio.functional as F
+                result = self._model.generate(input=tmp_path)
+            finally:
+                os.unlink(tmp_path)
 
-                waveform = F.resample(waveform, sr, 16000)
-                sr = 16000
+            if isinstance(result, list) and len(result) > 0:
+                r = result[0]
+            elif isinstance(result, dict):
+                r = result
+            else:
+                return self._random_embedding()
 
-            with torch.no_grad():
-                # pyannote.audio Model.__call__ expects (batch, samples) or
-                # {'waveform': ..., 'sample_rate': ...}
-                emb = self._model({"waveform": waveform, "sample_rate": sr})
-                # emb is typically a (1, embedding_dim) or (embedding_dim,) tensor
-                if isinstance(emb, torch.Tensor):
-                    emb = emb.squeeze().detach().cpu().numpy()
-                elif isinstance(emb, np.ndarray):
-                    emb = emb.squeeze()
-                else:
-                    logger.warning("Unexpected embedding type: %s", type(emb))
-                    return self._random_embedding()
+            emb = r.get("embedding", r.get("spk_embedding", None))
+            if emb is not None:
+                emb = np.array(emb, dtype=np.float32).flatten()
+            else:
+                return self._random_embedding()
 
-                # Ensure correct shape
-                if emb.ndim == 0:
-                    logger.warning("Embedding is scalar, falling back to random")
-                    return self._random_embedding()
-                if emb.shape[-1] != self.EMBEDDING_DIM:
-                    logger.warning(
-                        "Unexpected embedding dim %s (expected %d), falling back to random",
-                        emb.shape,
-                        self.EMBEDDING_DIM,
-                    )
-                    return self._random_embedding()
+            if emb.shape[0] == 0:
+                return self._random_embedding()
 
-                emb = emb.astype(np.float32)
-                # L2-normalize for consistent cosine similarity
-                norm = np.linalg.norm(emb)
-                if norm > 0:
-                    emb = emb / norm
-
-                return emb
+            # L2-normalize
+            norm = np.linalg.norm(emb)
+            if norm > 0:
+                emb = emb / norm
+            return emb.astype(np.float32)
 
         except Exception as e:
-            logger.warning(
-                "SpeakerEmbedder: extraction failed, using random embedding",
-                exc_info=True,
-            )
+            logger.warning("SpeakerEmbedder: extraction failed", exc_info=True)
             return self._random_embedding()
 
     def _random_embedding(self) -> np.ndarray:
-        """Return a random L2-normalized embedding as fallback."""
-        rng = np.random.RandomState()
-        emb = rng.randn(self.EMBEDDING_DIM).astype(np.float32)
+        emb = np.random.RandomState().randn(self.EMBEDDING_DIM).astype(np.float32)
         norm = np.linalg.norm(emb)
         if norm > 0:
             emb = emb / norm
         return emb
 
     def clear_cache(self) -> None:
-        """Clear the embedding cache."""
         self._cache.clear()
 
 
@@ -256,7 +189,7 @@ class OnlineSpeakerClustering:
         Maximum number of distinct speakers to track (default 4).
     similarity_threshold : float
         Cosine similarity threshold for assigning to an existing cluster
-        (default 0.55 — lower threshold produces fewer, purer clusters).
+        (default 0.45 — was 0.35 for pyannote 512-dim; cam++ 192-dim needs higher).
     min_segment_duration_ms : int
         Minimum segment duration in ms for reliable embedding extraction.
         Segments shorter than this are assigned to the nearest existing
@@ -269,7 +202,7 @@ class OnlineSpeakerClustering:
     def __init__(
         self,
         max_speakers: int = 4,
-        similarity_threshold: float = 0.35,
+        similarity_threshold: float = 0.45,
         min_segment_duration_ms: int = 1500,
     ):
         if max_speakers < 1:
