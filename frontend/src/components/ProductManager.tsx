@@ -2,6 +2,7 @@
 import { getProducts, getProduct, createProduct, importProductsCsv, deleteProduct } from '../services/api';
 import type { Product } from '../types';
 import ProductNavChart from './ProductNavChart';
+import MarketFundPicker from './MarketFundPicker';
 
 const PRODUCT_TYPES = ['保险', '基金', '理财', '信托', '结构化', '其他'];
 const RISK_LEVELS = [1, 2, 3, 4, 5];
@@ -16,6 +17,7 @@ export default function ProductManager() {
   const [riskFilter, setRiskFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [showMarketPicker, setShowMarketPicker] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', type: '基金', risk_level: 3, expected_return: '', min_investment: '', description: '', issuer: '', target_tags: '', lock_period: '', fund_code: '' });
   const [importError, setImportError] = useState('');
@@ -165,6 +167,7 @@ export default function ProductManager() {
         </select>
         <button onClick={() => setShowAddModal(true)} className="btn btn-primary text-xs whitespace-nowrap">新增产品</button>
         <button onClick={() => setShowCsvModal(true)} className="btn btn-secondary text-xs whitespace-nowrap">CSV导入</button>
+        <button onClick={() => setShowMarketPicker(true)} className="btn btn-secondary text-xs whitespace-nowrap">📊 市场导入</button>
       </div>
 
       {/* Product list */}
@@ -269,6 +272,14 @@ export default function ProductManager() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Market Fund Import Modal */}
+      {showMarketPicker && (
+        <MarketFundPicker
+          onClose={() => setShowMarketPicker(false)}
+          onImported={() => load()}
+        />
       )}
 
       {/* CSV Import Modal */}

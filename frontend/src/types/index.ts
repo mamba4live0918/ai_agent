@@ -192,6 +192,31 @@ export interface ProductList {
   total_pages: number;
 }
 
+// --- Market data (akshare) ---
+
+export interface MarketFundItem {
+  fund_code: string;
+  name: string;
+  type: string;
+  company: string;
+}
+
+export interface MarketFundBrowseItem extends MarketFundItem {
+  raw_type: string;
+}
+
+export interface MarketListResponse {
+  items: MarketFundBrowseItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface MarketSearchResponse {
+  items: MarketFundItem[];
+}
+
 export interface AllocationItem {
   product_id: string;
   product_name: string;

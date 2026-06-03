@@ -267,6 +267,14 @@ export const refreshProductNav = (id: string) =>
 export const deleteProduct = (id: string) =>
   request<void>(`/products/${id}`, { method: 'DELETE' });
 
+// Market data (akshare)
+export const listMarketFunds = (category = 'all', page = 1, pageSize = 20) =>
+  request<import('../types').MarketListResponse>(`/products/market/list?category=${category}&page=${page}&page_size=${pageSize}`);
+export const searchMarketFunds = (keyword: string, limit = 20) =>
+  request<import('../types').MarketSearchResponse>('/products/market/search', { method: 'POST', body: JSON.stringify({ keyword, limit }) });
+export const saveMarketProduct = (fundCode: string) =>
+  request<import('../types').Product>(`/products/market/save?fund_code=${fundCode}`, { method: 'POST' });
+
 // Allocation
 export const generateAllocationPlan = (id: string) =>
   request<import('../types').Customer>(`/customers/${id}/allocation-plan`, { method: 'POST' });

@@ -44,3 +44,45 @@ class ProductListResponse(BaseModel):
     page: int = 1
     page_size: int = 10
     total_pages: int = 1
+
+
+# --- Market data import schemas ---
+
+
+class MarketSearchRequest(BaseModel):
+    keyword: str = Field(..., min_length=1, max_length=100)
+    limit: int = Field(20, ge=1, le=100)
+
+
+class MarketFundItem(BaseModel):
+    fund_code: str
+    name: str
+    type: str
+    company: str
+
+
+class MarketFundBrowseItem(BaseModel):
+    fund_code: str
+    name: str
+    type: str
+    raw_type: str = ""
+    company: str = ""
+
+
+class MarketSearchResponse(BaseModel):
+    items: list[MarketFundItem]
+
+
+class MarketListResponse(BaseModel):
+    items: list[MarketFundBrowseItem]
+    total: int
+    page: int = 1
+    page_size: int = 20
+    total_pages: int = 1
+
+
+class MarketFetchResponse(BaseModel):
+    product: ProductCreate
+    nav_history: list | None = None
+    source: str
+    existing: bool = False

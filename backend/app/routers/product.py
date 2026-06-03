@@ -11,12 +11,93 @@ from ..database import get_db
 from ..models.product import Product
 from ..models.user import User
 from ..utils.auth import get_current_user, apply_document_filter
-from ..schemas.product import ProductCreate, ProductResponse, ProductListResponse
+from ..schemas.product import (
+    ProductCreate, ProductResponse, ProductListResponse,
+    MarketSearchRequest, MarketSearchResponse, MarketFundItem,
+    MarketListResponse, MarketFundBrowseItem,
+)
 from ..services.fund_service import fetch_fund_nav
+from ..services.market_service import search_funds, fetch_fund_detail, list_market_funds
 
 router = APIRouter()
 
-NAV_REFRESH_HOURS = 4
+NAV_REFRESH_HOURS = 2
+
+
+# ---- Market data import endpoints (akshare) ----
+
+
+@router.get("/market/list", response_model=MarketListResponse)
+def browse_market_funds(
+    category: str = Query("all", description="all / stock / mix / bond / index / qdii / money"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+):
+    """Browse all market funds by category with pagination. ~20,000 funds total."""
+    result = list_market_funds(category=category, page=page, page_size=page_size)
+    return MarketListResponse(
+        items=[MarketFundBrowseItem(**r) for r in result["items"]],
+        total=result["total"],
+        page=result["page"],
+        page_size=result["page_size"],
+        total_pages=result["total_pages"],
+    )
+
+
+@router.post("/market/search", response_model=MarketSearchResponse)
+def search_market_funds(
+    data: MarketSearchRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Search real market funds by keyword (name or fund code) via akshare."""
+    results = search_funds(data.keyword, data.limit)
+    return MarketSearchResponse(
+        items=[MarketFundItem(**r) for r in results]
+    )
+
+
+@router.post("/market/save", response_model=ProductResponse, status_code=201)
+def save_market_product(
+    fund_code: str = Query(..., min_length=6, max_length=6),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch market data AND save the product to database in one call."""
+    existing = apply_document_filter(
+        db.query(Product), Product, current_user
+    ).filter(Product.fund_code == fund_code).first()
+    if existing:
+        _maybe_refresh_nav(existing)
+        db.commit()
+        db.refresh(existing)
+        return ProductResponse.model_validate(existing)
+
+    detail = fetch_fund_detail(fund_code)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Fund {fund_code} not found in market data")
+
+    product = Product(
+        name=detail["name"],
+        type=detail["type"],
+        risk_level=detail["risk_level"],
+        expected_return=detail["expected_return"],
+        min_investment=detail["min_investment"],
+        description=detail.get("description"),
+        issuer=detail.get("issuer"),
+        fund_code=fund_code,
+        nav_history=detail.get("nav_history"),
+        source=detail["source"],
+        nav_updated_at=datetime.utcnow() if detail.get("nav_history") else None,
+        user_id=None if current_user.role == "admin" else current_user.id,
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return ProductResponse.model_validate(product)
+
+
+# ---- CRUD endpoints ----
 
 
 def _maybe_refresh_nav(product: Product) -> bool:

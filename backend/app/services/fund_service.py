@@ -1,15 +1,40 @@
+"""
+Fund NAV data service — dual-source with akshare as primary.
+
+Priority: akshare (fund_open_fund_daily_em) -> East Money (fallback)
+AKShare provides daily NAV with higher granularity (up to 250 trading days).
+East Money serves as backup when akshare is unavailable.
+"""
+
 import re
 import json
+import logging
 from datetime import datetime
 import urllib.request
 import urllib.error
 
-from app.config import ServiceError
+from ..config import ServiceError
+
+logger = logging.getLogger(__name__)
 
 
-def fetch_fund_nav(fund_code: str) -> list[dict] | None:
+def _fetch_nav_akshare(fund_code: str) -> list[dict] | None:
+    """Fetch NAV history via akshare (primary source)."""
+    try:
+        from .market_service import fetch_fund_detail
+        detail = fetch_fund_detail(fund_code)
+        if detail and detail.get("nav_history"):
+            return detail["nav_history"]
+    except Exception:
+        logger.warning("akshare NAV fetch failed for %s, falling back to East Money", fund_code)
+    return None
+
+
+def _fetch_nav_eastmoney(fund_code: str) -> list[dict] | None:
     """Fetch 12-month NAV history from East Money for a given fund code.
-    Returns list of {date, nav, return_rate} or None on failure."""
+
+    Returns list of {date, nav, return_rate} or None on failure.
+    """
     try:
         url = f"http://fund.eastmoney.com/pingzhongdata/{fund_code}.js"
         req = urllib.request.Request(url, headers={
@@ -53,3 +78,11 @@ def fetch_fund_nav(fund_code: str) -> list[dict] | None:
         })
 
     return result if result else None
+
+
+def fetch_fund_nav(fund_code: str) -> list[dict] | None:
+    """Fetch 12-month NAV history — akshare primary, East Money fallback."""
+    result = _fetch_nav_akshare(fund_code)
+    if result:
+        return result
+    return _fetch_nav_eastmoney(fund_code)

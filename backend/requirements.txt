@@ -28,3 +28,6 @@ edge-tts>=6.0
 
 # FunASR — unified ASR/VAD/speaker/punctuation
 funasr>=1.0
+
+# Market data — Chinese financial product data
+akshare>=1.17
