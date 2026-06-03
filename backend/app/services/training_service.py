@@ -189,7 +189,7 @@ COACH_AGENT_PROMPT = """You are a senior sales coach observing a live training s
 "{user_message}"
 
 【Customer's Response】
-"{customer_reply}"
+{customer_section}
 
 ## DISC Coaching Framework
 - D型客户: Check if the salesperson was CONCISE and gave the customer CONTROL. Did they avoid rambling? Did they let the customer decide?
@@ -230,13 +230,15 @@ def simulate_coach(persona: dict, scenario: str, history_text: str, user_message
     query = f"{scenario} 销售技巧 话术 应对策略"
     kb_context = search_knowledge_base(query, user_id=user_id)
 
+    customer_section = f'"{customer_reply}"' if customer_reply else "（客户正在回复中，请基于销售人员的消息本身进行分析）"
+
     prompt = COACH_AGENT_PROMPT.format(
         scenario=scenario,
         persona=persona_text,
         kb_context=kb_context,
         history=history_text,
         user_message=user_message,
-        customer_reply=customer_reply,
+        customer_section=customer_section,
     )
 
     try:

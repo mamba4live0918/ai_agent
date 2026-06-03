@@ -1,7 +1,10 @@
 import math
 import uuid
+import asyncio
+import json
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -203,16 +206,36 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
     ).order_by(TrainingMessage.created_at).all()
     history_text = _format_history(all_messages)
 
-    # Call customer agent
+    # Call customer agent and coach agent IN PARALLEL
+    # Coach evaluates the salesperson's message quality — doesn't need customer reply
     scenario_display = SCENARIO_NAMES.get(session.scenario, session.scenario)
-    customer_result = simulate_customer(
-        persona=session.persona,
-        scenario=scenario_display,
-        scenario_context=session.scenario_context or "",
-        history_text=history_text,
-        user_message=data.content,
-        user_id=str(current_user.id),
-    )
+    loop = asyncio.get_running_loop()
+
+    async def run_parallel():
+        customer_future = loop.run_in_executor(
+            None,
+            simulate_customer,
+            session.persona,
+            scenario_display,
+            session.scenario_context or "",
+            history_text,
+            data.content,
+            str(current_user.id),
+        )
+        coach_future = loop.run_in_executor(
+            None,
+            simulate_coach,
+            session.persona,
+            scenario_display,
+            history_text,
+            data.content,
+            "",  # customer_reply — not available yet, coach evaluates user message
+            str(current_user.id),
+        )
+        # Wait for both concurrently
+        return await asyncio.gather(customer_future, coach_future)
+
+    customer_result, coach_result = asyncio.run(run_parallel())
     customer_reply = customer_result.get("reply", "") or customer_result.get("raw", "（客户没有回应）")
     conversation_ending = bool(customer_result.get("conversation_ending", False))
 
@@ -221,16 +244,6 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
     db.add(customer_msg)
     db.commit()
     db.refresh(customer_msg)
-
-    # Call coach agent
-    coach_result = simulate_coach(
-        persona=session.persona,
-        scenario=scenario_display,
-        history_text=history_text + f"\n销售: {data.content}\n客户: {customer_reply}",
-        user_message=data.content,
-        customer_reply=customer_reply,
-        user_id=str(current_user.id),
-    )
 
     # Attach coach_tip to user message
     user_msg.coach_tip = coach_result
