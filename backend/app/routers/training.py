@@ -182,7 +182,7 @@ def get_session(session_id: uuid.UUID, db: Session = Depends(get_db), current_us
 # ──────────────────────────── POST /sessions/{id}/messages ────────────────────────────
 
 @router.post("/sessions/{session_id}/messages", response_model=SendMessageResponse)
-def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = apply_user_filter(db.query(TrainingSession), TrainingSession, current_user) \
         .filter(TrainingSession.id == session_id).first()
     if not session:
@@ -207,35 +207,30 @@ def send_message(session_id: uuid.UUID, data: SendMessageRequest, db: Session = 
     history_text = _format_history(all_messages)
 
     # Call customer agent and coach agent IN PARALLEL
-    # Coach evaluates the salesperson's message quality — doesn't need customer reply
     scenario_display = SCENARIO_NAMES.get(session.scenario, session.scenario)
     loop = asyncio.get_running_loop()
 
-    async def run_parallel():
-        customer_future = loop.run_in_executor(
-            None,
-            simulate_customer,
-            session.persona,
-            scenario_display,
-            session.scenario_context or "",
-            history_text,
-            data.content,
-            str(current_user.id),
-        )
-        coach_future = loop.run_in_executor(
-            None,
-            simulate_coach,
-            session.persona,
-            scenario_display,
-            history_text,
-            data.content,
-            "",  # customer_reply — not available yet, coach evaluates user message
-            str(current_user.id),
-        )
-        # Wait for both concurrently
-        return await asyncio.gather(customer_future, coach_future)
-
-    customer_result, coach_result = asyncio.run(run_parallel())
+    customer_future = loop.run_in_executor(
+        None,
+        simulate_customer,
+        session.persona,
+        scenario_display,
+        session.scenario_context or "",
+        history_text,
+        data.content,
+        str(current_user.id),
+    )
+    coach_future = loop.run_in_executor(
+        None,
+        simulate_coach,
+        session.persona,
+        scenario_display,
+        history_text,
+        data.content,
+        "",  # customer_reply not available yet
+        str(current_user.id),
+    )
+    customer_result, coach_result = await asyncio.gather(customer_future, coach_future)
     customer_reply = customer_result.get("reply", "") or customer_result.get("raw", "（客户没有回应）")
     conversation_ending = bool(customer_result.get("conversation_ending", False))
 
