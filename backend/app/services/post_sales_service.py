@@ -55,16 +55,28 @@ def transcribe_audio(file_path: str) -> list[dict]:
         return [{"start": 0, "end": 0, "text": str(result), "speaker": "未知"}]
 
     segments = []
-    sentence_info = r.get("sentence_info", []) or []
+    sentence_info = r.get("sentence_info", []) or [] or r.get("sentences", []) or r.get("segments", [])
     if sentence_info:
+        # Count total speaking time per speaker for role assignment
+        spk_time: dict[int, float] = {}
+        for sent in sentence_info:
+            sid = sent.get("spk", 0)
+            dur = (sent.get("end", 0) - sent.get("start", 0)) / 1000.0
+            spk_time[sid] = spk_time.get(sid, 0) + dur
+
+        # Assign roles by total speaking time (most = 销售, second = 客户)
+        sorted_spks = sorted(spk_time.keys(), key=lambda s: spk_time[s], reverse=True)
+        label_map: dict[int, str] = {}
+        if len(sorted_spks) >= 1:
+            label_map[sorted_spks[0]] = "销售"
+        if len(sorted_spks) >= 2:
+            label_map[sorted_spks[1]] = "客户"
+        for i, sid in enumerate(sorted_spks[2:], 2):
+            label_map[sid] = f"其他{i}"
+
         for sent in sentence_info:
             spk_id = sent.get("spk", 0)
-            if spk_id == 0:
-                speaker = "销售"
-            elif spk_id == 1:
-                speaker = "客户"
-            else:
-                speaker = f"其他{spk_id}"
+            speaker = label_map.get(spk_id, "未知")
             segments.append({
                 "start": sent.get("start", 0) / 1000.0,
                 "end": sent.get("end", 0) / 1000.0,
