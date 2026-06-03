@@ -358,6 +358,22 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             </div>
           ))}
 
+          {/* AI thinking indicator */}
+          {sending && (
+            <div className="flex justify-start">
+              <div className="max-w-[82%] rounded-2xl rounded-bl-md px-4 py-3 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-subtle)]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-[var(--text-secondary)]">AI 思考中</span>
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)] animate-thinking-dot [animation-delay:0s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-purple)] animate-thinking-dot [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)] animate-thinking-dot [animation-delay:0.4s]" />
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* AI ending hint */}
           {showEndingHint && detail.status !== 'completed' && (
             <div className="flex justify-center">
@@ -389,7 +405,7 @@ export default function TrainingSession({ session: initialSession, onSessionUpda
             disabled={sending || !input.trim() || detail.status === 'completed'}
             className="px-5 py-2 bg-[var(--btn-blue)] rounded-full text-white text-[11px] font-medium hover:bg-[var(--btn-blue-hover)] disabled:opacity-50 transition-all duration-200 flex-shrink-0 shadow-md"
           >
-            {sending ? '发送中...' : '发送'}
+            {sending ? '思考中...' : '发送'}
           </button>
           {detail.status === 'completed' && detail.review ? (
             <button
