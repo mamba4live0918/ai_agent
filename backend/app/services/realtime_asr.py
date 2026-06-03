@@ -1,12 +1,12 @@
 """
-Real-time ASR pipeline: Silero-VAD + faster-whisper streaming transcription.
+Real-time ASR pipeline: FunASR fsmn-vad + paraformer-zh streaming transcription.
 
 Architecture
 ------------
 Audio chunks flow through three stages:
-1. VADProcessor   — buffers PCM audio, runs Silero-VAD in streaming mode,
+1. VADProcessor   — buffers PCM audio, runs FunASR fsmn-vad,
                      emits complete speech segments with timestamps
-2. ASRProcessor    — transcribes audio segments via faster-whisper large-v3-turbo
+2. ASRProcessor    — transcribes audio segments via FunASR paraformer-zh (220M)
 3. StreamingTranscriber — orchestrates 1+2, optional pyannote secondary VAD check
 
 All classes accept raw PCM 16-bit mono audio bytes and follow the project
@@ -19,17 +19,10 @@ import io
 import logging
 import wave
 from dataclasses import dataclass
-from typing import Optional
 
-import numpy as np
-import torch
-from opencc import OpenCC
-
-from ..config import ServiceError, settings
+from ..config import settings
 
 logger = logging.getLogger(__name__)
-
-_cc = OpenCC("t2s")  # Traditional Chinese → Simplified Chinese
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -58,28 +51,8 @@ class ASRSegment:
 
 
 # ---------------------------------------------------------------------------
-# Constants
+# Helpers
 # ---------------------------------------------------------------------------
-
-# Silero-VAD native window sizes (samples per chunk)
-WINDOW_SIZE_8K = 256  # 32 ms @ 8 kHz
-WINDOW_SIZE_16K = 512  # 32 ms @ 16 kHz
-
-# Byte-depth of PCM 16-bit mono
-BYTES_PER_SAMPLE = 2
-
-
-def _pcm_to_float32(pcm_bytes: bytes) -> np.ndarray:
-    """Convert PCM 16-bit mono bytes to float32 numpy array in [-1, 1]."""
-    samples = np.frombuffer(pcm_bytes, dtype=np.int16)
-    return samples.astype(np.float32) / 32768.0
-
-
-def _float32_to_pcm(samples: np.ndarray) -> bytes:
-    """Convert float32 numpy array in [-1, 1] to PCM 16-bit mono bytes."""
-    clipped = np.clip(samples, -1.0, 1.0)
-    int16_samples = (clipped * 32767.0).astype(np.int16)
-    return int16_samples.tobytes()
 
 
 def _bytes_to_wav(audio_bytes: bytes, sample_rate: int) -> bytes:
@@ -93,432 +66,161 @@ def _bytes_to_wav(audio_bytes: bytes, sample_rate: int) -> bytes:
     return buf.getvalue()
 
 
-# ---------------------------------------------------------------------------
-# VADProcessor
-# ---------------------------------------------------------------------------
+# ── FunASR VAD wrapper (fsmn-vad, lazy singleton) ──
+
+_funasr_vad = None
+
+def _get_funasr_vad():
+    global _funasr_vad
+    if _funasr_vad is None:
+        from funasr import AutoModel
+        _funasr_vad = AutoModel(model="fsmn-vad", disable_update=True)
+    return _funasr_vad
 
 
 class VADProcessor:
-    """Streaming Silero-VAD processor that emits complete speech segments.
+    """Voice activity detection using FunASR fsmn-vad.
 
-    Parameters
-    ----------
-    sample_rate : int
-        Input audio sample rate. Silero-VAD supports 8000 and 16000.
-        Audio is resampled to 8 kHz internally for VAD if a different rate
-        is passed, but the returned *audio_bytes* stay at *sample_rate*.
-    window_size_ms : int
-        Target window in ms.  Informational only — Silero-VAD natively
-        operates on a fixed 32 ms window (256 samples @ 8 kHz, 512 samples
-        @ 16 kHz) via its VADIterator, so this parameter does not change
-        the actual processing window size.
-    threshold : float
-        Speech probability threshold [0, 1]. Values above are SPEECH.
-    min_speech_duration_ms : int
-        Minimum speech duration in ms. Shorter candidates are discarded.
-    max_speech_duration_s : float
-        Maximum speech duration in seconds. Longer segments are force-split.
-    min_silence_duration_ms : int
-        Silence duration in ms before a speech segment is considered finished.
-    speech_pad_ms : int
-        Padding (ms) added to each side of detected segments.
+    Buffers PCM audio chunks and emits VADSegment instances when complete
+    speech segments are detected.  Accumulates ~2 seconds of audio before
+    running the VAD model.
     """
 
-    def __init__(
-        self,
-        sample_rate: int = 8000,
-        window_size_ms: int = 30,
-        threshold: float = 0.5,
-        min_speech_duration_ms: int = 500,
-        max_speech_duration_s: float = 10.0,
-        min_silence_duration_ms: int = 100,
-        speech_pad_ms: int = 30,
-    ):
-        if sample_rate not in (8000, 16000):
-            logger.warning(
-                "VADProcessor: sample_rate=%d not natively supported; "
-                "resampling to 8000. Supported: 8000, 16000",
-                sample_rate,
-            )
-            self._input_rate = sample_rate
-            self._vad_rate = 8000
-            self._need_resample = True
-        else:
-            self._input_rate = sample_rate
-            self._vad_rate = sample_rate
-            self._need_resample = False
-
-        self.threshold = threshold
-        self.min_speech_duration_ms = min_speech_duration_ms
-        self.max_speech_duration_s = max_speech_duration_s
-        self.window_size_ms = window_size_ms  # informational only
-
-        # Load Silero-VAD model (singleton per process)
-        from silero_vad import VADIterator, load_silero_vad
-
-        self._model = load_silero_vad()
-        self._vad_iterator = VADIterator(
-            self._model,
-            threshold=threshold,
-            sampling_rate=self._vad_rate,
-            min_silence_duration_ms=min_silence_duration_ms,
-            speech_pad_ms=speech_pad_ms,
-        )
-
-        # State
-        self._audio_buffer: list[float] = []  # raw input samples (float32, input rate)
-        self._vad_buffer: list[float] = []  # samples fed to VAD (float32, vad rate)
-        self._current_sample = 0  # absolute sample count (vad rate)
-        self._segment_start: Optional[int] = None  # vad-rate sample index
-        self._speech_probs: list[float] = []  # probabilities during current segment
-        self._total_samples_in = 0  # total input samples received
-        self._last_window: Optional[np.ndarray] = None  # most recent VAD window
-        self._input_trim_offset = 0  # cumulative input samples trimmed from _audio_buffer
-
-        # Window-size samples for VAD at vad rate
-        self._window_samples = WINDOW_SIZE_8K if self._vad_rate == 8000 else WINDOW_SIZE_16K
-
-        # Prevent unbounded memory growth (120 s max buffer for long utterances)
-        self._max_buffer_samples = self._input_rate * 120
-
-    # -- public API ---------------------------------------------------------
-
-    def process_chunk(self, audio_bytes: bytes) -> list[VADSegment]:
-        """Feed a chunk of raw PCM 16-bit mono audio and return any
-        newly-completed speech segments."""
-        if not audio_bytes:
-            return []
-
-        # Convert to float32
-        chunk = _pcm_to_float32(audio_bytes)
-        self._audio_buffer.extend(chunk.tolist())
-        self._total_samples_in += len(chunk)
-
-        # Resample to VAD rate if needed
-        if self._need_resample:
-            vad_chunk = self._resample_chunk(chunk)
-        else:
-            vad_chunk = chunk
-
-        self._vad_buffer.extend(vad_chunk.tolist())
-
-        completed: list[VADSegment] = []
-
-        # Enforce max buffer size to prevent memory growth in long sessions
-        while len(self._audio_buffer) > self._max_buffer_samples:
-            overflow = len(self._audio_buffer) - self._max_buffer_samples
-            self._audio_buffer = self._audio_buffer[overflow:]
-            self._total_samples_in -= overflow
-            self._input_trim_offset += overflow
-            if self._segment_start is not None:
-                # _segment_start is at vad_rate; overflow is at input_rate
-                ratio = self._vad_rate / self._input_rate
-                self._segment_start -= int(overflow * ratio)
-            logger.debug("VAD buffer trimmed by %d samples (max %d s)",
-                         overflow, self._max_buffer_samples // self._input_rate)
-
-        # Feed VAD in fixed-size windows
-        while len(self._vad_buffer) >= self._window_samples:
-            window = self._vad_buffer[: self._window_samples]
-            self._vad_buffer = self._vad_buffer[self._window_samples :]
-            self._last_window = np.array(window, dtype=np.float32)
-
-            tensor = torch.tensor(np.array(window, dtype=np.float32))
-            result = self._vad_iterator(tensor, return_seconds=False)
-
-            if result is not None:
-                if "start" in result:
-                    self._segment_start = result["start"]
-                    self._speech_probs = [self._get_last_prob()]
-                    self._current_sample += self._window_samples
-                    logger.debug(
-                        "VAD start detected at sample=%d, prob=%.3f, total_in=%.1fs",
-                        result["start"], self._speech_probs[0], self.total_seconds,
-                    )
-                elif "end" in result and self._segment_start is not None:
-                    end_sample = result["end"]
-                    logger.debug(
-                        "VAD end detected at sample=%d (duration=%.2fs), total_in=%.1fs",
-                        end_sample,
-                        (end_sample - self._segment_start) / self._vad_rate,
-                        self.total_seconds,
-                    )
-                    # Extract segment audio from buffer
-                    seg = self._extract_segment(self._segment_start, end_sample)
-                    if seg is not None:
-                        logger.info(
-                            "VAD segment extracted: %.2fs-%.2fs (%.2fs), audio_bytes=%d",
-                            seg.start, seg.end, seg.end - seg.start, len(seg.audio_bytes),
-                        )
-                        completed.append(seg)
-                    else:
-                        logger.debug("VAD segment rejected (too short or empty)")
-                    self._segment_start = None
-                    self._speech_probs = []
-                    self._current_sample += self._window_samples
-                    # Trim audio buffer (keep unprocessed tail)
-                    self._trim_audio_buffer(end_sample)
-                else:
-                    self._current_sample += self._window_samples
-            else:
-                if self._segment_start is not None:
-                    self._speech_probs.append(self._get_last_prob())
-                    # Check max speech duration
-                    vad_duration = (
-                        self._current_sample + self._window_samples - self._segment_start
-                    ) / self._vad_rate
-                    if vad_duration >= self.max_speech_duration_s:
-                        end_sample = self._segment_start + int(
-                            self.max_speech_duration_s * self._vad_rate
-                        )
-                        seg = self._extract_segment(self._segment_start, end_sample)
-                        if seg is not None:
-                            completed.append(seg)
-                        self._segment_start = None
-                        self._speech_probs = []
-                        self._vad_iterator.reset_states()
-                        self._trim_audio_buffer(end_sample)
-                self._current_sample += self._window_samples
-
-        return completed
-
-    def reset(self) -> None:
-        """Reset VAD state and clear buffers."""
-        self._vad_iterator.reset_states()
-        self._audio_buffer.clear()
-        self._vad_buffer.clear()
+    def __init__(self, sample_rate: int = 16000):
+        self._sample_rate = sample_rate
+        self._buffer = bytearray()
+        self._offset_samples = 0
         self._current_sample = 0
-        self._segment_start = None
-        self._speech_probs.clear()
-        self._total_samples_in = 0
-        self._last_window = None
-        self._input_trim_offset = 0
+        self._min_speech_duration_ms = 500
 
     @property
-    def total_seconds(self) -> float:
-        """Total audio received so far, in seconds."""
-        return self._total_samples_in / self._input_rate
+    def sample_rate(self) -> int:
+        return self._sample_rate
 
-    # -- internals ----------------------------------------------------------
+    def feed(self, audio_bytes: bytes) -> list[VADSegment]:
+        """Feed a chunk of raw PCM audio, return completed VAD segments."""
+        self._buffer.extend(audio_bytes)
 
-    def _resample_chunk(self, chunk: np.ndarray) -> np.ndarray:
-        """Simple linear resampling from input_rate to vad_rate."""
-        if len(chunk) == 0:
-            return np.array([], dtype=np.float32)
+        # Accumulate at least ~1.5 seconds before running VAD
+        min_bytes = int(self._sample_rate * 1.5 * 2)  # 16-bit = 2 bytes/sample
+        if len(self._buffer) < min_bytes:
+            return []
+
+        import tempfile
+        import os
+
+        # Write buffer to temp WAV for fsmn-vad
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
         try:
-            import torchaudio.functional as F
+            with os.fdopen(tmp_fd, "wb") as tmp:
+                with wave.open(tmp, "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(self._sample_rate)
+                    wf.writeframes(bytes(self._buffer))
 
-            t = torch.from_numpy(chunk).unsqueeze(0)
-            resampled = F.resample(t, self._input_rate, self._vad_rate)
-            return resampled.squeeze(0).numpy()
-        except Exception:
-            # Fallback: crude linear interpolation
-            ratio = self._vad_rate / self._input_rate
-            out_len = max(1, int(len(chunk) * ratio))
-            indices = np.linspace(0, len(chunk) - 1, out_len)
-            return np.interp(indices, np.arange(len(chunk)), chunk).astype(np.float32)
+            model = _get_funasr_vad()
+            result = model.generate(input=tmp_path)
+        finally:
+            os.unlink(tmp_path)
 
-    def _get_last_prob(self) -> float:
-        """Return the speech probability of the most-recently processed window.
+        # Clear buffer after processing
+        buf_copy = bytes(self._buffer)
+        buf_len_samples = len(buf_copy) // 2
+        self._buffer = bytearray()
 
-        Re-runs the Silero-VAD model on the saved last window to obtain the
-        raw probability, since VADIterator does not expose intermediate probs.
-        Falls back to *self.threshold* if the model call fails.
-        """
-        if self._last_window is None or len(self._last_window) < self._window_samples:
-            return self.threshold
-        try:
-            tensor = torch.from_numpy(self._last_window).unsqueeze(0)
-            prob = self._model(tensor, self._vad_rate).item()
-            return float(prob)
-        except Exception:
-            return self.threshold
+        segments: list[VADSegment] = []
+        if result and isinstance(result, list) and len(result) > 0:
+            r = result[0]
+            vad_list = r.get("value", []) or []
+            for seg in vad_list:
+                if isinstance(seg, list):
+                    start_ms, end_ms = seg[0], seg[1]
+                elif isinstance(seg, dict):
+                    start_ms = seg.get("start", 0)
+                    end_ms = seg.get("end", 0)
+                else:
+                    continue
 
-    def _extract_segment(self, start_vad: int, end_vad: int) -> Optional[VADSegment]:
-        """Extract a speech segment from the audio buffer.
+                start_sec = start_ms / 1000.0
+                end_sec = end_ms / 1000.0
 
-        *start_vad* and *end_vad* are sample indices at the VAD rate.
-        The returned audio stays at the input rate.
-        """
-        if end_vad <= start_vad:
-            return None
+                # Extract audio bytes for this segment
+                samp_start = max(0, int(start_sec * self._sample_rate))
+                samp_end = min(buf_len_samples, int(end_sec * self._sample_rate))
+                seg_audio = buf_copy[samp_start * 2 : samp_end * 2]
 
-        # Check minimum speech duration
-        duration_s = (end_vad - start_vad) / self._vad_rate
-        if duration_s * 1000 < self.min_speech_duration_ms:
-            logger.debug("Segment too short: %.0f ms < %d ms",
-                         duration_s * 1000, self.min_speech_duration_ms)
-            return None
+                if len(seg_audio) < self._min_speech_duration_ms * self._sample_rate // 500:
+                    continue
 
-        # Convert VAD-rate indices to input-rate indices, then adjust for
-        # any samples already trimmed from the front of _audio_buffer.
-        ratio = self._input_rate / self._vad_rate
-        start_in = int(start_vad * ratio) - self._input_trim_offset
-        end_in = int(end_vad * ratio) - self._input_trim_offset
+                segments.append(VADSegment(
+                    start=start_sec + self._offset_samples / self._sample_rate,
+                    end=end_sec + self._offset_samples / self._sample_rate,
+                    audio_bytes=seg_audio,
+                ))
 
-        # Clamp to available audio
-        start_in = max(0, start_in)
-        end_in = min(len(self._audio_buffer), end_in)
+        self._offset_samples += buf_len_samples
+        self._current_sample = self._offset_samples
+        return segments
 
-        if end_in <= start_in:
-            logger.warning(
-                "VAD segment mapping failed: start_vad=%d end_vad=%d → "
-                "start_in=%d end_in=%d (trim_offset=%d, buf_len=%d)",
-                start_vad, end_vad, start_in, end_in,
-                self._input_trim_offset, len(self._audio_buffer),
-            )
-            return None
-
-        # Extract audio
-        segment_samples = np.array(self._audio_buffer[start_in:end_in], dtype=np.float32)
-        audio_bytes = _float32_to_pcm(segment_samples)
-
-        # Compute confidence as mean of speech probabilities
-        if self._speech_probs:
-            confidence = float(np.mean(self._speech_probs))
-        else:
-            confidence = self.threshold
-
-        start_sec = start_in / self._input_rate
-        end_sec = end_in / self._input_rate
-
-        return VADSegment(
-            start=start_sec,
-            end=end_sec,
-            audio_bytes=audio_bytes,
-            confidence=confidence,
-        )
-
-    def _trim_audio_buffer(self, end_vad: int) -> None:
-        """Remove audio samples that have already been emitted as segments."""
-        ratio = self._input_rate / self._vad_rate
-        end_in = int(end_vad * ratio) - self._input_trim_offset
-        end_in = max(0, min(len(self._audio_buffer), end_in))
-        if end_in > 0:
-            self._audio_buffer = self._audio_buffer[end_in:]
-            self._input_trim_offset += end_in
-        # Also trim VAD buffer: account for samples already consumed
-        # via window processing (_current_sample has been advanced past
-        # the triggering window). Only trim remaining samples that fall
-        # within [0, end_vad].
-        remaining_to_trim = max(0, end_vad - self._current_sample)
-        vad_trim = min(len(self._vad_buffer), remaining_to_trim)
-        if vad_trim > 0:
-            self._vad_buffer = self._vad_buffer[vad_trim:]
+    def reset(self) -> None:
+        self._buffer = bytearray()
+        self._offset_samples = 0
+        self._current_sample = 0
 
 
-# ---------------------------------------------------------------------------
-# ASRProcessor
-# ---------------------------------------------------------------------------
+# ── FunASR ASR wrapper (paraformer-zh, lazy singleton) ──
+
+_funasr_asr = None
+
+def _get_funasr_asr():
+    global _funasr_asr
+    if _funasr_asr is None:
+        from funasr import AutoModel
+        _funasr_asr = AutoModel(model="paraformer-zh", disable_update=True)
+    return _funasr_asr
 
 
 class ASRProcessor:
-    """Transcribes audio segments using faster-whisper large-v3-turbo (INT8, CPU).
+    """Transcribes audio segments using FunASR paraformer-zh (220M).
 
-    The model is loaded once on instantiation and reused for all segments.
-    Transient WAV files are written to a temp directory for the whisper
-    transcribe() call, then deleted immediately.
-
-    Parameters
-    ----------
-    model_size : str
-        faster-whisper model name. Default ``large-v3-turbo``.
-    device : str
-        Inference device. Default ``cpu``.
-    compute_type : str
-        Quantisation type. Default ``int8``.
+    RTF ~0.047 vs faster-whisper's 0.58 on CPU.
+    Outputs simplified Chinese — no OpenCC conversion needed.
     """
 
-    def __init__(
-        self,
-        model_size: str | None = None,
-        device: str = "cpu",
-        compute_type: str = "int8",
-    ):
-        if model_size is None:
-            model_size = getattr(settings, "asr_model_size", None) or "small"
-        from faster_whisper import WhisperModel
+    def __init__(self, sample_rate: int = 16000):
+        self._sample_rate = sample_rate
 
-        logger.info("Loading faster-whisper model %s (device=%s, compute=%s) ...",
-                    model_size, device, compute_type)
-        self._model = WhisperModel(model_size, device=device, compute_type=compute_type)
-        self._device = device
-        self._compute_type = compute_type
-        self._sample_rate = 16000  # faster-whisper expects 16 kHz
-        logger.info("ASRProcessor ready")
+    def transcribe(self, audio_bytes: bytes) -> str:
+        """Transcribe a single speech segment. Returns text string."""
+        import tempfile
+        import wave
+        import os
 
-    def transcribe_segment(self, audio_bytes: bytes, sample_rate: int = 8000) -> ASRSegment:
-        """Transcribe a single speech segment (PCM 16-bit mono bytes).
+        if not audio_bytes or len(audio_bytes) < self._sample_rate // 10:
+            return ""
 
-        Uses numpy array input directly (no temp file I/O) for low latency.
-        """
-        if not audio_bytes:
-            return ASRSegment(start=0.0, end=0.0, text="", confidence=0.0)
-
-        num_samples = len(audio_bytes) // BYTES_PER_SAMPLE
-        duration_sec = num_samples / sample_rate if sample_rate > 0 else 0.0
-
-        # Convert PCM bytes → numpy float32 array (faster-whisper native input)
-        audio = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-
-        # Resample to 16 kHz if needed (faster-whisper requirement)
-        if sample_rate != 16000:
-            try:
-                import torchaudio.functional as F
-                t = torch.from_numpy(audio).unsqueeze(0)
-                audio = F.resample(t, sample_rate, 16000).squeeze(0).numpy()
-            except Exception:
-                ratio = 16000 / sample_rate
-                out_len = max(1, int(len(audio) * ratio))
-                indices = np.linspace(0, len(audio) - 1, out_len)
-                audio = np.interp(indices, np.arange(len(audio)), audio).astype(np.float32)
-
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
         try:
-            segments, info = self._model.transcribe(
-                audio,
-                beam_size=3,
-                best_of=3,
-                repetition_penalty=1.2,
-            )
-            if info is None:
-                raise ServiceError("ASR transcription failed: no info returned")
+            with os.fdopen(tmp_fd, "wb") as tmp:
+                with wave.open(tmp, "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(self._sample_rate)
+                    wf.writeframes(audio_bytes)
 
-            texts: list[str] = []
-            confidences: list[float] = []
-            seg_start: float = 0.0
-            seg_end: float = duration_sec
+            model = _get_funasr_asr()
+            result = model.generate(input=tmp_path)
+        finally:
+            os.unlink(tmp_path)
 
-            for seg in segments:
-                t = seg.text.strip()
-                if t:
-                    texts.append(t)
-                confidences.append(seg.avg_logprob if hasattr(seg, "avg_logprob") else 0.0)
-                if hasattr(seg, "start"):
-                    seg_start = min(seg_start if seg_start > 0 else seg.start, seg.start)
-                if hasattr(seg, "end"):
-                    seg_end = max(seg_end, seg.end)
-
-            text = _cc.convert("".join(texts))
-            if confidences:
-                avg_logprob = float(np.mean(confidences))
-                confidence = float(np.exp(avg_logprob))
-            else:
-                confidence = 0.0
-
-            return ASRSegment(
-                start=seg_start,
-                end=seg_end,
-                text=text,
-                confidence=confidence,
-            )
-        except Exception:
-            logger.exception("ASR transcription failed")
-            return ASRSegment(
-                start=0.0,
-                end=duration_sec,
-                text="",
-                confidence=0.0,
-            )
+        if result and isinstance(result, list) and len(result) > 0:
+            r = result[0]
+            text = r.get("text", "")
+            if isinstance(text, list):
+                text = " ".join(text)
+            return text.strip()
+        return ""
 
 # ---------------------------------------------------------------------------
 # Pyannote secondary VAD (false-positive filter)
@@ -603,11 +305,11 @@ class StreamingTranscriber:
     sample_rate : int
         Input audio sample rate (default 8000).
     vad_threshold : float
-        Silero-VAD speech probability threshold.
+        Reserved — FunASR fsmn-vad does its own thresholding.
     min_speech_duration_ms : int
         Minimum speech segment duration.
     max_speech_duration_s : float
-        Maximum speech segment duration before force-split.
+        Maximum speech segment duration before force-split (reserved).
     enable_pyannote_check : bool
         If True, use pyannote VAD as a secondary false-positive filter.
     enable_speaker_clustering : bool
@@ -626,13 +328,8 @@ class StreamingTranscriber:
     ):
         self.sample_rate = sample_rate
 
-        self._vad = VADProcessor(
-            sample_rate=sample_rate,
-            threshold=vad_threshold,
-            min_speech_duration_ms=min_speech_duration_ms,
-            max_speech_duration_s=max_speech_duration_s,
-        )
-        self._asr = ASRProcessor()
+        self._vad = VADProcessor(sample_rate=sample_rate)
+        self._asr = ASRProcessor(sample_rate=sample_rate)
         self._pyannote = _load_pyannote_vad() if enable_pyannote_check else None
         self._enable_pyannote = enable_pyannote_check
 
@@ -641,8 +338,6 @@ class StreamingTranscriber:
         self._speaker_clustering = None
         if enable_speaker_clustering:
             from .speaker_clustering import OnlineSpeakerClustering
-            # Lower threshold = harder to create new clusters (prevents one person → multiple IDs)
-            # Higher min_segment_duration = short segments always assigned to last speaker
             self._speaker_clustering = OnlineSpeakerClustering(
                 similarity_threshold=0.35,
                 min_segment_duration_ms=1500,
@@ -661,7 +356,7 @@ class StreamingTranscriber:
         first call to ``feed_chunk`` or since the last ``reset``).
         """
         # Step 1: VAD
-        vad_segments = self._vad.process_chunk(audio_bytes)
+        vad_segments = self._vad.feed(audio_bytes)
 
         results: list[ASRSegment] = []
 
@@ -685,18 +380,17 @@ class StreamingTranscriber:
                     vseg.audio_bytes, self.sample_rate
                 )
 
-            # Step 4: ASR transcription
-            asr_seg = self._asr.transcribe_segment(
-                vseg.audio_bytes, sample_rate=self.sample_rate
-            )
+            # Step 4: ASR transcription (paraformer→string)
+            text = self._asr.transcribe(vseg.audio_bytes)
 
-            # Use VAD timestamps (more precise than ASR)
-            asr_seg.start = self._processed_seconds + vseg.start
-            asr_seg.end = self._processed_seconds + vseg.end
-            asr_seg.speaker = speaker_id
-
-            if asr_seg.text.strip():
-                results.append(asr_seg)
+            if text.strip():
+                results.append(ASRSegment(
+                    start=self._processed_seconds + vseg.start,
+                    end=self._processed_seconds + vseg.end,
+                    text=text,
+                    confidence=vseg.confidence,
+                    speaker=speaker_id,
+                ))
 
         return results
 
@@ -708,7 +402,7 @@ class StreamingTranscriber:
     @property
     def total_seconds(self) -> float:
         """Total audio processed (seconds)."""
-        return self._vad.total_seconds
+        return self._vad._current_sample / self._vad._sample_rate if self._vad._sample_rate > 0 else 0.0
 
     def get_speaker_names(self) -> dict[str, str]:
         """Return the current speaker ID -> role name mapping.
