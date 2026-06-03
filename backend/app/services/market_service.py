@@ -161,16 +161,28 @@ def fetch_fund_detail(fund_code: str) -> Optional[dict]:
         )
         raw_type = info_map.get("基金类型", "")
     except Exception:
-        logger.warning("Failed to fetch basic info for %s, using fund_name_em fallback", fund_code)
-        # Fallback to fund_name_em
-        df_all = ak.fund_name_em()
-        match = df_all[df_all["基金代码"].astype(str) == fund_code]
-        if not match.empty:
-            row = match.iloc[0]
-            result["name"] = str(row["基金简称"])
-            raw_type = str(row.get("基金类型", ""))
+        logger.warning("Failed to fetch basic info for %s via xueqiu, trying fund_name_em fallback", fund_code)
+        # Fallback to fund_name_em (may fail on VPN/network issues)
+        try:
+            df_all = ak.fund_name_em()
+            match = df_all[df_all["基金代码"].astype(str) == fund_code]
+            if not match.empty:
+                row = match.iloc[0]
+                result["name"] = str(row["基金简称"])
+                raw_type = str(row.get("基金类型", ""))
+                result["issuer"] = ""
+                result["description"] = f"{raw_type}"
+            else:
+                result["name"] = f"基金{fund_code}"
+                raw_type = ""
+                result["issuer"] = ""
+                result["description"] = ""
+        except Exception:
+            logger.warning("fund_name_em fallback also failed for %s, using placeholder", fund_code)
+            result["name"] = f"基金{fund_code}"
+            raw_type = ""
             result["issuer"] = ""
-            result["description"] = f"{raw_type}"
+            result["description"] = "数据加载失败，请稍后刷新"
         else:
             result["name"] = f"基金{fund_code}"
             raw_type = ""
