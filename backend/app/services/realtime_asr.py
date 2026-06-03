@@ -157,6 +157,7 @@ class VADProcessor:
                     start=start_sec + self._offset_samples / self._sample_rate,
                     end=end_sec + self._offset_samples / self._sample_rate,
                     audio_bytes=seg_audio,
+                    confidence=0.9,  # fsmn-vad doesn't return per-segment confidence; default high
                 ))
 
         self._offset_samples += buf_len_samples
