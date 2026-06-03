@@ -16,6 +16,8 @@ pydantic-settings==2.14.1
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 openai==1.109.1
+sentence-transformers>=2.7
+# ── Local Embedding replaced by BGE-m3 (2026-06) — Jina API removed ──
 # ── ASR replaced by FunASR (2026-06) — legacy deps kept for rollback ──
 # faster-whisper==1.2.0
 # pyannote.audio>=3.0

@@ -1,16 +1,13 @@
 import os
 import jieba
-from openai import OpenAI
 from rank_bm25 import BM25Okapi
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDocument
 from langchain_core.embeddings import Embeddings
+from sentence_transformers import SentenceTransformer
 
 from ..config import settings, ServiceError
-from httpx import Timeout
-
-
 
 _text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=512,
@@ -18,50 +15,58 @@ _text_splitter = RecursiveCharacterTextSplitter(
     separators=["\n\n", "\n", "。", "！", "？", "；", "，", ".", " ", ""],
 )
 
+# ── BGE-m3 Embedding (local, no API key needed) ──
 
-class JinaEmbeddings(Embeddings):
-    """Jina AI embedding function using OpenAI-compatible API."""
+_bge_model: SentenceTransformer | None = None
 
-    def __init__(self, api_key: str, model: str, base_url: str):
-        self._client = OpenAI(api_key=api_key, base_url=base_url, timeout=Timeout(60.0, connect=10.0))
-        self._model = model
+
+def _get_bge_model() -> SentenceTransformer:
+    """Lazy-load BGE-m3 — 568M params, 1024-dim, Chinese SOTA."""
+    global _bge_model
+    if _bge_model is None:
+        _bge_model = SentenceTransformer(
+            settings.embed_model_id,
+            device=settings.embed_device,
+        )
+    return _bge_model
+
+
+class BGEEmbeddings(Embeddings):
+    """BGE-m3 local embedding via sentence-transformers.
+
+    No API key required — runs entirely offline.
+    Output: 1024-dim normalized vectors, Chinese-optimized.
+    """
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        try:
-            resp = self._client.embeddings.create(model=self._model, input=texts)
-        except Exception as e:
-            raise ServiceError(f"Jina Embedding API call failed: {e}")
-
-        if not resp.data or len(resp.data) == 0:
-            raise ServiceError("Jina Embedding returned empty data")
-
-        embeddings = []
-        for item in sorted(resp.data, key=lambda x: x.index):
-            if item.embedding is None or len(item.embedding) == 0:
-                raise ServiceError(f"Jina Embedding returned null/empty embedding for item {item.index}")
-            embeddings.append(item.embedding)
-        return embeddings
+        if not texts:
+            return []
+        model = _get_bge_model()
+        embeddings = model.encode(
+            texts,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return embeddings.tolist()
 
     def embed_query(self, text: str) -> list[float]:
-        try:
-            resp = self._client.embeddings.create(model=self._model, input=[text])
-        except Exception as e:
-            raise ServiceError(f"Jina Embedding API call failed: {e}")
-
-        if not resp.data or len(resp.data) == 0:
-            raise ServiceError("Jina Embedding returned empty data")
-
-        if resp.data[0].embedding is None or len(resp.data[0].embedding) == 0:
-            raise ServiceError("Jina Embedding returned null/empty embedding")
-
-        return resp.data[0].embedding
+        model = _get_bge_model()
+        embedding = model.encode(
+            text,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return embedding.tolist()
 
 
-_embedding_function = JinaEmbeddings(
-    api_key=settings.jina_api_key,
-    model=settings.embed_model,
-    base_url=settings.jina_base_url,
-)
+# Remove JinaEmbeddings — now using local BGE-m3
+# JinaEmbeddings removed 2026-06
+
+# ⚠️ BGE-m3 embedding space differs from Jina — old vectors are INCOMPATIBLE.
+# Action required: delete ./chroma_db/ and re-upload all documents.
+# Both are 1024-dim but the semantic spaces are completely different.
+
+_embedding_function = BGEEmbeddings()
 
 
 def add_to_chroma(chunks: list[LCDocument]):

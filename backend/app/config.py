@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production-use-a-real-random-string"
     access_token_expire_hours: int = 24
 
-    # Jina Embedding (OpenAI-compatible)
+    # BGE-m3 Embedding (local, no API key needed)
+    embed_model_id: str = "BAAI/bge-m3"        # sentence-transformers model ID
+    embed_device: str = "cpu"                  # "cpu" or "cuda"
+    # Jina config kept as fallback (set USE_JINA_EMBED=true to switch back)
+    use_jina_embed: bool = False
     jina_api_key: str = ""
     jina_base_url: str = "https://api.jina.ai/v1"
     embed_model: str = "jina-embeddings-v3"
@@ -44,7 +48,7 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 
-    @field_validator("deepseek_api_key", "jina_api_key")
+    @field_validator("deepseek_api_key")
     @classmethod
     def check_required(cls, v: str, info: ValidationInfo) -> str:
         if not v:
