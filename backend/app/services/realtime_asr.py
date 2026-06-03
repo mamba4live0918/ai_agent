@@ -86,12 +86,12 @@ class VADProcessor:
     running the VAD model.
     """
 
-    def __init__(self, sample_rate: int = 16000):
+    def __init__(self, sample_rate: int = 16000, min_speech_duration_ms: int = 500):
         self._sample_rate = sample_rate
+        self._min_speech_duration_ms = min_speech_duration_ms
         self._buffer = bytearray()
         self._offset_samples = 0
         self._current_sample = 0
-        self._min_speech_duration_ms = 500
 
     @property
     def sample_rate(self) -> int:
@@ -101,8 +101,8 @@ class VADProcessor:
         """Feed a chunk of raw PCM audio, return completed VAD segments."""
         self._buffer.extend(audio_bytes)
 
-        # Accumulate at least ~1.5 seconds before running VAD
-        min_bytes = int(self._sample_rate * 1.5 * 2)  # 16-bit = 2 bytes/sample
+        # Accumulate at least ~2 seconds before running VAD
+        min_bytes = int(self._sample_rate * 2.0 * 2)  # 16-bit = 2 bytes/sample
         if len(self._buffer) < min_bytes:
             return []
 
@@ -329,7 +329,7 @@ class StreamingTranscriber:
     ):
         self.sample_rate = sample_rate
 
-        self._vad = VADProcessor(sample_rate=sample_rate)
+        self._vad = VADProcessor(sample_rate=sample_rate, min_speech_duration_ms=min_speech_duration_ms)
         self._asr = ASRProcessor(sample_rate=sample_rate)
         self._pyannote = _load_pyannote_vad() if enable_pyannote_check else None
         self._enable_pyannote = enable_pyannote_check

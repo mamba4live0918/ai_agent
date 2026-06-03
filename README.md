@@ -11,13 +11,14 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **ORM** | SQLAlchemy + Alembic (迁移) |
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Jina AI (`jina-embeddings-v3`) |
-| **语音转录** | ~~faster-whisper `large-v3-turbo`~~ → **FunASR Paraformer-zh** (2026-06 已验证, 待集成) + OpenCC `t2s` 简繁转换 |
-| **说话人分离** | ~~pyannote.audio~~ → **FunASR cam++** (待验证) + 在线聚类 (cosine similarity + EMA centroid) |
-| **VAD** | ~~Silero-VAD ONNX~~ → **FunASR fsmn-vad** (待集成) |
-| **标点恢复** | 无 → **FunASR ct-punc** (新增) |
+| **语音转录** | **FunASR Paraformer-zh** (220M，RTF ~0.05) — 替代 faster-whisper large-v3-turbo (809M) |
+| **说话人分离** | **FunASR cam++** (192-dim embedding，无需 HF Token) + 在线聚类 (cosine similarity + EMA centroid) |
+| **VAD** | **FunASR fsmn-vad** — 替代 Silero-VAD ONNX |
+| **标点恢复** | **FunASR ct-punc** — 自动添加中英文标点 |
+| **简繁转换** | 已移除 OpenCC — Paraformer-zh 原生输出简体中文 |
 | **TTS** | edge-tts (`zh-CN-XiaoxiaoNeural`) |
 
-> **2026-06 FunASR Benchmark:** Paraformer-zh (220M) 比 faster-whisper large-v3-turbo (809M) **快 12.4 倍**（RTF 0.047 vs 0.582），中文转写精度更好，自动添加标点。详见 [benchmark_results.json](backend/benchmark_results.json)。
+> **2026-06 FunASR 全栈替换完成** — 全部 ASR 组件已从 faster-whisper + pyannote + Silero-VAD 迁移至 FunASR，无需 HuggingFace Token，Windows CPU 推理。Benchmark: Paraformer-zh (220M) 比 faster-whisper large-v3-turbo (809M) **快 12.4 倍**（RTF 0.047 vs 0.582），中文精度更好。详见 [benchmark_results.json](backend/benchmark_results.json)。
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 | **桌面应用** | Tauri v2（Windows MSI/NSIS 安装包） |
@@ -70,10 +71,10 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── allocation_service.py # 资产配置方案生成（保守/稳健/进取）
 │   │   │   ├── training_service.py   # 客户模拟 + 教练提示 + 复盘报告（KB 优先）
 │   │   │   ├── fund_service.py       # 东方财富 API 获取真实基金净值走势
-│   │   │   ├── post_sales_service.py # 音频转录 + 售后报告 + KB 匹配
-│   │   │   ├── realtime_asr.py       # 实时 ASR 流水线（VAD + faster-whisper）
-│   │   │   ├── speaker_clustering.py # 在线说话人聚类（pyannote embedding）
-│   │   │   ├── trigger_engine.py     # 触发器引擎（YAML 规则 + DeepSeek 教练提示）
+│   │   │   ├── post_sales_service.py # 音频转录 (FunASR Paraformer-zh + cam++) + 售后报告
+│   │   │   ├── realtime_asr.py       # 实时 ASR 流水线 (FunASR fsmn-vad + paraformer-zh)
+│   │   │   ├── speaker_clustering.py # 在线说话人聚类 (FunASR cam++ embedding)
+│   │   │   ├── trigger_engine.py     # 教练触发器引擎 (8 YAML 规则 + DeepSeek 流式提示)
 │   │   │   ├── realtime_service.py   # 实时会话归档（bulk persist）
 │   │   │   ├── tts_service.py        # edge-tts 语音合成 + 流式输出
 │   │   │   └── quiz_service.py       # 知识库场景模拟练习生成 + 自动评分
@@ -417,21 +418,22 @@ npm run dev
 
 **售后分析（Post-Sales Analysis）**
 - 录音/上传/手动输入三种方式记录销售对话
-- faster-whisper `large-v3-turbo` 自动语音转录 + OpenCC 繁→简转换
-- pyannote.audio 说话人分离（最多 4 人，按发言时长映射为 销售/客户/其他）
+- FunASR Paraformer-zh (220M) 自动语音转录 + ct-punc 标点恢复
+- FunASR cam++ 说话人分离（最多 4 人，按发言时长映射为 销售/客户/其他）
 - 客户关联：`PATCH /sessions/{id}` 支持关联/解除客户
 - AI 分析报告浮窗弹窗：综合评分 + 通话摘要 + 情绪轨迹图 + 对话占比饼图 + 能力评估雷达图 + 成交概率仪表盘 + 关键时刻时间线 + 错失机会 + 优势/待改进 + 知识库匹配
 - 报告支持 html2canvas + jsPDF 导出
 
 **实时语音陪跑（Real-time Voice AI）**
 - WebSocket 实时音频流传输（MediaRecorder API → 100ms 分片 → 服务端处理）
-- 四阶段流水线：Silero-VAD 语音检测 → faster-whisper 实时转录 → 说话人在线聚类 → 教练触发器引擎
-- ASR：faster-whisper `large-v3-turbo` INT8 CPU 推理，OpenCC 简繁转换
-- 说话人聚类：pyannote embedding (512 维) + 增量余弦相似度匹配 + EMA 质心更新 (alpha=0.3)
+- 四阶段流水线：FunASR fsmn-vad 语音检测 → paraformer-zh 实时转录 → cam++ 说话人在线聚类 → 教练触发器引擎
+- ASR：FunASR Paraformer-zh (220M) CPU 推理，RTF ~0.05，原生简体中文输出
+- 说话人聚类：cam++ embedding (192 维) + 增量余弦相似度匹配 + EMA 质心更新 (alpha=0.3)
 - 教练触发器引擎：8 条 YAML 规则（犹豫/价格异议/竞品提及/承诺信号/反对/长静默/多人讨论/情绪转变），DeepSeek 流式生成提示
 - TTS 语音合成：edge-tts (`zh-CN-XiaoxiaoNeural`) + 语音打断检测（RMS 音量监测，阈值 0.08）
-- 前端：实时转录面板（说话人彩色标签）+ 教练提示侧边栏（打字机效果 + 自动消失/钉住）
+- 前端：实时转录面板（说话人彩色标签）+ 教练提示内联气泡（对话流中显示）
 - 会话归档：WebSocket 断开后 bulk persist 到 PostgreSQL，支持历史回放
+- 无需 HuggingFace Token — cam++ 替代 pyannote，模型从 ModelScope 自动下载
 
 **用户反馈系统**
 - 星级评分（1-5 星）+ 文字评价
@@ -474,11 +476,53 @@ npm run dev
 - 去掉拖动功能，固定居中展示
 - 点击遮罩关闭弹窗
 
-**实时 ASR 优化**
-- 去临时文件 I/O：VAD 片段直接传 numpy float32 数组给 faster-whisper
-- VAD 阈值优化：`threshold=0.5`, `min_speech_duration_ms=1000`, `max_speech_duration_s=8.0`
-- 说话人聚类：`similarity_threshold=0.40`，角色按检测顺序分配
-- 前端说话人标签修复：speaker→讲话人/销售/客户/其他
+**实时 ASR 优化 (FunASR)**
+- **2026-06 全栈替换完成**：faster-whisper + pyannote + Silero-VAD → FunASR (fsmn-vad + paraformer-zh + cam++ + ct-punc)
+- 去临时文件 I/O：VAD 片段直传 numpy 数组给 ASR 模型
+- 说话人聚类：threshold=0.35（cam++ 192-dim embedding），角色按发言时长自动分配
+- 前端教练提示改为内联气泡（对话流中显示，非侧边栏）
+- 无需 HuggingFace Token：cam++ 模型从 ModelScope 自动下载
+- 保留 `USE_FUNASR=true` 环境变量用于回滚控制
+
+## FunASR 全栈替换 (2026-06)
+
+### 替换总览
+
+| 组件 | 旧方案 | 新方案 (FunASR) | 模型大小 | RTF |
+|------|--------|-----------------|----------|-----|
+| **VAD** | Silero-VAD ONNX | fsmn-vad | — | ~0.02 |
+| **ASR** | faster-whisper large-v3-turbo | paraformer-zh (non-autoregressive) | 220M vs 809M | 0.047 vs 0.582 |
+| **说话人** | pyannote speaker-diarization-3.1 | cam++ (192-dim embedding) | 7.2M | ~0.07 |
+| **标点** | 无 (OpenCC 仅简繁转换) | ct-punc | — | ~0.02 |
+| **简繁** | OpenCC t2s | 已移除 (paraformer-zh 原生简体) | — | — |
+
+### 性能对比
+
+- **速度**：Paraformer-zh 比 faster-whisper 快 **12.4 倍**（RTF 0.047 vs 0.582）
+- **模型大小**：220M vs 809M，减少 **73%**
+- **外部依赖**：不再需要 HuggingFace Token（cam++ 替代 pyannote）
+- **中文精度**：Paraformer-zh 中文转写精度优于 faster-whisper，原生简体输出 + 自动标点
+
+### 受影响文件
+
+- `backend/app/services/realtime_asr.py` — VADProcessor (fsmn-vad) + ASRProcessor (paraformer-zh)
+- `backend/app/services/speaker_clustering.py` — SpeakerEmbedder (cam++, 192-dim)
+- `backend/app/services/post_sales_service.py` — transcribe_audio() (paraformer-zh one-shot)
+- `backend/requirements.txt` — +funasr>=1.0, 移除 faster-whisper/pyannote/silero-vad
+
+### 测试覆盖
+
+- **Benchmark**：`backend/benchmark_funasr.py` — 速度 + 精度对比 (12.4x faster)
+- **2 人对话**：`backend/test_streaming.py` — ASR + 说话人分离
+- **3-4 人对话**：`backend/test_multispk.py` — 多人说话人分离
+- **教练引擎**：`backend/test_coach_e2e.py` — 5 阶段 E2E: ASR → 说话人 → 触发器 → LLM 教练提示
+- **Verify**：`backend/verify_funasr.py` — Post-sales 集成验证
+
+### 环境变量
+
+```bash
+USE_FUNASR=true   # 启用 FunASR（默认 true），设 false 回退旧方案
+```
 
 **暗色模式白边清理**
 - 全局替换硬编码 `border-gray-500/30` → `border-[var(--border-subtle)]`
