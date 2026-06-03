@@ -14,6 +14,8 @@ export default function ProductManager() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [riskFilter, setRiskFilter] = useState('');
+  const [sortBy, setSortBy] = useState('updated_at');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -24,10 +26,10 @@ export default function ProductManager() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    const res = await getProducts(typeFilter || undefined, riskFilter ? Number(riskFilter) : undefined, search || undefined, page);
+    const res = await getProducts(typeFilter || undefined, riskFilter ? Number(riskFilter) : undefined, search || undefined, page, 10, sortBy, sortOrder);
     setProducts(res.items);
     setTotalPages(res.total_pages);
-  }, [page, search, typeFilter, riskFilter]);
+  }, [page, search, typeFilter, riskFilter, sortBy, sortOrder]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -163,6 +165,19 @@ export default function ProductManager() {
           <option value="">全部风险</option>
           {RISK_LEVELS.map(r => <option key={r} value={r}>R{r}</option>)}
         </select>
+        <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
+          className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-full px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)] transition-all duration-200">
+          <option value="updated_at">更新时间</option>
+          <option value="name">名称</option>
+          <option value="expected_return">预期收益</option>
+          <option value="risk_level">风险等级</option>
+          <option value="min_investment">起投金额</option>
+        </select>
+        <button onClick={() => { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); setPage(1); }}
+          className="px-2 py-1.5 text-xs rounded-full border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all duration-200"
+          title={sortOrder === 'asc' ? '升序' : '降序'}>
+          {sortOrder === 'asc' ? '↑ 升序' : '↓ 降序'}
+        </button>
         <button onClick={() => setShowAddModal(true)} className="btn btn-primary text-xs whitespace-nowrap">新增产品</button>
         <button onClick={() => setShowCsvModal(true)} className="btn btn-secondary text-xs whitespace-nowrap">CSV导入</button>
       </div>

@@ -124,6 +124,8 @@ def list_products(
     q: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    sort_by: str = Query("updated_at", description="name / expected_return / risk_level / updated_at / min_investment"),
+    sort_order: str = Query("desc", description="asc or desc"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -137,7 +139,13 @@ def list_products(
     total = query.count()
     total_pages = max(1, math.ceil(total / page_size))
     offset = (page - 1) * page_size
-    items = query.order_by(Product.updated_at.desc()).offset(offset).limit(page_size).all()
+
+    # Dynamic sorting
+    sort_col = getattr(Product, sort_by, Product.updated_at)
+    if sort_order == "asc":
+        items = query.order_by(sort_col.asc()).offset(offset).limit(page_size).all()
+    else:
+        items = query.order_by(sort_col.desc()).offset(offset).limit(page_size).all()
     return ProductListResponse(
         items=[ProductResponse.model_validate(item) for item in items],
         total=total,

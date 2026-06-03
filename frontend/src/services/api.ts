@@ -232,13 +232,15 @@ export const deleteCustomer = (id: string) =>
   request<void>(`/customers/${id}`, { method: 'DELETE' });
 
 // Products
-export const getProducts = (type?: string, riskLevel?: number, q?: string, page = 1, pageSize = 10) => {
+export const getProducts = (type?: string, riskLevel?: number, q?: string, page = 1, pageSize = 10, sortBy = 'updated_at', sortOrder = 'desc') => {
   const params = new URLSearchParams();
   if (type) params.set('type', type);
   if (riskLevel !== undefined) params.set('risk_level', String(riskLevel));
   if (q) params.set('q', q);
   params.set('page', String(page));
   params.set('page_size', String(pageSize));
+  params.set('sort_by', sortBy);
+  params.set('sort_order', sortOrder);
   return request<import('../types').ProductList>(`/products?${params}`);
 };
 export const getProduct = (id: string) =>
