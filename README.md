@@ -509,6 +509,19 @@ npm run dev
 - **外部依赖**：不再需要 HuggingFace Token（cam++ 替代 pyannote）
 - **中文精度**：Paraformer-zh 中文转写精度优于 faster-whisper，原生简体输出 + 自动标点
 
+### 实时 ASR 优化 (2026-06)
+
+- **缓冲区优化**：VAD 累积缓冲从 2.0s 降至 **1.0s**（`min_accumulate_s` 可配置），端到端延迟减半
+- **尾部 flush**：WebSocket 断开时自动 flush VAD 残留缓冲，不再丢失最后 ~1s 的语音
+- **CJK 空格折叠**：`_collapse_cjk_spaces()` 自动合并 Paraformer-zh 输出的 CJK 字符间空格（"你 好" → "你好"），覆盖实时陪跑 + 售后转录两个场景
+- **去临时文件 I/O**：VAD 片段直传 PCM bytes 给 ASR 模型（以 WAV 容器写入 tempfile 供 FunASR API 读取）
+
+### 仿真培训性能优化 (2026-06)
+
+- **并行 Agent 调用**：customer agent + coach agent 通过 `asyncio.gather()` 并发执行，响应时间从串行 10-20s 降至 max(customer, coach) ≈ 4-5s，**提速 ~75%**
+- **端点改为 async**：`POST /sessions/{id}/messages` 从 `def` 改为 `async def`，修复 `asyncio.run()` 在同步上下文中的崩溃问题
+- **AI 思考动画**：发送消息后显示弹跳圆点动画（蓝/紫/绿三色 `.animate-thinking-dot`），替代单调的"发送中..."文字
+
 ### 受影响文件
 
 - `backend/app/services/realtime_asr.py` — VADProcessor (fsmn-vad) + ASRProcessor (paraformer-zh)
