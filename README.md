@@ -11,6 +11,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **ORM** | SQLAlchemy + Alembic (迁移) |
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Jina AI (`jina-embeddings-v3`) |
+| **市场数据** | **akshare** — 基金名称/公司/净值/评级全自动获取，每 2 小时刷新 |
 | **语音转录** | **FunASR Paraformer-zh** (220M，RTF ~0.05) — 替代 faster-whisper large-v3-turbo (809M) |
 | **说话人分离** | **FunASR cam++** (192-dim embedding，无需 HF Token) + 在线聚类 (cosine similarity + EMA centroid) |
 | **VAD** | **FunASR fsmn-vad** — 替代 Silero-VAD ONNX |
@@ -75,6 +76,7 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 │   │   │   ├── realtime_asr.py       # 实时 ASR 流水线 (FunASR fsmn-vad + paraformer-zh)
 │   │   │   ├── speaker_clustering.py # 在线说话人聚类 (FunASR cam++ embedding)
 │   │   │   ├── trigger_engine.py     # 教练触发器引擎 (8 YAML 规则 + DeepSeek 流式提示)
+│   │   │   ├── market_service.py     # akshare 金融市场数据（基金搜索/详情/净值/排行）
 │   │   │   ├── realtime_service.py   # 实时会话归档（bulk persist）
 │   │   │   ├── tts_service.py        # edge-tts 语音合成 + 流式输出
 │   │   │   └── quiz_service.py       # 知识库场景模拟练习生成 + 自动评分
@@ -269,13 +271,16 @@ npm run dev
 ### 产品库
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/products` | 产品列表 `?type=&risk_level=&q=&page=&page_size=` |
+| GET | `/api/products` | 产品列表 `?type=&risk_level=&q=&page=&page_size=&sort_by=updated_at\|name\|expected_return\|risk_level\|min_investment&sort_order=asc\|desc` |
 | POST | `/api/products` | 创建产品 |
 | GET | `/api/products/{id}` | 产品详情（含净值走势） |
 | PUT | `/api/products/{id}` | 更新产品 |
 | DELETE | `/api/products/{id}` | 删除产品 |
 | POST | `/api/products/batch` | CSV 批量导入 |
-| POST | `/api/products/{id}/refresh-nav` | 刷新基金净值（从东方财富实时拉取） |
+| POST | `/api/products/{id}/refresh-nav` | 刷新基金净值（akshare + 东方财富双源） |
+| GET | `/api/products/market/list` | 市场基金浏览 `?category=all\|stock\|mix\|bond\|index\|qdii\|money&page=&page_size=` |
+| POST | `/api/products/market/search` | 市场基金搜索 `{"keyword":"易方达","limit":20}` |
+| POST | `/api/products/market/save` | 一键导入市场基金 `?fund_code=110011` |
 
 ### RAG 问答
 | 方法 | 路径 | 说明 |
@@ -391,11 +396,12 @@ npm run dev
 
 **产品库**
 - 支持多种产品类型：基金、保险、理财、信托、结构化、其他
+- **akshare 市场数据驱动** — 173 只真实基金产品自动填充（名称/公司/评级/净值），每 2 小时自动刷新
 - 产品 CRUD + CSV 批量导入（带进度条）
-- 分页列表 + 类型/风险筛选 + 搜索
-- 基金填入代码后自动从东方财富拉取近 12 个月真实净值走势
-- 净值每 4 小时自动刷新 / 展开卡片时智能检测刷新
-- 非基金产品显示"未获得实时数据"提示
+- 分页列表 + 类型/风险筛选 + 搜索 + **多字段排序**（名称/收益/风险/起投金额，升序降序）
+- 基金净值双源刷新：akshare（主）→ 东方财富（fallback）
+- 市场基金浏览 API：26,950 只基金可按分类分页浏览/搜索/一键导入
+- 非基金产品（保险/信托/理财）需手动录入（无公开市场数据）
 
 **客户信息系统**
 - structured_data 扩展为 50+ 字段，六大类分组卡片展示（CustomerInfoCards）
