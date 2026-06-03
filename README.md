@@ -11,10 +11,13 @@ AI 驱动的销售全流程辅助平台，覆盖售前/售中/售后完整链路
 | **ORM** | SQLAlchemy + Alembic (迁移) |
 | **LLM** | DeepSeek (`deepseek-reasoner`) |
 | **Embedding** | Jina AI (`jina-embeddings-v3`) |
-| **语音转录** | faster-whisper `large-v3-turbo` + OpenCC `t2s` 简繁转换 + ffmpeg |
-| **说话人分离** | pyannote.audio `speaker-diarization-3.1` + 在线聚类 (cosine similarity + EMA centroid) |
-| **VAD** | Silero-VAD ONNX (8kHz, 32ms 窗口) |
+| **语音转录** | ~~faster-whisper `large-v3-turbo`~~ → **FunASR Paraformer-zh** (2026-06 已验证, 待集成) + OpenCC `t2s` 简繁转换 |
+| **说话人分离** | ~~pyannote.audio~~ → **FunASR cam++** (待验证) + 在线聚类 (cosine similarity + EMA centroid) |
+| **VAD** | ~~Silero-VAD ONNX~~ → **FunASR fsmn-vad** (待集成) |
+| **标点恢复** | 无 → **FunASR ct-punc** (新增) |
 | **TTS** | edge-tts (`zh-CN-XiaoxiaoNeural`) |
+
+> **2026-06 FunASR Benchmark:** Paraformer-zh (220M) 比 faster-whisper large-v3-turbo (809M) **快 12.4 倍**（RTF 0.047 vs 0.582），中文转写精度更好，自动添加标点。详见 [benchmark_results.json](backend/benchmark_results.json)。
 | **文档处理** | LangChain (PDF/DOCX/TXT/MD/PPTX) |
 | **前端** | React 19 + TypeScript + Vite + Tailwind CSS 3 + Recharts (响应式适配移动端/宽窄屏) |
 | **桌面应用** | Tauri v2（Windows MSI/NSIS 安装包） |

@@ -1,0 +1,18 @@
+{
+  "audio": "64.5s Chinese sales dialogue (TTS-generated)",
+  "whisper": {
+    "model": "faster-whisper large-v3-turbo (809M INT8 CPU)",
+    "load_time_s": 5.1,
+    "transcribe_time_s": 37.5,
+    "rtf": 0.582,
+    "segments": 9
+  },
+  "funasr": {
+    "model": "FunASR paraformer-zh + fsmn-vad + ct-punc (220M)",
+    "load_time_s": 2.0,
+    "transcribe_time_s": 3.0,
+    "rtf": 0.047,
+    "speedup": "12.4x"
+  },
+  "verdict": "FunASR faster, better punctuation, simpler deps. Proceed to integration."
+}
