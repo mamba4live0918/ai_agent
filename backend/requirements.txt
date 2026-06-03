@@ -16,14 +16,15 @@ pydantic-settings==2.14.1
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 openai==1.109.1
-faster-whisper==1.2.0
+# ── ASR replaced by FunASR (2026-06) — legacy deps kept for rollback ──
+# faster-whisper==1.2.0
+# pyannote.audio>=3.0
+# opencc-python-reimplemented==0.1.7
+# silero-vad>=6.0
 duckduckgo_search==8.1.1
 torch>=2.0
 torchaudio>=2.0
-pyannote.audio>=3.0
-opencc-python-reimplemented==0.1.7
-silero-vad>=6.0
 edge-tts>=6.0
 
-# FunASR benchmark (Chinese-optimized ASR alternative)
+# FunASR — unified ASR/VAD/speaker/punctuation
 funasr>=1.0

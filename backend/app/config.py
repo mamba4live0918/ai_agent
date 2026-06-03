@@ -36,8 +36,11 @@ class Settings(BaseSettings):
     jina_base_url: str = "https://api.jina.ai/v1"
     embed_model: str = "jina-embeddings-v3"
     audio_upload_dir: str = "./audio_uploads"
+    # Legacy — kept for rollback
     huggingface_token: str = ""
-    asr_model_size: str = "large-v3-turbo"  # faster-whisper model: tiny, small, medium, large-v3-turbo
+    asr_model_size: str = "large-v3-turbo"  # deprecated: replaced by FunASR paraformer-zh
+    # FunASR feature flag (set to "false" to rollback to legacy whisper+pyannote)
+    use_funasr: bool = True
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 
