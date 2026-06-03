@@ -6,6 +6,7 @@ from datetime import datetime
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
 from .prompt_templates import extract_json as _extract_json, get_deepseek_client
+from .realtime_asr import _collapse_cjk_spaces
 
 _client = get_deepseek_client()
 
@@ -77,17 +78,21 @@ def transcribe_audio(file_path: str) -> list[dict]:
         for sent in sentence_info:
             spk_id = sent.get("spk", 0)
             speaker = label_map.get(spk_id, "未知")
+            raw_text = sent.get("text", "").strip()
+            # Collapse CJK spaces from paraformer-zh output
+            raw_text = _collapse_cjk_spaces(raw_text)
             segments.append({
                 "start": sent.get("start", 0) / 1000.0,
                 "end": sent.get("end", 0) / 1000.0,
-                "text": sent.get("text", "").strip(),
+                "text": raw_text,
                 "speaker": speaker,
             })
     else:
         text = r.get("text", "")
         if isinstance(text, list):
             text = " ".join(text)
-        segments = [{"start": 0, "end": 0, "text": text.strip(), "speaker": "未知"}]
+        text = _collapse_cjk_spaces(text.strip())
+        segments = [{"start": 0, "end": 0, "text": text, "speaker": "未知"}]
 
     return segments
 

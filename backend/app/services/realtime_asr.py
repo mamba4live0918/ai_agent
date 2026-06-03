@@ -66,6 +66,26 @@ def _bytes_to_wav(audio_bytes: bytes, sample_rate: int) -> bytes:
     return buf.getvalue()
 
 
+def _collapse_cjk_spaces(text: str) -> str:
+    """Remove spaces between CJK characters (paraformer-zh outputs '你 好' style).
+
+    Uses lookahead/lookbehind to handle overlapping matches (e.g., "你 好 我" → "你好我").
+    Preserves spaces that separate Latin words from CJK text.
+    """
+    import re
+
+    # CJK character ranges (Unicode):
+    # U+4E00-U+9FFF  CJK Unified Ideographs (common)
+    # U+3400-U+4DBF  CJK Unified Ideographs Extension A
+    cjk_char = r'[一-鿿㐀-䶿]'
+
+    # Remove whitespace between two CJK characters (uses lookahead/lookbehind
+    # so overlapping matches like "你 好 我" are handled correctly)
+    text = re.sub(r'(?<=' + cjk_char + r')\s+(?=' + cjk_char + r')', '', text)
+
+    return text
+
+
 # ── FunASR VAD wrapper (fsmn-vad, lazy singleton) ──
 
 _funasr_vad = None
@@ -220,7 +240,10 @@ class ASRProcessor:
             text = r.get("text", "")
             if isinstance(text, list):
                 text = " ".join(text)
-            return text.strip()
+            text = text.strip()
+            # paraformer-zh outputs CJK characters separated by spaces ("你 好") — collapse them
+            text = _collapse_cjk_spaces(text)
+            return text
         return ""
 
 # ---------------------------------------------------------------------------
