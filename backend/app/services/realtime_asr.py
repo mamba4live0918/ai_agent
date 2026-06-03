@@ -102,13 +102,19 @@ class VADProcessor:
     """Voice activity detection using FunASR fsmn-vad.
 
     Buffers PCM audio chunks and emits VADSegment instances when complete
-    speech segments are detected.  Accumulates ~2 seconds of audio before
-    running the VAD model.
+    speech segments are detected.  Accumulates ~1 second of audio before
+    running the VAD model (configurable via ``min_accumulate_s``).
     """
 
-    def __init__(self, sample_rate: int = 16000, min_speech_duration_ms: int = 500):
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        min_speech_duration_ms: int = 500,
+        min_accumulate_s: float = 1.0,
+    ):
         self._sample_rate = sample_rate
         self._min_speech_duration_ms = min_speech_duration_ms
+        self._min_accumulate_s = min_accumulate_s
         self._buffer = bytearray()
         self._offset_samples = 0
         self._current_sample = 0
@@ -121,11 +127,25 @@ class VADProcessor:
         """Feed a chunk of raw PCM audio, return completed VAD segments."""
         self._buffer.extend(audio_bytes)
 
-        # Accumulate at least ~2 seconds before running VAD
-        min_bytes = int(self._sample_rate * 2.0 * 2)  # 16-bit = 2 bytes/sample
+        # Accumulate at least min_accumulate_s before running VAD
+        min_bytes = int(self._sample_rate * self._min_accumulate_s * 2)  # 16-bit = 2 bytes/sample
         if len(self._buffer) < min_bytes:
             return []
 
+        return self._run_vad()
+
+    def flush(self) -> list[VADSegment]:
+        """Process any remaining audio in the buffer, regardless of duration.
+
+        Call this when the audio stream ends (e.g., WebSocket disconnect)
+        to avoid losing the final partial buffer of speech.
+        """
+        if len(self._buffer) == 0:
+            return []
+        return self._run_vad()
+
+    def _run_vad(self) -> list[VADSegment]:
+        """Run fsmn-vad on the current buffer and return detected segments."""
         import tempfile
         import os
 
@@ -381,11 +401,23 @@ class StreamingTranscriber:
         """
         # Step 1: VAD
         vad_segments = self._vad.feed(audio_bytes)
+        return self._transcribe_segments(vad_segments)
 
+    def flush(self) -> list[ASRSegment]:
+        """Process any remaining audio in the VAD buffer.
+
+        Must be called before ``reset()`` on stream end (e.g., WebSocket
+        disconnect) to avoid losing the final partial buffer of speech.
+        """
+        vad_segments = self._vad.flush()
+        return self._transcribe_segments(vad_segments)
+
+    def _transcribe_segments(self, vad_segments: list[VADSegment]) -> list[ASRSegment]:
+        """Shared processing pipeline: VAD segments → ASR transcription."""
         results: list[ASRSegment] = []
 
         for vseg in vad_segments:
-            # Step 2: Pyannote secondary check (best-effort)
+            # Step 1: Pyannote secondary check (best-effort)
             if self._enable_pyannote and self._pyannote is not None:
                 speech_ratio = _pyannote_check(
                     vseg.audio_bytes, self.sample_rate, self._pyannote
@@ -397,14 +429,14 @@ class StreamingTranscriber:
                     )
                     continue
 
-            # Step 3: Speaker clustering (before ASR, based on audio only)
+            # Step 2: Speaker clustering (before ASR, based on audio only)
             speaker_id = ""
             if self._speaker_clustering is not None:
                 speaker_id = self._speaker_clustering.add_segment(
                     vseg.audio_bytes, self.sample_rate
                 )
 
-            # Step 4: ASR transcription (paraformer→string)
+            # Step 3: ASR transcription (paraformer→string)
             text = self._asr.transcribe(vseg.audio_bytes)
 
             if text.strip():

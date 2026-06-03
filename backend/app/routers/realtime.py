@@ -259,7 +259,34 @@ async def realtime_session(
     except Exception:
         logger.exception("Unexpected error in realtime session: user=%s", user_id)
     finally:
-        # ---- Step 5: archive session & cleanup -----------------------------
+        # ---- Step 5: flush remaining audio & archive session -----------------
+        # Flush any remaining audio in the VAD buffer before resetting
+        try:
+            final_segments = transcriber.flush()
+            for seg in final_segments:
+                speaker_name = transcriber.get_speaker_names().get(
+                    seg.speaker, seg.speaker
+                )
+                seg_dict = {
+                    "start": seg.start,
+                    "end": seg.end,
+                    "text": seg.text,
+                    "speaker": seg.speaker,
+                    "speaker_name": speaker_name,
+                    "confidence": seg.confidence,
+                }
+                accumulated_segments.append(seg_dict)
+                if seg.speaker:
+                    speaker_ids.add(seg.speaker)
+                await websocket.send_json({
+                    "type": "transcript",
+                    **seg_dict,
+                    "session_id": session_id,
+                    "is_partial": False,
+                })
+        except Exception:
+            logger.exception("Failed to flush final VAD buffer")
+
         try:
             transcriber.reset()
         except Exception:
