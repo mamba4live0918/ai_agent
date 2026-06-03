@@ -1,10 +1,7 @@
 import json
 import os
-import subprocess
 import shutil
 from datetime import datetime
-
-from opencc import OpenCC
 
 from ..config import ServiceError, settings
 from .rag_service import search_knowledge_base
@@ -12,118 +9,75 @@ from .prompt_templates import extract_json as _extract_json, get_deepseek_client
 
 _client = get_deepseek_client()
 
-_cc = OpenCC("t2s")  # Traditional Chinese → Simplified Chinese
 
+# ── FunASR transcription pipeline (lazy-initialized singleton) ──
 
-# ──────────────────────────── Audio Transcription ────────────────────────────
+_funasr_post_model = None
 
-def _run_diarization(wav_path: str) -> dict | None:
-    """Run speaker diarization via pyannote.audio. Returns None if unavailable."""
-    if not settings.huggingface_token:
-        return None
-    try:
-        import torchaudio
-        from pyannote.audio import Pipeline
-
-        pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1",
-            token=settings.huggingface_token,
+def _get_funasr_post_model():
+    """Return a cached FunASR AutoModel with paraformer + VAD + punctuation + speaker."""
+    global _funasr_post_model
+    if _funasr_post_model is None:
+        from funasr import AutoModel
+        _funasr_post_model = AutoModel(
+            model="paraformer-zh",
+            vad_model="fsmn-vad",
+            punc_model="ct-punc",
+            spk_model="cam++",
+            disable_update=True,
         )
-        # Load audio in-memory to avoid torchcodec dependency
-        waveform, sample_rate = torchaudio.load(wav_path)
-        diarization = pipeline({"waveform": waveform, "sample_rate": sample_rate})
-
-        # Collect speaker segments and total speaking time per speaker
-        speaker_time: dict[str, float] = {}
-        speaker_segments: list[dict] = []
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            duration = turn.end - turn.start
-            speaker_time[speaker] = speaker_time.get(speaker, 0) + duration
-            speaker_segments.append({"start": turn.start, "end": turn.end, "speaker": speaker})
-
-        # Map speaker labels to Chinese roles by speaking time (descending)
-        sorted_speakers = sorted(speaker_time.keys(), key=lambda s: speaker_time[s], reverse=True)
-        label_map: dict[str, str] = {}
-        if len(sorted_speakers) >= 2:
-            label_map[sorted_speakers[0]] = "销售"
-            label_map[sorted_speakers[1]] = "客户"
-            for i, s in enumerate(sorted_speakers[2:], 3):
-                label_map[s] = f"其他{i - 2}"
-        elif len(sorted_speakers) == 1:
-            label_map[sorted_speakers[0]] = "销售"
-
-        # Remap speaker labels
-        for seg in speaker_segments:
-            seg["speaker"] = label_map.get(seg["speaker"], seg["speaker"])
-
-        return speaker_segments
-    except Exception:
-        return None
-
-
-def _align_speakers(whisper_segments: list[dict], diarization: list[dict] | None) -> list[dict]:
-    """Align whisper segments with diarization speaker labels."""
-    if not diarization:
-        for seg in whisper_segments:
-            seg["speaker"] = "销售"
-        return whisper_segments
-
-    for seg in whisper_segments:
-        seg_start = seg["start"]
-        seg_end = seg["end"]
-        overlap: dict[str, float] = {}
-        for d in diarization:
-            o_start = max(seg_start, d["start"])
-            o_end = min(seg_end, d["end"])
-            if o_start < o_end:
-                overlap[d["speaker"]] = overlap.get(d["speaker"], 0) + (o_end - o_start)
-        if overlap:
-            seg["speaker"] = max(overlap, key=overlap.get)
-        else:
-            seg["speaker"] = "未知"
-    return whisper_segments
+    return _funasr_post_model
 
 
 def transcribe_audio(file_path: str) -> list[dict]:
-    """Convert audio to 16kHz mono WAV via ffmpeg, transcribe with faster-whisper,
-    and optionally run speaker diarization via pyannote.audio.
+    """Transcribe audio with FunASR paraformer-zh + VAD + punctuation + speaker diarization.
 
     Returns list of segments: [{"start": float, "end": float, "text": str, "speaker": str}]
     """
     if not shutil.which("ffmpeg"):
         raise ServiceError("ffmpeg not found — install ffmpeg to enable audio transcription")
 
-    os.makedirs(settings.audio_upload_dir, exist_ok=True)
+    if not os.path.exists(file_path):
+        raise ServiceError(f"Audio file not found: {file_path}")
 
-    wav_path = file_path.rsplit(".", 1)[0] + "_16k.wav"
     try:
-        result = subprocess.run([
-            "ffmpeg", "-y", "-i", file_path,
-            "-ar", "16000", "-ac", "1", "-f", "wav", wav_path,
-        ], capture_output=True, text=True, timeout=60)
-        if result.returncode != 0:
-            raise ServiceError(f"ffmpeg conversion failed: {result.stderr}")
-    except ServiceError:
-        raise
-    except subprocess.TimeoutExpired:
-        raise ServiceError("ffmpeg conversion timed out after 60s")
+        model = _get_funasr_post_model()
+        result = model.generate(input=file_path)
     except Exception as e:
-        raise ServiceError(f"ffmpeg conversion failed: {e}")
+        raise ServiceError(f"FunASR transcription failed: {e}")
 
-    # Whisper transcription
-    try:
-        from faster_whisper import WhisperModel
-        model = WhisperModel("large-v3-turbo", device="cpu", compute_type="int8")
-        whisper_segments, _ = model.transcribe(wav_path, beam_size=5)
-        segments = [{"start": s.start, "end": s.end, "text": _cc.convert(s.text.strip())} for s in whisper_segments]
-    except ImportError:
-        raise ServiceError("faster-whisper not installed — run: pip install faster-whisper")
-    except Exception as e:
-        raise ServiceError(f"Transcription failed: {e}")
+    # Parse FunASR output into standard segment format
+    if isinstance(result, list) and len(result) > 0:
+        r = result[0]
+    elif isinstance(result, dict):
+        r = result
+    else:
+        return [{"start": 0, "end": 0, "text": str(result), "speaker": "未知"}]
 
-    # Speaker diarization (best-effort)
-    diarization = _run_diarization(wav_path)
-    return _align_speakers(segments, diarization)
+    segments = []
+    sentence_info = r.get("sentence_info", []) or []
+    if sentence_info:
+        for sent in sentence_info:
+            spk_id = sent.get("spk", 0)
+            if spk_id == 0:
+                speaker = "销售"
+            elif spk_id == 1:
+                speaker = "客户"
+            else:
+                speaker = f"其他{spk_id}"
+            segments.append({
+                "start": sent.get("start", 0) / 1000.0,
+                "end": sent.get("end", 0) / 1000.0,
+                "text": sent.get("text", "").strip(),
+                "speaker": speaker,
+            })
+    else:
+        text = r.get("text", "")
+        if isinstance(text, list):
+            text = " ".join(text)
+        segments = [{"start": 0, "end": 0, "text": text.strip(), "speaker": "未知"}]
+
+    return segments
 
 
 # ──────────────────────────── KB Matching ────────────────────────────
