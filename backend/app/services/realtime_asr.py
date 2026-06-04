@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import logging
 import wave
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from ..config import settings
@@ -51,6 +52,9 @@ class ASRSegment:
     text: str  # transcribed Chinese / English text
     confidence: float  # model confidence [0, 1]
     speaker: str = ""  # speaker identifier (set by StreamingTranscriber)
+    segment_id: str = ""  # unique ID for partial→final tracking
+    is_partial: bool = True  # True = streaming partial, False = final/calibrated
+    calibrated: bool = False  # True = Nano calibration applied
 
 
 # ---------------------------------------------------------------------------
@@ -465,97 +469,76 @@ class NanoCalibrator:
             return ("", 0.0)
 
 
-# ---------------------------------------------------------------------------
-# Pyannote secondary VAD (false-positive filter) — kept for optional use
-# ---------------------------------------------------------------------------
-
-
-def _load_pyannote_vad():
-    """Load pyannote Voice Activity Detection pipeline if HF token is configured."""
-    if not settings.huggingface_token:
-        return None
-
-    try:
-        from pyannote.audio import Pipeline
-        return Pipeline.from_pretrained(
-            "pyannote/voice-activity-detection",
-            token=settings.huggingface_token,
-        )
-    except Exception:
-        logger.warning("Failed to load pyannote VAD pipeline", exc_info=True)
-        return None
-
-
-def _pyannote_check(audio_bytes: bytes, sample_rate: int, pipeline) -> float:
-    """Run pyannote VAD on a segment and return the speech ratio [0, 1]."""
-    if pipeline is None:
-        return 1.0
-
-    try:
-        import torchaudio
-
-        wav_bytes = _bytes_to_wav_bytes(audio_bytes, sample_rate)
-        with io.BytesIO(wav_bytes) as buf:
-            waveform, sr = torchaudio.load(buf)
-
-        vad = pipeline({"waveform": waveform, "sample_rate": sr})
-        total_speech = 0.0
-        total_duration = waveform.shape[1] / sr if sr > 0 else 0.0
-
-        for segment in vad.itersegments():
-            total_speech += segment.end - segment.start
-
-        if total_duration > 0:
-            return min(total_speech / total_duration, 1.0)
-        return 0.0
-    except Exception:
-        logger.debug("pyannote secondary check failed", exc_info=True)
-        return 1.0
-
 
 # ---------------------------------------------------------------------------
-# StreamingTranscriber — orchestrator
+# StreamingTranscriber — orchestrator with energy gate + streaming + calibration
 # ---------------------------------------------------------------------------
 
 
 class StreamingTranscriber:
-    """Orchestrator that combines VAD + ASR for real-time speech transcription.
+    """Orchestrator: EnergyGate → StreamingASR → VAD boundary → NanoCalibrator.
 
     Audio flow::
 
         PCM bytes
           │
-          ▼
-      VADProcessor  ──►  VADSegment list
-          │                    │
-          │           speaker clustering (optional)
-          │                    │
-          ▼                    ▼
-      ASRProcessor   ──►  ASRSegment list
-                     (batched for better accuracy)
+          ├─► EnergyGate ──► "speaking?" gate
+          │        │
+          │        ▼ yes
+          │   StreamingASRProcessor ──► partial ASRSegment (is_partial=True)
+          │        │
+          │        │  (audio also accumulated for calibration)
+          │        ▼
+          │   VADProcessor ──► detects segment end (via energy gate)
+          │        │
+          │        ▼ segment end
+          │   StreamingASR finalize ──► ASRSegment (is_partial=False, calibrated=False)
+          │        │
+          │        ▼ async (CPU thread pool)
+          │   NanoCalibrator ──► ASRSegment (is_partial=False, calibrated=True)
+          │
+          └─► SpeakerClustering (unchanged, applied to each segment)
     """
 
     def __init__(
         self,
         sample_rate: int = 16000,
-        vad_threshold: float = 0.5,
         min_speech_duration_ms: int = 400,
         max_speech_duration_s: float = 8.0,
-        enable_pyannote_check: bool = False,
         enable_speaker_clustering: bool = False,
     ):
         self.sample_rate = sample_rate
-
         self._vad = VADProcessor(
             sample_rate=sample_rate,
             min_speech_duration_ms=min_speech_duration_ms,
-            min_accumulate_s=0.5,   # 500ms latency vs old 1000ms
+            min_accumulate_s=0.3,   # faster VAD polling for streaming
         )
-        self._asr = ASRProcessor(sample_rate=sample_rate)
-        self._pyannote = _load_pyannote_vad() if enable_pyannote_check else None
-        self._enable_pyannote = enable_pyannote_check
+        self._streaming_asr = StreamingASRProcessor(sample_rate=sample_rate)
+        self._calibrator = NanoCalibrator(sample_rate=sample_rate)
+        self._calib_executor = ThreadPoolExecutor(max_workers=1)
 
-        # Speaker clustering (lazy init)
+        # Energy gate — fast RMS speech detection (~50ms latency)
+        self._energy_threshold = 0.008    # RMS threshold for speech
+        self._energy_hold_ms = 400        # silence before declaring speech end
+        self._energy_silence_samples = 0
+        self._energy_hold_samples = int(self._energy_hold_ms / 1000 * sample_rate)
+        self._energy_active = False
+
+        # Session state
+        self._in_speech = False
+        self._segment_counter = 0
+        self._current_segment_audio = bytearray()
+        self._current_segment_start = 0.0
+        self._current_segment_id = ""
+        self._last_partial_text = ""
+        self._session_offset = 0.0        # cumulative seconds processed
+        self._segment_start_offset = 0.0  # session_offset at segment start
+        self._pending_calibrations: dict[str, bytes] = {}
+
+        # Calibration results queue (populated by background thread, consumed by feed_chunk)
+        self._calibration_results: list[ASRSegment] = []
+
+        # Speaker clustering
         self._enable_speaker_clustering = enable_speaker_clustering
         self._speaker_clustering = None
         if enable_speaker_clustering:
@@ -569,86 +552,221 @@ class StreamingTranscriber:
 
     def feed_chunk(self, audio_bytes: bytes) -> list[ASRSegment]:
         """Feed a chunk of raw PCM 16-bit mono audio and return any
-        newly-transcribed speech segments.
-
-        Each returned ASR segment has absolute timestamps (seconds from the
-        first call to ``feed_chunk`` or since the last ``reset``).
+        newly-transcribed speech segments (partial or final).
         """
+        results: list[ASRSegment] = []
+
+        # 0. Collect completed calibration results from background thread
+        results.extend(self._calibration_results)
+        self._calibration_results = []
+
+        # 1. Energy gate — fast speech detection
+        was_active = self._energy_active
+        self._energy_active = self._check_energy(audio_bytes)
+
+        speech_started = self._energy_active and not was_active
+        speech_ended = not self._energy_active and was_active
+
+        # 2. Feed VAD for segment boundary detection (background validation)
         vad_segments = self._vad.feed(audio_bytes)
-        return self._transcribe_segments(vad_segments)
+
+        # 3. Streaming ASR — feed while speaking
+        if self._energy_active or self._in_speech:
+            if speech_started or (self._energy_active and not self._in_speech):
+                # New speech segment starting
+                self._in_speech = True
+                self._current_segment_audio = bytearray()
+                self._current_segment_start = self._session_offset
+                self._segment_start_offset = self._session_offset
+                self._segment_counter += 1
+                self._current_segment_id = f"seg_{self._segment_counter:04d}"
+                self._streaming_asr.reset_cache()
+                self._last_partial_text = ""
+
+            self._current_segment_audio.extend(audio_bytes)
+
+            is_final = speech_ended
+            text, conf = self._streaming_asr.transcribe_chunk(
+                audio_bytes, is_final=is_final
+            )
+
+            if text and text != self._last_partial_text:
+                self._last_partial_text = text
+                seg = self._build_segment(
+                    start=self._current_segment_start,
+                    end=self._session_offset + len(audio_bytes) / (self.sample_rate * 2),
+                    text=text,
+                    confidence=conf,
+                    is_partial=not is_final,
+                    calibrated=False,
+                )
+                results.append(seg)
+
+        # 4. When speech ends — submit calibration
+        if speech_ended and self._in_speech:
+            self._in_speech = False
+            full_audio = bytes(self._current_segment_audio)
+            seg_id = self._current_segment_id
+            self._pending_calibrations[seg_id] = full_audio
+
+            # Submit async calibration (non-blocking)
+            self._calib_executor.submit(self._run_calibration, seg_id, full_audio)
+            logger.debug("Calibration submitted for %s (%d bytes)", seg_id, len(full_audio))
+
+        # 5. Advance session offset
+        chunk_duration = len(audio_bytes) / (self.sample_rate * 2)
+        self._session_offset += chunk_duration
+
+        return results
 
     def flush(self) -> list[ASRSegment]:
-        """Process any remaining audio in the VAD buffer.
-
-        Must be called before ``reset()`` on stream end.
-        """
-        vad_segments = self._vad.flush()
-        return self._transcribe_segments(vad_segments)
-
-    def _transcribe_segments(self, vad_segments: list[VADSegment]) -> list[ASRSegment]:
-        """Transcribe VAD segments, batching consecutive ones for better accuracy.
-
-        Non-consecutive segments (gap > 2s) are transcribed separately.
-        """
-        if not vad_segments:
-            return []
-
-        # Group consecutive segments (gap < 2s between them)
-        groups: list[list[VADSegment]] = []
-        current_group: list[VADSegment] = []
-
-        for seg in vad_segments:
-            if not current_group:
-                current_group.append(seg)
-            elif seg.start - current_group[-1].end < 2.0:
-                current_group.append(seg)
-            else:
-                groups.append(current_group)
-                current_group = [seg]
-        if current_group:
-            groups.append(current_group)
-
-        # Transcribe each group
+        """Process remaining audio and wait for pending calibrations."""
         results: list[ASRSegment] = []
-        for group in groups:
-            # Batched transcription for multi-segment groups
-            if len(group) > 1:
-                texts = self._asr.transcribe_batch(group)
-            else:
-                texts = [self._asr.transcribe(group[0].audio_bytes)]
 
-            for i, (vseg, text) in enumerate(zip(group, texts)):
-                if not text.strip():
-                    continue
+        # Collect any completed calibration results
+        results.extend(self._calibration_results)
+        self._calibration_results = []
 
-                # Speaker clustering
-                speaker_id = ""
-                if self._speaker_clustering is not None:
-                    speaker_id = self._speaker_clustering.add_segment(
-                        vseg.audio_bytes, self.sample_rate
-                    )
+        # Flush VAD buffer
+        vad_segments = self._vad.flush()
 
-                results.append(ASRSegment(
-                    start=vseg.start,
-                    end=vseg.end,
-                    text=text,
-                    confidence=vseg.confidence,
-                    speaker=speaker_id,
+        # If still in speech, finalize
+        if self._in_speech and len(self._current_segment_audio) > 0:
+            final_text, final_conf = self._streaming_asr.transcribe_chunk(
+                b"", is_final=True
+            )
+            self._streaming_asr.reset_cache()
+            seg_id = self._current_segment_id
+            full_audio = bytes(self._current_segment_audio)
+            self._pending_calibrations[seg_id] = full_audio
+            self._calib_executor.submit(self._run_calibration, seg_id, full_audio)
+            self._in_speech = False
+
+            if final_text:
+                results.append(self._build_segment(
+                    start=self._current_segment_start,
+                    end=self._session_offset,
+                    text=final_text,
+                    confidence=final_conf,
+                    is_partial=False,
+                    calibrated=False,
                 ))
+
+        # Wait for pending calibrations (max 5s)
+        import time
+        deadline = time.time() + 5.0
+        while self._pending_calibrations and time.time() < deadline:
+            time.sleep(0.1)
+            results.extend(self._calibration_results)
+            self._calibration_results = []
+
+        # Any remaining results
+        results.extend(self._calibration_results)
+        self._calibration_results = []
 
         return results
 
     def reset(self) -> None:
-        """Reset the entire pipeline (VAD state, ASR model persists)."""
+        """Reset the entire pipeline for a new session."""
         self._vad.reset()
+        self._streaming_asr.reset_cache()
+        self._energy_silence_samples = 0
+        self._energy_active = False
+        self._in_speech = False
+        self._segment_counter = 0
+        self._current_segment_audio = bytearray()
+        self._current_segment_start = 0.0
+        self._last_partial_text = ""
+        self._session_offset = 0.0
+        self._pending_calibrations.clear()
+        self._calibration_results.clear()
+        if self._speaker_clustering is not None:
+            self._speaker_clustering.reset()
 
     @property
     def total_seconds(self) -> float:
         """Total audio processed (seconds)."""
-        return self._vad._offset_seconds
+        return self._session_offset
 
     def get_speaker_names(self) -> dict[str, str]:
         """Return the current speaker ID -> role name mapping."""
         if self._speaker_clustering is not None:
             return self._speaker_clustering.assign_speaker_roles()
         return {}
+
+    # -- internals -----------------------------------------------------------
+
+    def _check_energy(self, audio_bytes: bytes) -> bool:
+        """Lightweight RMS energy gate for fast speech detection."""
+        import numpy as np
+        samples = (
+            np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        )
+        rms = float(np.sqrt(np.mean(samples ** 2)))
+
+        if rms > self._energy_threshold:
+            self._energy_silence_samples = 0
+            return True
+        else:
+            self._energy_silence_samples += len(samples)
+            if self._energy_silence_samples >= self._energy_hold_samples:
+                return False
+            return self._energy_active  # hold previous state during short gaps
+
+    def _build_segment(
+        self, start: float, end: float, text: str, confidence: float,
+        is_partial: bool, calibrated: bool,
+    ) -> ASRSegment:
+        """Construct an ASRSegment with speaker clustering applied."""
+        speaker_id = ""
+        if self._speaker_clustering is not None:
+            # For partial segments, use last known speaker
+            if is_partial and self._speaker_clustering._last_speaker_id:
+                speaker_id = self._speaker_clustering._last_speaker_id
+            elif not is_partial:
+                # For final segments, run clustering on the full audio
+                full_audio = bytes(self._current_segment_audio)
+                speaker_id = self._speaker_clustering.add_segment(
+                    full_audio, self.sample_rate
+                )
+
+        return ASRSegment(
+            start=start,
+            end=end,
+            text=text,
+            confidence=confidence,
+            speaker=speaker_id,
+            segment_id=self._current_segment_id,
+            is_partial=is_partial,
+            calibrated=calibrated,
+        )
+
+    def _run_calibration(self, seg_id: str, audio_bytes: bytes) -> None:
+        """Run Nano calibration in background thread.  Thread-safe."""
+        try:
+            calib_text, calib_conf = self._calibrator.calibrate(audio_bytes)
+        except Exception:
+            logger.exception("Calibration failed for %s", seg_id)
+            calib_text, calib_conf = "", 0.0
+
+        if not calib_text.strip():
+            # Nano unavailable or failed — fallback to streaming final (no-op)
+            logger.debug("Calibration skipped for %s (Nano unavailable/no result)", seg_id)
+            self._pending_calibrations.pop(seg_id, None)
+            return
+
+        seg = ASRSegment(
+            start=self._segment_start_offset,
+            end=self._segment_start_offset + len(audio_bytes) / (self.sample_rate * 2),
+            text=calib_text,
+            confidence=calib_conf,
+            speaker="",  # will be filled by caller if needed
+            segment_id=seg_id,
+            is_partial=False,
+            calibrated=True,
+        )
+
+        # Thread-safe: append to results queue
+        self._calibration_results.append(seg)
+        self._pending_calibrations.pop(seg_id, None)
+        logger.info("Calibration complete for %s: %s", seg_id, calib_text[:80])
