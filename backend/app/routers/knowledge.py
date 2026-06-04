@@ -234,10 +234,20 @@ def upload_document(
     # Read file bytes for MIME validation
     contents = file.file.read()
     kind = filetype.guess(contents)
-    if kind is None or kind.mime not in ALLOWED_MIMES:
+
+    # Trust extension for text formats that filetype can't detect
+    text_extensions = {".txt": "text/plain", ".md": "text/markdown"}
+    if ext in text_extensions:
+        kind_mime = text_extensions[ext]
+    elif kind is not None:
+        kind_mime = kind.mime
+    else:
+        kind_mime = None
+
+    if kind_mime not in ALLOWED_MIMES:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {kind.mime if kind else 'unknown'}. Allowed: PDF, DOCX, TXT, MD, PPTX"
+            detail=f"Unsupported file type: {kind_mime or 'unknown'}. Allowed: PDF, DOCX, TXT, MD, PPTX"
         )
 
     os.makedirs(DOCUMENTS_DIR, exist_ok=True)
