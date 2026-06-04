@@ -85,7 +85,8 @@ def _collapse_cjk_spaces(text: str) -> str:
 # ── FunASR model singletons (lazy-loaded, reused across connections) ──
 
 _funasr_vad = None
-_funasr_asr = None
+_funasr_streaming_asr = None
+_funasr_nano = None
 
 
 def _get_funasr_vad():
@@ -96,12 +97,34 @@ def _get_funasr_vad():
     return _funasr_vad
 
 
-def _get_funasr_asr():
-    global _funasr_asr
-    if _funasr_asr is None:
+def _get_funasr_streaming_asr():
+    global _funasr_streaming_asr
+    if _funasr_streaming_asr is None:
         from funasr import AutoModel
-        _funasr_asr = AutoModel(model="paraformer-zh", disable_update=True, device="cuda")
-    return _funasr_asr
+        _funasr_streaming_asr = AutoModel(
+            model=settings.funasr_streaming_model,
+            disable_update=True,
+            device=settings.funasr_streaming_device,
+        )
+    return _funasr_streaming_asr
+
+
+def _get_funasr_nano():
+    global _funasr_nano
+    if _funasr_nano is None:
+        try:
+            from funasr import AutoModel
+            _funasr_nano = AutoModel(
+                model=settings.funasr_calibration_model,
+                disable_update=True,
+                device=settings.funasr_calibration_device,
+            )
+            logger.info("FunASR-Nano loaded: model=%s device=%s",
+                        settings.funasr_calibration_model, settings.funasr_calibration_device)
+        except Exception:
+            logger.warning("Failed to load FunASR-Nano, calibration disabled", exc_info=True)
+            _funasr_nano = False  # sentinel: tried but failed
+    return _funasr_nano if _funasr_nano is not False else None
 
 
 # ---------------------------------------------------------------------------
@@ -271,85 +294,94 @@ class VADProcessor:
 
 
 # ---------------------------------------------------------------------------
-# ASRProcessor — paraformer-zh with in-memory WAV
+# ASRProcessor — streaming paraformer-zh with chunk-level inference
 # ---------------------------------------------------------------------------
 
 
-class ASRProcessor:
-    """Transcribes audio segments using FunASR paraformer-zh (220M).
+class StreamingASRProcessor:
+    """Transcribes audio in real time using paraformer-zh-streaming (220M CUDA).
 
-    RTF ~0.047 vs faster-whisper's 0.58 on CPU.
-    Outputs simplified Chinese — no OpenCC conversion needed.
+    Unlike the old ASRProcessor which waited for a complete VAD segment,
+    this class processes audio chunk-by-chunk and emits incremental partial
+    text.  Each call to :meth:`transcribe_chunk` advances the internal cache.
+
+    Cache lifecycle
+    ---------------
+    - ``reset_cache()`` must be called at the start of each new VAD segment.
+    - ``is_final=True`` on the last chunk of a segment flushes the cache.
+    - The cache dict is the FunASR streaming state; never mutate it directly.
     """
+
+    CHUNK_SIZE = [0, 10, 5]          # frames: lookback 0 / current 10 / lookahead 5
+    ENCODER_LOOKBACK = 4              # encoder chunk look-back
+    DECODER_LOOKBACK = 1              # decoder chunk look-back
 
     def __init__(self, sample_rate: int = 16000):
         self._sample_rate = sample_rate
+        self._cache: dict = {}
 
-    def transcribe(self, audio_bytes: bytes) -> str:
-        """Transcribe a single speech segment. Returns text string."""
-        if not audio_bytes or len(audio_bytes) < self._sample_rate // 10:
-            return ""
+    def transcribe_chunk(
+        self, audio_bytes: bytes, is_final: bool
+    ) -> tuple[str, float]:
+        """Streaming inference on one audio chunk.
 
-        # Build WAV in-memory (no disk I/O)
-        wav_bytes = _bytes_to_wav_bytes(audio_bytes, self._sample_rate)
+        Parameters
+        ----------
+        audio_bytes : bytes
+            Raw PCM 16-bit mono audio for this chunk.
+        is_final : bool
+            True for the last chunk of a VAD segment (flushes internal state).
 
-        model = _get_funasr_asr()
-        result = model.generate(input=wav_bytes)
+        Returns
+        -------
+        (text, confidence)
+            text — cumulative text so far for this segment.
+            confidence — model confidence [0, 1].
+        """
+        if not audio_bytes or len(audio_bytes) < self._sample_rate // 50:  # < 20ms
+            return ("", 0.0)
 
+        import numpy as np
+        samples = (
+            np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        )
+
+        model = _get_funasr_streaming_asr()
+        result = model.generate(
+            input=samples,
+            cache=self._cache,
+            is_final=is_final,
+            chunk_size=self.CHUNK_SIZE,
+            encoder_chunk_look_back=self.ENCODER_LOOKBACK,
+            decoder_chunk_look_back=self.DECODER_LOOKBACK,
+        )
+
+        text = ""
+        confidence = 0.0
         if result and isinstance(result, list) and len(result) > 0:
             r = result[0]
-            text = r.get("text", "")
-            if isinstance(text, list):
-                text = " ".join(text)
-            text = text.strip()
+            raw_text = r.get("text", "")
+            if isinstance(raw_text, list):
+                raw_text = " ".join(raw_text)
+            text = raw_text.strip()
             text = _collapse_cjk_spaces(text)
-            return text
-        return ""
+            # confidence: use model's token-level mean if available
+            confidence = float(r.get("confidence", 0.9))
 
-    def transcribe_batch(self, segments: list[VADSegment]) -> list[str]:
-        """Transcribe multiple VAD segments, concatenating them for better context.
+        return (text, confidence)
 
-        Returns a list of text strings, one per input segment.
+    def transcribe_full(self, audio_bytes: bytes) -> tuple[str, float]:
+        """Non-streaming inference on a complete audio segment.
+
+        Used as fallback when streaming is not needed (e.g., post_sales).
+        Resets cache internally — safe to call mid-stream.
         """
-        if not segments:
-            return []
+        self.reset_cache()
+        return self.transcribe_chunk(audio_bytes, is_final=True)
 
-        # Concat all segments with 0.3s silence gap for paraformer context
-        gap_samples = int(0.3 * self._sample_rate)
-        gap_bytes = b'\x00\x00' * gap_samples
-
-        combined = bytearray()
-        boundaries: list[tuple[int, int]] = []  # (start, end) in combined audio
-
-        for seg in segments:
-            seg_start = len(combined) // 2  # samples
-            combined.extend(seg.audio_bytes)
-            seg_end = len(combined) // 2
-            boundaries.append((seg_start, seg_end))
-            combined.extend(gap_bytes)
-
-        if len(combined) < self._sample_rate // 5:  # < 200ms
-            return [self.transcribe(seg.audio_bytes) for seg in segments]
-
-        # Transcribe the combined audio
-        full_text = self.transcribe(bytes(combined))
-
-        # If paraformer returned segment-level timestamps, use them.
-        # Otherwise, we return the full text as segment[0]'s text and empty
-        # for the rest — the caller can decide how to split.
-        if not full_text:
-            return ["" for _ in segments]
-
-        # Simple case: single segment
-        if len(segments) == 1:
-            return [full_text]
-
-        # Multiple segments: return full text on first, empty on rest.
-        # This avoids splitting errors; the first segment gets the complete
-        # transcription which is more useful than fragmented partial results.
-        texts = ["" for _ in segments]
-        texts[0] = full_text
-        return texts
+    def reset_cache(self) -> None:
+        """Reset streaming cache for a new VAD segment."""
+        self._cache = {}
 
 
 # ---------------------------------------------------------------------------
