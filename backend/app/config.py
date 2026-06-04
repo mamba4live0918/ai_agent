@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # FunASR feature flag (set to "false" to rollback to legacy whisper+pyannote)
     use_funasr: bool = True
 
+    # ── FunASR streaming + calibration models ──
+    funasr_streaming_model: str = "paraformer-zh-streaming"   # 流式 ASR 模型 (GPU)
+    funasr_streaming_device: str = "cuda"                       # GPU 推理
+    funasr_calibration_model: str = "FunAudioLLM/Fun-ASR-Nano-2512"  # 校准模型 (CPU)
+    funasr_calibration_device: str = "cpu"                      # CPU 推理, 不抢 GPU
+
     model_config = {"env_file": "../.env", "extra": "ignore"}
 
     @field_validator("deepseek_api_key")
