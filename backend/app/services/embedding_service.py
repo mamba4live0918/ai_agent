@@ -1,4 +1,7 @@
 import os
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 import jieba
 from rank_bm25 import BM25Okapi
 from langchain_chroma import Chroma
@@ -18,6 +21,11 @@ _text_splitter = RecursiveCharacterTextSplitter(
 # ── BGE-m3 Embedding (local, no API key needed) ──
 
 _bge_model: SentenceTransformer | None = None
+
+
+import os as _os
+_os.environ.setdefault("HF_HUB_OFFLINE", "1")
+_os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 
 def _get_bge_model() -> SentenceTransformer:
