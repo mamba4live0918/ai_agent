@@ -8,6 +8,8 @@ export interface TranscriptSegment {
   isPartial: boolean;
   speaker: string;
   speaker_name: string;
+  segment_id: string;      // unique per VAD segment, used for upsert
+  calibrated: boolean;     // true = Nano calibration applied
 }
 
 export type ConnectionState = 'idle' | 'connecting' | 'streaming' | 'disconnected';
@@ -22,7 +24,6 @@ export interface UseRealtimeASRState {
   isRecording: boolean;
   connectionState: ConnectionState;
   transcript: TranscriptSegment[];
-  partialText: string;
   error: string | null;
   coachTip: CoachTip | null;
   start: () => Promise<void>;
@@ -63,7 +64,6 @@ export function useRealtimeASR(): UseRealtimeASRState {
   const [isRecording, setIsRecording] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
-  const [partialText, setPartialText] = useState('');
   const [coachTip, setCoachTip] = useState<CoachTip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
@@ -112,7 +112,6 @@ export function useRealtimeASR(): UseRealtimeASRState {
 
     setIsRecording(false);
     setConnectionState('idle');
-    setPartialText('');
     reconnectCountRef.current = 0;
   }, []);
 
@@ -132,23 +131,30 @@ export function useRealtimeASR(): UseRealtimeASRState {
         try {
           const data = JSON.parse(event.data as string);
           if (data.type === 'transcript') {
-            if (data.isPartial) {
-              setPartialText(data.text ?? '');
-            } else {
-              setTranscript((prev) => [
-                ...prev,
-                {
-                  start: data.start ?? 0,
-                  end: data.end ?? 0,
-                  text: data.text ?? '',
-                  confidence: data.confidence ?? 0,
-                  isPartial: false,
-                  speaker: data.speaker ?? '',
-                  speaker_name: data.speaker_name ?? data.speaker ?? '',
-                },
-              ]);
-              setPartialText('');
-            }
+            const seg: TranscriptSegment = {
+              start: data.start ?? 0,
+              end: data.end ?? 0,
+              text: data.text ?? '',
+              confidence: data.confidence ?? 0,
+              isPartial: data.is_partial ?? false,
+              speaker: data.speaker ?? '',
+              speaker_name: data.speaker_name ?? data.speaker ?? '',
+              segment_id: data.segment_id ?? '',
+              calibrated: data.calibrated ?? false,
+            };
+
+            setTranscript((prev) => {
+              // Upsert by segment_id: replace if exists, append if new
+              const idx = prev.findIndex(
+                (s) => s.segment_id && s.segment_id === seg.segment_id
+              );
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = seg;
+                return updated;
+              }
+              return [...prev, seg];
+            });
           } else if (data.type === 'coach_tip') {
             setCoachTip({
               trigger: data.trigger || '',
@@ -201,7 +207,6 @@ export function useRealtimeASR(): UseRealtimeASRState {
 
     setError(null);
     setTranscript([]);
-    setPartialText('');
     intentionalStopRef.current = false;
     reconnectCountRef.current = 0;
 
@@ -316,7 +321,6 @@ export function useRealtimeASR(): UseRealtimeASRState {
     isRecording,
     connectionState,
     transcript,
-    partialText,
     error,
     coachTip,
     start,
