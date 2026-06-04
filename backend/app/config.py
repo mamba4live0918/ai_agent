@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # BGE-m3 Embedding (local, no API key needed)
     embed_model_id: str = "BAAI/bge-m3"        # sentence-transformers model ID
-    embed_device: str = "cpu"                  # "cpu" or "cuda"
+    embed_device: str = "cuda"                   # "cpu" or "cuda"
     # Jina config kept as fallback (set USE_JINA_EMBED=true to switch back)
     use_jina_embed: bool = False
     jina_api_key: str = ""

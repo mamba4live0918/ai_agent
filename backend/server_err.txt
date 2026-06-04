@@ -1,0 +1,42 @@
+C:\Users\Mamba4live\Desktop\intern\ai_trainer\backend\app\config.py:64: RuntimeWarning: SECURITY WARNING: JWT secret_key is using the default value. A random secret has been generated for this session. Set SECRET_KEY in your .env for production deployments.
+  warnings.warn(
+11:12:02  DEBUG    asyncio  Using proactor: IocpProactor
+INFO:     Started server process [49584]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+11:27:24  DEBUG    chromadb.config  Starting component System
+11:27:24  DEBUG    chromadb.config  Starting component Posthog
+11:27:24  INFO     sentence_transformers.SentenceTransformer  Load pretrained SentenceTransformer: BAAI/bge-m3
+Building prefix dict from the default dictionary ...
+11:27:28  DEBUG    jieba  Building prefix dict from the default dictionary ...
+Loading model from cache C:\Users\MAMBA4~1\AppData\Local\Temp\claude\jieba.cache
+11:27:28  DEBUG    jieba  Loading model from cache C:\Users\MAMBA4~1\AppData\Local\Temp\claude\jieba.cache
+Loading model cost 0.770 seconds.
+11:27:29  DEBUG    jieba  Loading model cost 0.770 seconds.
+Prefix dict has been built successfully.
+11:27:29  DEBUG    jieba  Prefix dict has been built successfully.
+11:27:29  DEBUG    openai._base_client  Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-00bbc1c1-2796-49e1-83c2-dec25ca29ccd', 'json_data': {'messages': [{'role': 'system', 'content': '你是 SalesMate，一位严谨的知识库问答助手。必须严格基于文档回答。'}, {'role': 'user', 'content': '你是 SalesMate，一位严谨的知识库问答助手。你必须**严格基于**提供的文档内容回答。\n\n核心规则：\n- 回答语言：中文\n- 每一条陈述都必须能在文档中找到依据，**不得添加文档中没有的信息**\n- 每个关键观点必须标注来源，格式：〔来源：xxx.pdf〕\n- 如果文档中没有相关信息，直接回答"知识库中暂无相关内容"，**不要编造**\n- 可以引用多份文档，但如果文档间有矛盾，明确指出差异\n- 回答简洁专业，不要展开推测\n\n【知识库检索结果 — 这是你唯一的回答依据】\n---\n[Document 1]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 14:\n退休养老金 = 统筹账户养老金 + 个人账户养老金\n统筹账户养老金 = (参保地月均工资+本人指数化月均工资) /2 *缴费年限*1%\n个人账户养老金 =个人账户累计额/计发月数\n45岁退休，216月；50岁退休，195月；55岁退休，170月；60岁退休，139月。\n若王阿姨缴费基数6000元、年限30年（假设缴费指数1），55岁退休时基础养老金约为？（当地月均工资6000元）？\n个人养老金：6000×8%×12×30/170=1016.5元\n统筹养老金：(6000+6000×1)/2 ×30×1%=1800元\n退休后每月领取：1016.5+1800=2816.5元\n个人缴纳比例8%\n\n[Document 2]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 33:\n基础养老金=(社平工资+个人缴费基数）/2*缴费年限*1%\n个人账户养老金=(个人账户总额/139）（60岁-139、55岁-170、50岁-195）\n社保养老金计算\n基础养老金 = (上年度在岗职工月平均工资+本人指数化月平均缴费工资)÷2×缴费年限×1%=上年度在岗职工月平均工资(1+本人平均缴费指数)÷2×缴费年限×1%\n个人账户养老金 = 个人账户储存额÷计发月数(计发月数根据退休年龄和当时的人口平均寿命来确定。计发月数略等于(人口平均寿命-退休年龄)X12。（目前50岁为195、55岁为170、60岁为139)\n李先生，30岁开始工作，至60岁退休，月均薪资1万元。则他缴纳养老保险金总额是：\n10000*(20%+8%)*12*30=100.8万\n李先生退休后每月能拿到两部分钱：\n①基础养老金：(6000+10000)/2*30*1%=2400元/月\n②个人帐户养老金：28.8万/139=2071.94元/月\n养老金合计：4471.94元/月\n替代率约45%\n其中，个人缴费28.8万\n\n[Document 3]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 12:\n中国多层次养老金体系\n第一支柱\n基本养老保险\n政府主导\n第二支柱\n补充养老保险\n单位发起，商业机构运作\n第二支柱\n补充养老保险\n第三支柱\n个人养老金\n个人购买\n银行理财、保险、基金、存款\n56.88%\n城镇职工基本\n养老保险\n城乡居民基本\n养老保险\n企业年金\n职业年金\n个人养老储备\n个税递延型养老保险\n全国社会保险基金\n商业养老保险\n第一支柱\n6.31%\n第二支柱\n58.39%\n第三支柱\n35.30%\n42.02%\n1.10%\n补充\n注：人社部公开数据，截止至2023年数据\n美国三支柱养老金体系\n\n[Document 4]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 24:\n参与人：城镇职工或者城乡居民基本养老保险的劳动者\n缴 费\n个人自愿交费\n每年缴纳上限12000元\n个人养老金账户\n领 取\n封闭运行\n账户资金可以购买基金、银行理财、储蓄存款、商业保险\n个人承担风险\n享受税收优惠政策\n领取条件：\n达到领取基本养老金的年龄\n完全丧失劳动能力\n出国（境）定居\n其他规定情形\n\n[Document 5]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 23:\n聊\nLIAO\n壹\n一个话题：\n个人养老金制度\n新闻\n有热度\n客户\n很关心\n养老\n有关系\n五部门：2024年12月15日起全面实施个人养老金制度\n\n[Document 6]\nFile: 养老年金：养老年金营销思路.pptx\nPage: Unknown\nContent: Slide 15:\n养老金并轨是什么？\n2014年10月之前，机关事业单位与企业单位实行不同的养老金制度，简称“双轨制”。在这个制度下，两者养老金差异很大。有时候体制内会比体制外高出2倍之多。\n2014年10月1日，国家发布新政，明确养老金并轨方案，过渡期10年，2024年10月正式实施，并轨后统一以企业职工养老金计算规则发放养老金。\n体制内\n体制外\n体制内参加的是机关事业单位养老保险，不需要缴纳费用，由国家财政负担\n企业和个人共同承担养老保险费用，养老金主要来源于社保基金\n---\n\n对话历史：\n\n\n用户问题：讲一下养老金\n\n请回答：'}], 'model': 'deepseek-chat', 'max_tokens': 2000, 'temperature': 0.1}}
+11:27:29  DEBUG    openai._base_client  Sending HTTP Request: POST https://api.deepseek.com/chat/completions
+11:27:29  DEBUG    httpcore.connection  connect_tcp.started host='127.0.0.1' port=7890 local_address=None timeout=5.0 socket_options=None
+11:27:29  DEBUG    httpcore.connection  connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000022207BA3E00>
+11:27:29  DEBUG    httpcore.http11  send_request_headers.started request=<Request [b'CONNECT']>
+11:27:29  DEBUG    httpcore.http11  send_request_headers.complete
+11:27:29  DEBUG    httpcore.http11  send_request_body.started request=<Request [b'CONNECT']>
+11:27:29  DEBUG    httpcore.http11  send_request_body.complete
+11:27:29  DEBUG    httpcore.http11  receive_response_headers.started request=<Request [b'CONNECT']>
+11:27:29  DEBUG    httpcore.http11  receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'Connection established', [])
+11:27:29  DEBUG    httpcore.proxy  start_tls.started ssl_context=<ssl.SSLContext object at 0x0000022204FC6A30> server_hostname='api.deepseek.com' timeout=5.0
+11:27:30  DEBUG    httpcore.proxy  start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x00000222967BF9D0>
+11:27:30  DEBUG    httpcore.http11  send_request_headers.started request=<Request [b'POST']>
+11:27:30  DEBUG    httpcore.http11  send_request_headers.complete
+11:27:30  DEBUG    httpcore.http11  send_request_body.started request=<Request [b'POST']>
+11:27:30  DEBUG    httpcore.http11  send_request_body.complete
+11:27:30  DEBUG    httpcore.http11  receive_response_headers.started request=<Request [b'POST']>
+11:27:30  DEBUG    httpcore.http11  receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Date', b'Thu, 04 Jun 2026 03:27:31 GMT'), (b'Server', b'elb'), (b'Content-Encoding', b'gzip'), (b'vary', b'origin, access-control-request-method, access-control-request-headers'), (b'access-control-allow-credentials', b'true'), (b'x-ds-trace-id', b'5e13cbd7921f87f04fd338584feb75f8'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 bd8ae3d4552fdb926825058086fde702.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'HKG54-P2'), (b'X-Amz-Cf-Id', b'tC-8XWJoNEQRsl2_x-4jZnkm6zq8Y7eFszDpNEI6idHYr6UcoU4MYQ==')])
+11:27:30  DEBUG    httpcore.http11  receive_response_body.started request=<Request [b'POST']>
+11:27:34  DEBUG    httpcore.http11  receive_response_body.complete
+11:27:34  DEBUG    httpcore.http11  response_closed.started
+11:27:34  DEBUG    httpcore.http11  response_closed.complete
+11:27:34  DEBUG    openai._base_client  HTTP Response: POST https://api.deepseek.com/chat/completions "200 OK" Headers({'content-type': 'application/json', 'transfer-encoding': 'chunked', 'connection': 'keep-alive', 'date': 'Thu, 04 Jun 2026 03:27:31 GMT', 'server': 'elb', 'content-encoding': 'gzip', 'vary': 'origin, access-control-request-method, access-control-request-headers', 'access-control-allow-credentials': 'true', 'x-ds-trace-id': '5e13cbd7921f87f04fd338584feb75f8', 'strict-transport-security': 'max-age=31536000; includeSubDomains; preload', 'x-content-type-options': 'nosniff', 'x-cache': 'Miss from cloudfront', 'via': '1.1 bd8ae3d4552fdb926825058086fde702.cloudfront.net (CloudFront)', 'x-amz-cf-pop': 'HKG54-P2', 'x-amz-cf-id': 'tC-8XWJoNEQRsl2_x-4jZnkm6zq8Y7eFszDpNEI6idHYr6UcoU4MYQ=='})
+11:27:34  DEBUG    openai._base_client  request_id: None

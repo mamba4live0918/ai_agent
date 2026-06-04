@@ -121,8 +121,8 @@ async def realtime_session(
     transcriber = StreamingTranscriber(
         sample_rate=16000,
         vad_threshold=0.5,
-        min_speech_duration_ms=1000,
-        max_speech_duration_s=6.0,       # shorter segments → less speaker overlap per segment
+        min_speech_duration_ms=400,        # faster response for short phrases
+        max_speech_duration_s=8.0,
         enable_speaker_clustering=True,
     )
 

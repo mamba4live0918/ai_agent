@@ -35,7 +35,7 @@ def _get_bge_model() -> SentenceTransformer:
         _bge_model = SentenceTransformer(
             settings.embed_model_id,
             device=settings.embed_device,
-            local_files_only=True,   # 离线加载，模型已缓存无需VPN
+            local_files_only=True,
         )
     return _bge_model
 
