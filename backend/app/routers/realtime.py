@@ -199,24 +199,29 @@ async def realtime_session(
                     "speaker": seg.speaker,
                     "speaker_name": speaker_name,
                     "confidence": seg.confidence,
+                    "segment_id": seg.segment_id,
+                    "is_partial": seg.is_partial,
+                    "calibrated": seg.calibrated,
                 }
                 accumulated_segments.append(seg_dict)
                 if seg.speaker:
                     speaker_ids.add(seg.speaker)
 
                 logger.info(
-                    "Emitting transcript: %.1fs-%.1fs speaker=%s (%s) text=%s",
-                    seg.start, seg.end, seg.speaker, speaker_name, seg.text[:80],
+                    "Emitting transcript: %.1fs-%.1fs speaker=%s (%s) partial=%s calib=%s text=%s",
+                    seg.start, seg.end, seg.speaker, speaker_name,
+                    seg.is_partial, seg.calibrated, seg.text[:80],
                 )
                 await websocket.send_json({
                     "type": "transcript",
                     **seg_dict,
                     "session_id": session_id,
-                    "is_partial": False,
                 })
 
                 # --- Coach trigger evaluation ---
-                recent_texts.append(seg.text)
+                # Only evaluate on non-partial segments to avoid false triggers
+                if not seg.is_partial:
+                    recent_texts.append(seg.text)
                 if len(recent_texts) > 10:
                     recent_texts = recent_texts[-10:]
 
@@ -273,6 +278,9 @@ async def realtime_session(
                     "speaker": seg.speaker,
                     "speaker_name": speaker_name,
                     "confidence": seg.confidence,
+                    "segment_id": seg.segment_id,
+                    "is_partial": seg.is_partial,
+                    "calibrated": seg.calibrated,
                 }
                 accumulated_segments.append(seg_dict)
                 if seg.speaker:
@@ -281,7 +289,6 @@ async def realtime_session(
                     "type": "transcript",
                     **seg_dict,
                     "session_id": session_id,
-                    "is_partial": False,
                 })
         except Exception:
             logger.exception("Failed to flush final VAD buffer")
