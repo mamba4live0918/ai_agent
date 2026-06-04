@@ -385,6 +385,87 @@ class StreamingASRProcessor:
 
 
 # ---------------------------------------------------------------------------
+# NanoCalibrator — post-segment calibration via FunASR-Nano (800M CPU)
+# ---------------------------------------------------------------------------
+
+
+class NanoCalibrator:
+    """High-accuracy post-segment calibration using FunASR-Nano (800M CPU).
+
+    After a VAD segment ends and the streaming ASR produces its final text,
+    NanoCalibrator re-transcribes the complete segment audio for improved
+    accuracy — especially on dialects, accents, and noisy audio.
+
+    Runs on CPU to avoid competing with the streaming ASR on GPU.
+    """
+
+    def __init__(self, sample_rate: int = 16000):
+        self._sample_rate = sample_rate
+        self._model = None
+        self._available: bool | None = None  # None = not tried yet
+
+    @property
+    def available(self) -> bool:
+        """True if the Nano model loaded successfully."""
+        if self._available is None:
+            self._ensure_model()
+        return self._available
+
+    def _ensure_model(self) -> bool:
+        if self._available is not None:
+            return self._available
+        self._model = _get_funasr_nano()
+        self._available = self._model is not None
+        return self._available
+
+    def calibrate(self, audio_bytes: bytes, hotword: str = "") -> tuple[str, float]:
+        """Transcribe a complete VAD segment with FunASR-Nano.
+
+        Parameters
+        ----------
+        audio_bytes : bytes
+            Full segment PCM 16-bit mono audio.
+        hotword : str
+            Optional hotword for domain-specific terms (reserved, not yet used).
+
+        Returns
+        -------
+        (text, confidence)
+            If Nano is unavailable, returns ("", 0.0) — caller should fall back
+            to the streaming ASR final result.
+        """
+        if not self.available:
+            return ("", 0.0)
+
+        if not audio_bytes or len(audio_bytes) < self._sample_rate // 10:
+            return ("", 0.0)
+
+        try:
+            wav_bytes = _bytes_to_wav_bytes(audio_bytes, self._sample_rate)
+            kwargs = {"input": wav_bytes}
+            if hotword:
+                kwargs["hotword"] = hotword
+
+            result = self._model.generate(**kwargs)
+
+            text = ""
+            confidence = 0.0
+            if result and isinstance(result, list) and len(result) > 0:
+                r = result[0]
+                raw_text = r.get("text", "")
+                if isinstance(raw_text, list):
+                    raw_text = " ".join(raw_text)
+                text = raw_text.strip()
+                text = _collapse_cjk_spaces(text)
+                confidence = float(r.get("confidence", 0.95))
+
+            return (text, confidence)
+        except Exception:
+            logger.warning("NanoCalibrator: calibration failed", exc_info=True)
+            return ("", 0.0)
+
+
+# ---------------------------------------------------------------------------
 # Pyannote secondary VAD (false-positive filter) — kept for optional use
 # ---------------------------------------------------------------------------
 
