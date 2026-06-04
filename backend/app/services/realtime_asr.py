@@ -444,9 +444,20 @@ class NanoCalibrator:
         if not audio_bytes or len(audio_bytes) < self._sample_rate // 10:
             return ("", 0.0)
 
+        import tempfile
+        import os
+
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
         try:
-            wav_bytes = _bytes_to_wav_bytes(audio_bytes, self._sample_rate)
-            kwargs = {"input": wav_bytes}
+            # Write raw PCM as WAV file (FunASR-Nano needs file path, not bytes)
+            with os.fdopen(tmp_fd, "wb") as tmp:
+                with wave.open(tmp, "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(self._sample_rate)
+                    wf.writeframes(audio_bytes)
+
+            kwargs = {"input": tmp_path}
             if hotword:
                 kwargs["hotword"] = hotword
 
@@ -467,6 +478,8 @@ class NanoCalibrator:
         except Exception:
             logger.warning("NanoCalibrator: calibration failed", exc_info=True)
             return ("", 0.0)
+        finally:
+            os.unlink(tmp_path)
 
 
 
