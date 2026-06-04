@@ -57,6 +57,9 @@ def archive_session(
     db.flush()  # populate session.id before creating child rows
 
     for seg in segments:
+        asr_model = "funasr-paraformer-zh-streaming"
+        if seg.get("calibrated"):
+            asr_model = "funasr-nano-calibrated"
         db.add(
             RealtimeSegment(
                 session_id=session.id,
@@ -65,6 +68,7 @@ def archive_session(
                 text=seg.get("text", ""),
                 speaker=seg.get("speaker", ""),
                 confidence=seg.get("confidence", 0.0),
+                asr_model=asr_model,
             )
         )
 
