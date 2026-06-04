@@ -278,12 +278,14 @@ export default function RealTimeVoice() {
             const { label, isSelf } = getSpeakerInfo(seg);
             return (
               <ChatBubble
-                key={`seg-${seg.start}-${i}`}
+                key={`seg-${seg.segment_id || i}`}
                 text={seg.text}
                 timestamp={seg.start}
                 speaker={label}
                 isSelf={isSelf}
                 confidence={seg.confidence}
+                isPartial={seg.isPartial}
+                calibrated={seg.calibrated}
               />
             );
           })}
